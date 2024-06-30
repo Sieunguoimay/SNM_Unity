@@ -177,6 +177,7 @@ public class DataBinder : MonoBehaviour
                 }
             }
         }
+        
         public void Setup(object source)
         {
             _source = source;

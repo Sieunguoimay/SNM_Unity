@@ -1,8 +1,9 @@
-﻿using InspectorExtensions;
+﻿using GameNode;
+using InspectorExtensions;
 using System;
 using UnityEngine;
 
-public class Timer : GameSO
+public class Timer : NodeSO
 {
     [SerializeField] private float totalTime = 100;
     [SerializeField] private float interval = .25f;
