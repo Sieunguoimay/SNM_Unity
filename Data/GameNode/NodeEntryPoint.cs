@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace GameNode
@@ -6,18 +9,24 @@ namespace GameNode
     {
         [ObjectSelector]
         [SerializeField]
-        private Object rootNode;
+        private Object[] rootNodes;
 
-        private IGameNode RootNode => rootNode as IGameNode;
+        private IEnumerable<IGameNode> RootNodes => rootNodes.Select(rootNode => rootNode as IGameNode);
 
         private void OnEnable()
         {
-            RootNode.Setup();
+            foreach (var r in RootNodes)
+            {
+                r.Setup();
+            }
         }
 
         private void OnDisable()
         {
-            RootNode.TearDown();
+            foreach (var r in RootNodes)
+            {
+                r.TearDown();
+            }
         }
     }
 }

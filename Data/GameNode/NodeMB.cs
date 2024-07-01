@@ -7,7 +7,7 @@ namespace GameNode
     public class NodeMB : MonoBehaviour, IGameNode
     {
         [SerializeField]
-        private NodeSO[] children;
+        private NodeMB[] children;
 
         private readonly List<IGameNode> runtimeChildren = new();
 

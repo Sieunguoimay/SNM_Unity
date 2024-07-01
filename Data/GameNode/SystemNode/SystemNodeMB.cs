@@ -1,6 +1,6 @@
 namespace GameNode
 {
-    public abstract class SystemNodeMB : NodeSO, ISystemNode
+    public abstract class SystemNodeMB : NodeMB, ISystemNode
     {
         public IKeyObjectCotainer Dependencies { get; } = new KeyObjectCotainer();
 
