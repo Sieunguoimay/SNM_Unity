@@ -99,7 +99,8 @@ public class StringSelectorDrawer : PropertyDrawer
         {
             var target = att.IsPropertyInRootObject ? property.serializedObject.targetObject : GetDirectTargetObject(property);
             var propertyInfo = target.GetType().GetProperty(att.PropertyName, Flag);
-            var strings = (propertyInfo?.GetValue(target) as IEnumerable<string>) ?? Enumerable.Empty<string>();
+            var value = propertyInfo?.GetValue(target);
+            var strings = (value as IEnumerable<string>) ?? Enumerable.Empty<string>();
 
             _strings = strings.ToArray();
         }
@@ -127,7 +128,20 @@ public class StringSelectorDrawer : PropertyDrawer
             }
             else
             {
-                currentObject = currentObject.GetType().GetField(p, Flag).GetValue(currentObject);
+                var t = currentObject.GetType();
+                while (t != null)
+                {
+                    var fieldInfo = t.GetField(p, Flag);
+                    if (fieldInfo != null)
+                    {
+                        currentObject = fieldInfo.GetValue(currentObject);
+                        break;
+                    }
+                    else
+                    {
+                        t = t.BaseType;
+                    }
+                }
             }
         }
 
