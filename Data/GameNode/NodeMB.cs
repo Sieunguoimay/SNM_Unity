@@ -1,5 +1,8 @@
-using System;
 using System.Collections.Generic;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using UnityEngine;
 
 namespace GameNode
@@ -7,79 +10,63 @@ namespace GameNode
     public class NodeMB : MonoBehaviour, IGameNode
     {
         [SerializeField]
-        private NodeMB[] children;
+        private ChildNodeEntry[] children;
+        private readonly GameNode gameNode = new();
 
-        private readonly List<IGameNode> runtimeChildren = new();
-
-        public IGameNode Parent { get; private set; } = null;
-
-        [field: NonSerialized]
-        public bool IsSetup { get; private set; } = false;
+        public bool IsSetup => gameNode.IsSetup;
+        public IGameNode Parent => gameNode.Parent;
 
         public virtual void Setup()
         {
-            foreach (var child in GetChildren())
+            foreach (var c in children)
             {
-                child?.Setup();
+                c.Inject(this);
+                gameNode.AddNode(c.ChildNode);
             }
-            IsSetup = true;
+
+            gameNode.Setup();
         }
 
         public virtual void TearDown()
         {
-            foreach (var child in GetChildren())
-            {
-                child?.TearDown();
-            }
-            IsSetup = false;
-        }
+            gameNode.TearDown();
 
-        public void AddNode(IGameNode node)
-        {
-            if (node == null)
-            {
-                throw new ArgumentNullException("node");
-            }
-            node.Parent?.RemoveNode(node);
-            runtimeChildren.Add(node);
-            node.SetParent(this);
-
-            if (IsSetup)
-            {
-                node.Setup();
-            }
-        }
-
-        public void RemoveNode(IGameNode node)
-        {
-            if (node == null)
-            {
-                throw new ArgumentNullException("node");
-            }
-            runtimeChildren.Remove(node);
-            node.SetParent(null);
-
-            if (node.IsSetup)
-            {
-                node.TearDown();
-            }
-        }
-
-        public virtual IEnumerable<IGameNode> GetChildren()
-        {
             foreach (var c in children)
             {
-                yield return c;
-            }
-            foreach (var c in runtimeChildren)
-            {
-                yield return c;
+                gameNode.RemoveNode(c.ChildNode);
+                c.Eject();
             }
         }
 
-        public void SetParent(IGameNode node)
+        public void AddNode(IGameNode node) => gameNode.AddNode(node);
+        public void RemoveNode(IGameNode node) => gameNode.RemoveNode(node);
+        public IEnumerable<IGameNode> GetChildren() => gameNode.GetChildren();
+        public void SetParent(IGameNode node) => gameNode.SetParent(node);
+
+
+#if UNITY_EDITOR
+        private void SetSourceObject_Editor()
         {
-            Parent = node;
+            if (children != null)
+            {
+                foreach (var i in children)
+                {
+                    i.SetSource_Editor(this);
+                }
+            }
         }
+        
+        [CustomEditor(typeof(NodeMB), true)]
+        private class NodeEditor : Editor
+        {
+            private NodeMB _target;
+
+            void OnEnable()
+            {
+                _target ??= target as NodeMB;
+                _target.SetSourceObject_Editor();
+            }
+        }
+#endif
     }
 }

@@ -10,12 +10,14 @@ public class StringSelectorAttribute : PropertyAttribute
     public string PropertyName { get; private set; }
     public bool IsPropertyInRootObject { get; private set; }
     public bool ShouldCacheStrings { get; private set; }
+    public bool ShouldDrawLabel { get; private set; }
 
-    public StringSelectorAttribute(string propertyName, bool isPropertyInRootObject = false, bool shouldCacheStrings = false)
+    public StringSelectorAttribute(string propertyName, bool isPropertyInRootObject = false, bool shouldCacheStrings = false, bool shouldDrawLabel = true)
     {
         PropertyName = propertyName;
         IsPropertyInRootObject = isPropertyInRootObject;
         ShouldCacheStrings = shouldCacheStrings;
+        ShouldDrawLabel = shouldDrawLabel;
     }
 }
 
@@ -27,14 +29,20 @@ public class StringSelectorDrawer : PropertyDrawer
     private string[] _strings;
     private bool _valid;
     private bool _firstTime = true;
+    private StringSelectorAttribute _att;
 
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
-        EditorGUI.BeginProperty(position, label, property);
-        EditorGUI.PrefixLabel(position, label);
+        _att = attribute as StringSelectorAttribute;
 
-        position.x += EditorGUIUtility.labelWidth;
-        position.width -= EditorGUIUtility.labelWidth;
+        EditorGUI.BeginProperty(position, label, property);
+
+        if (_att.ShouldDrawLabel)
+        {
+            EditorGUI.PrefixLabel(position, label);
+            position.x += EditorGUIUtility.labelWidth;
+            position.width -= EditorGUIUtility.labelWidth;
+        }
 
         if (_firstTime)
         {

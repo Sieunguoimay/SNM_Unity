@@ -9,23 +9,34 @@ using UnityEngine;
 
 public class ObjectSelectorAttribute : PropertyAttribute
 {
-    public ObjectSelectorAttribute(Type typeConstraint = null)
+    public ObjectSelectorAttribute(Type typeConstraint = null, bool shouldDrawLabel = true)
     {
         TypeConstraint = typeConstraint;
+        ShouldDrawLabel = shouldDrawLabel;
     }
 
     public Type TypeConstraint { get; }
+    public bool ShouldDrawLabel { get; }
 }
 
 #if UNITY_EDITOR
 [CustomPropertyDrawer(typeof(ObjectSelectorAttribute))]
 public class ObjectSelectorDrawer : PropertyDrawer
 {
+    private ObjectSelectorAttribute _att;
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
+        _att ??= attribute as ObjectSelectorAttribute;
         EditorGUI.BeginProperty(position, label, property);
         position.width -= 20;
-        EditorGUI.PropertyField(position, property, label, true);
+        if (_att.ShouldDrawLabel)
+        {
+            EditorGUI.PropertyField(position, property, label, true);
+        }
+        else
+        {
+            EditorGUI.PropertyField(position, property, GUIContent.none, true);
+        }
         position.x += position.width;
         position.width = 20;
         if (GUI.Button(position, new GUIContent("..", property.objectReferenceValue?.GetType()?.Name)))

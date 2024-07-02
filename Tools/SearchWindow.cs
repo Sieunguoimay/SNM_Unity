@@ -1,18 +1,17 @@
 #if UNITY_EDITOR
-using DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+
 namespace Tools
 {
-
     public class SearchWindow : EditorWindow
     {
-        [InjectField] private readonly Action<string> onResult;
-        [InjectField] private readonly IEnumerable<string> options;
+        private Action<string> _onResult;
+        private IEnumerable<string> _options;
 
         private string _searchString = "";
         private string[] _searchResult;
@@ -22,9 +21,9 @@ namespace Tools
 
         public static void Show(IEnumerable<string> options, Action<string> onResult)
         {
-            var window = EditorWindow.GetWindow<SearchWindow>();
-            DependencyInjector.Inject(window, new Dictionary<string, object>
-            { { "onResult", onResult }, { "options", options } });
+            var window = GetWindow<SearchWindow>();
+            window._options = options;
+            window._onResult = onResult;
             window.ShowPopup();
         }
 
@@ -49,7 +48,7 @@ namespace Tools
                     if (count > _displayCount) break;
                     if (GUILayout.Button($"{r}"))
                     {
-                        onResult?.Invoke(r);
+                        _onResult?.Invoke(r);
                         Close();
                     }
                     count++;
@@ -60,7 +59,7 @@ namespace Tools
         private void UpdateSearchResult()
         {
             var regex = new Regex(string.Join(".*", _searchString.Split(" ")), RegexOptions.IgnoreCase);
-            _searchResult = options.Where(o => !string.IsNullOrEmpty(o)).Where(o => regex.IsMatch(o)).ToArray();
+            _searchResult = _options.Where(o => !string.IsNullOrEmpty(o)).Where(o => regex.IsMatch(o)).ToArray();
         }
     }
 }
