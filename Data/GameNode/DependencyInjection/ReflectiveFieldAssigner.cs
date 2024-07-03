@@ -32,6 +32,8 @@ namespace Reflection
         private static BindingFlags SourceFlags => BindingFlags.Public | BindingFlags.Instance;
         private static BindingFlags DestinationFlags => BindingFlags.NonPublic | BindingFlags.Instance;
 
+        public string DestMemberName => destMemberName;
+        public string SrcMemberName => srcMemberName;
 #if UNITY_EDITOR
         public IEnumerable<string> SrcMembers => _source == null ? Enumerable.Empty<string>() :
             _source.GetType()
