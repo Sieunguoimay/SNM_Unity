@@ -5,13 +5,13 @@ using UnityEngine;
 
 namespace EventBus
 {
-    public class EventChannel : ScriptableObject
+    public class EventChannel : ScriptableObject, IEventChannel
     {
         private readonly List<IEventHandler> handlers = new();
 
-        [RevealNonSerialized] 
+        [RevealNonSerialized]
         public IReadOnlyList<IEventHandler> Handlers => handlers;
-        
+
         public void AddHandler(IEventHandler handler)
         {
             handlers.Add(handler);

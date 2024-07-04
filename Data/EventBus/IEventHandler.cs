@@ -4,8 +4,4 @@ namespace EventBus
     {
         void OnReceivedEvent(IEventObject eventObject, IEventSender sender, object data);
     }
-
-    public interface IEventSender
-    {
-    }
 }

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace EventBus
 {
-    public class EventChannelMB : MonoBehaviour
+    public class EventChannelMB : MonoBehaviour, IEventChannel
     {
         private readonly List<IEventHandler> handlers = new();
 
