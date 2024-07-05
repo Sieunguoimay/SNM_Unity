@@ -6,34 +6,47 @@ using UnityEditor;
 
 namespace ObjectAccess
 {
-
     [Serializable]
-    public class ObjectAccessor : RegistryEntrySelect
+    public class CommonObjectProvider
     {
+        [SerializeField] private RegistryEntrySelector selector;
         [SerializeField] private AccessType accessType;
         [ObjectSelector]
         [SerializeField] private UnityEngine.Object directReference;
-        public TObject GetObject<TObject>() where TObject : UnityEngine.Object
+
+        public bool TryGetObject<TObject>(out TObject obj) where TObject : UnityEngine.Object
         {
-            return accessType switch
+            switch (accessType)
             {
-                AccessType.Local => (TObject)directReference,
-                AccessType.Global => (TObject)(TryGetObject<TObject>(out var obj) ? obj : directReference),
-                _ => throw new NotImplementedException(),
-            };
+                case AccessType.Direct:
+                    if (directReference is TObject o)
+                    {
+                        obj = o;
+                        return true;
+                    }
+                    else
+                    {
+                        obj = null;
+                        return false;
+                    }
+                case AccessType.Registry:
+                    return selector.TryGetObject(out obj);
+                default:
+                    obj = null;
+                    return false;
+            }
         }
-        public bool TryGetObject<TObject>(out TObject obj) where TObject : UnityEngine.Object => Registry.TryGetObject(Entry, out obj);
     }
 
     public enum AccessType
     {
-        Local,
-        Global
+        Direct,
+        Registry
     }
 
 
 #if UNITY_EDITOR
-    [CustomPropertyDrawer(typeof(ObjectAccessor))]
+    [CustomPropertyDrawer(typeof(CommonObjectProvider))]
     public class ObjectAccessorDrawer : ObjectEntrySelectDrawer
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -62,7 +75,7 @@ namespace ObjectAccess
             position.y += position.height;
             position.x += 8;
             position.width -= 8;
-            if (accessType.intValue == (int)AccessType.Local)
+            if (accessType.intValue == (int)AccessType.Direct)
             {
                 EditorGUI.BeginChangeCheck();
                 EditorGUI.PropertyField(position, directReference);

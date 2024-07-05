@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using InspectorExtensions;
@@ -13,61 +12,17 @@ public class AnimationClipEvaluator : MonoBehaviour
 {
     [SerializeField] private GameObject root;
     [SerializeField] private AnimationClipAsset clip;
+    
     [Tooltip("Tick if you want to evaluate out of range [0, length] as circulated instead of clamp")]
     [SerializeField] private bool circulated = false;
-    [SerializeField] private bool loopOnSelfPlay = false;
 
     private IAnimationCurveEvaluator[] _runtimeClipCurves;
-
-    private Coroutine _playCoroutine;
 
     public AnimationClipAsset Clip => clip;
 
     private void Awake()
     {
         _runtimeClipCurves = CreateRuntimeTransformCurves(clip).ToArray();
-    }
-
-    public void PlayWithClipDuration()
-    {
-        if (_playCoroutine != null)
-        {
-            StopCoroutine(_playCoroutine);
-        }
-        _playCoroutine = StartCoroutine(PlayLoop());
-    }
-
-    public void StopSelfPlaying()
-    {
-        if (_playCoroutine != null)
-        {
-            StopCoroutine(_playCoroutine);
-        }
-    }
-
-    private IEnumerator PlayLoop()
-    {
-        var time = 0f;
-        while (true)
-        {
-            if (time > clip.ClipLength)
-            {
-                if (!loopOnSelfPlay)
-                {
-                    break;
-                }
-                else
-                {
-                    time = 0f;
-                }
-            }
-
-            Evaluate(time);
-
-            yield return null;
-
-            time += Time.deltaTime;
-        }
     }
 
     public void EvaluateByProgress(float progress)
@@ -118,6 +73,7 @@ public class AnimationClipEvaluator : MonoBehaviour
         }
     }
 #endif
+
     private IEnumerable<IAnimationCurveEvaluator> CreateRuntimeTransformCurves(AnimationClipAsset clip)
     {
         // var runtimeCurves = new IAnimationCurveEvaluator[clip.ClipCurves.Count];
@@ -135,19 +91,6 @@ public class AnimationClipEvaluator : MonoBehaviour
                     transformProperty = GetTransformProperty(propSegments[0]),
                     vectorProperty = GetVectorProperty(propSegments[1]),
                 };
-            }
-            else
-            {
-                var targetTransform = GetTargetTransfrom(root.transform, curveConfig.path);
-                var component = targetTransform.GetComponent(type);
-                if (component is IAnimationCurveEvaluateHandler h)
-                {
-                    yield return new FloatFieldCurve()
-                    {
-                        animationCurve = curveConfig.animationCurve,
-                        handler = h,
-                    };
-                }
             }
         }
     }
@@ -192,17 +135,6 @@ public class AnimationClipEvaluator : MonoBehaviour
             "w" => VectorProperty.W,
             _ => throw new NotImplementedException(),
         };
-    }
-
-    private class FloatFieldCurve : IAnimationCurveEvaluator
-    {
-        public IAnimationCurveEvaluateHandler handler;
-        public AnimationCurve animationCurve;
-
-        public void Evaluate(float time)
-        {
-            handler.OnEvaluated(time, animationCurve.Evaluate(time));
-        }
     }
 
     private class RuntimeClipCurve : IAnimationCurveEvaluator
@@ -294,13 +226,9 @@ public class AnimationClipEvaluator : MonoBehaviour
     {
         X, Y, Z, W,
     }
-}
 
-public interface IAnimationCurveEvaluator
-{
-    void Evaluate(float time);
-}
-public interface IAnimationCurveEvaluateHandler
-{
-    void OnEvaluated(float time, float value);
+    private interface IAnimationCurveEvaluator
+    {
+        void Evaluate(float time);
+    }
 }

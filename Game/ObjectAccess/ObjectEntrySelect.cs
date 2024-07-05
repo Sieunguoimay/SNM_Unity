@@ -9,7 +9,7 @@ using UnityEditor;
 namespace ObjectAccess
 {
     [Serializable]
-    public class RegistryEntrySelect
+    public class RegistryEntrySelector
     {
         [SerializeField] private ObjectRegistry registry;
         [SerializeField] private ObjectEntry entry;
@@ -17,11 +17,13 @@ namespace ObjectAccess
         public ObjectEntry Entry => entry;
         public string EntryName => entry.name;
         public ObjectRegistry Registry => registry;
+
+        public bool TryGetObject<TObject>(out TObject obj) where TObject : UnityEngine.Object => Registry.TryGetObject(Entry, out obj);
     }
 
 
 #if UNITY_EDITOR
-    [CustomPropertyDrawer(typeof(RegistryEntrySelect))]
+    [CustomPropertyDrawer(typeof(RegistryEntrySelector))]
     public class ObjectEntrySelectDrawer : PropertyDrawer
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)

@@ -7,19 +7,10 @@ namespace ObjectAccess
 {
     public class ObjectBinder : MonoBehaviour
     {
-        [SerializeField] private RegistryEntrySelect bindTarget;
+        [SerializeField] private RegistryEntrySelector bindTarget;
+
         [ObjectSelector]
-        [SerializeField] private UnityEngine.Object obj;
-
-        private void OnEnable()
-        {
-            Bind();
-        }
-
-        private void OnDisable()
-        {
-            Unbind();
-        }
+        [SerializeField] private Object obj;
 
         public void Bind()
         {
@@ -38,7 +29,7 @@ namespace ObjectAccess
             if (obj != null && bindTarget.Registry != null)
             {
                 bindTarget.Registry.AddEntry_Editor(obj.name, obj.GetType().AssemblyQualifiedName);
-                using (var so = new UnityEditor.SerializedObject(this))
+                using (var so = new SerializedObject(this))
                 {
                     so.FindProperty(nameof(bindTarget)).FindPropertyRelative("entryName").stringValue = obj.name;
                     so.ApplyModifiedProperties();

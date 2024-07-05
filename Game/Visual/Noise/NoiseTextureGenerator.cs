@@ -10,7 +10,7 @@ public class NoiseTextureGenerator : EditorWindow
 
     private Editor _editor;
 
-    [MenuItem("Tools/NoiseTextureGenerator")]
+    [MenuItem("Tools/Noise/NoiseTextureGenerator")]
     public static void ShowWindow()
     {
         GetWindow<NoiseTextureGenerator>().Show();

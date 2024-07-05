@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class NoiseMover : MonoBehaviour, IAnimationCurveEvaluateHandler
+public class NoiseMover : MonoBehaviour
 {
     [SerializeField] private float amplitude = 1f;
     [SerializeField] private float speed = 1f;
@@ -12,15 +12,6 @@ public class NoiseMover : MonoBehaviour, IAnimationCurveEvaluateHandler
     private void Start()
     {
         _startTime = Time.time * Random.value;// from 0 -> Time.time
-    }
-
-    //Runtime Amplitude
-    public void OnEvaluated(float time, float value)
-    {
-        if (Application.isPlaying)
-        {
-            amplitude = value;
-        }
     }
 
     private void Update()

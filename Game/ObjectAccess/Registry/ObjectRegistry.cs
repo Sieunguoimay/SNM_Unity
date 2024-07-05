@@ -13,6 +13,7 @@ namespace ObjectAccess
 
         [NonSerialized]
         private bool _initialized = false;
+
         [RevealNonSerialized]
         public ICollection<ObjectEntry> Entries
         {
@@ -112,6 +113,8 @@ namespace ObjectAccess
             var entry = CreateInstance<ObjectEntry>();
             AssetDatabase.AddObjectToAsset(entry, AssetDatabase.GetAssetPath(this));
             entries = entries.Append(entry).ToArray();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
             return entry;
         }
 #endif

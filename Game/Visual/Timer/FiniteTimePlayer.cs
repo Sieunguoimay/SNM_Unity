@@ -6,44 +6,24 @@ using Unity.EditorCoroutines.Editor;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class TimePlayer : MonoBehaviour
+public class FiniteTimePlayer : MonoBehaviour
 {
     [SerializeField] private float selfDuration = 1f;
-    [SerializeField] private bool loop = false;
     [SerializeField] private OutputConfig outputConfig;
     [Tooltip("TimeFactor")]
     [SerializeField] private UnityEventFloat onTick;
+
     private Coroutine _coroutine;
+
     public bool IsRunning => _coroutine != null;
 
-    public event Action<TimePlayer> EndedEvent;
+    public event Action<FiniteTimePlayer, float> TickEvent;
+    public event Action<FiniteTimePlayer> PlayingStatusChangedEvent;
 
-    [ContextMenu("PlayWithSelfDuration")]
     public void PlayWithSelfDuration()
     {
         Play(selfDuration);
     }
-
-#if UNITY_EDITOR
-
-    private EditorCoroutine _editorCoroutine;
-
-    [ContextMenu("TestPlay")]
-    private void TestPlay()
-    {
-        if (_editorCoroutine != null)
-        {
-            EditorCoroutineUtility.StopCoroutine(_editorCoroutine);
-        }
-
-        if (!Application.isPlaying)
-        {
-            _editorCoroutine = EditorCoroutineUtility.StartCoroutine(Timing(selfDuration), this);
-            return;
-        }
-    }
-
-#endif
 
     public void Play(float duration)
     {
@@ -53,6 +33,19 @@ public class TimePlayer : MonoBehaviour
         }
 
         _coroutine = StartCoroutine(Timing(duration));
+
+        PlayingStatusChangedEvent?.Invoke(this);
+    }
+
+    public void Stop()
+    {
+        if (_coroutine != null)
+        {
+            StopCoroutine(_coroutine);
+            _coroutine = null;
+
+            PlayingStatusChangedEvent?.Invoke(this);
+        }
     }
 
     private IEnumerator Timing(float duration)
@@ -60,18 +53,15 @@ public class TimePlayer : MonoBehaviour
         var time = 0f;
         while (true)
         {
-            onTick?.Invoke(outputConfig.ComputeOutput(duration, time));
+            var output = outputConfig.ComputeOutput(duration, time);
+
+            onTick?.Invoke(output);
+            TickEvent?.Invoke(this, output);
 
             if (time >= duration)
             {
-                if (loop)
-                {
-                    time = 0f;
-                }
-                else
-                {
-                    break;
-                }
+                PlayingStatusChangedEvent?.Invoke(this);
+                break;
             }
 
             yield return null;
@@ -79,7 +69,6 @@ public class TimePlayer : MonoBehaviour
             time += Time.deltaTime;
         }
         _coroutine = null;
-        EndedEvent?.Invoke(this);
     }
 
     [Serializable]
@@ -122,4 +111,29 @@ public class TimePlayer : MonoBehaviour
     {
         public Vector2 range;
     }
+
+
+#if UNITY_EDITOR
+
+    private EditorCoroutine _editorCoroutine;
+
+    [ContextMenu("TestPlay")]
+    private void TestPlay()
+    {
+        if (_editorCoroutine != null)
+        {
+            EditorCoroutineUtility.StopCoroutine(_editorCoroutine);
+        }
+
+        if (!Application.isPlaying)
+        {
+            _editorCoroutine = EditorCoroutineUtility.StartCoroutine(Timing(selfDuration), this);
+            return;
+        }
+    }
+    [ContextMenu("PlayWithSelfDuration")]
+    private void TestPlayWithSelfDuration() => PlayWithSelfDuration();
+
+#endif
+
 }

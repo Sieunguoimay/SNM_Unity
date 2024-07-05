@@ -6,7 +6,7 @@ using UnityEngine.Serialization;
 public class TransformImmediateMatch : MonoBehaviour
 {
     [FormerlySerializedAs("from")]
-    [SerializeField] private ObjectAccessor from;
+    [SerializeField] private CommonObjectProvider from;
     [SerializeField] private Transform to;
     [SerializeField] private MatchType matchType = MatchType.All;
 
@@ -14,8 +14,7 @@ public class TransformImmediateMatch : MonoBehaviour
 
     private void Start()
     {
-        _from = from.GetObject<Transform>();
-        if (_from == null)
+        if (!from.TryGetObject<Transform>(out _from))
         {
             Debug.LogError("From is not assigned");
         }

@@ -12,6 +12,7 @@ public class AnimationClipAsset : ScriptableObject
 #endif
     [SerializeField] private float clipLength;
     [SerializeField] private ClipCurve[] clipCurves;
+    
     public IReadOnlyList<ClipCurve> ClipCurves => clipCurves;
     public float ClipLength => clipLength;
 
