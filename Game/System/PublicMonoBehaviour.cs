@@ -1,7 +1,30 @@
 ﻿using UnityEngine;
 
-public class PublicMonoBehaviour : MonoBehaviourSingleton<PublicMonoBehaviour>
+public class PublicMonoBehaviour : MonoBehaviour
 {
+    private static PublicMonoBehaviour _instance;
+    public static PublicMonoBehaviour Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                if (_isDestroyed) return null;
+                _instance = new GameObject(nameof(PublicMonoBehaviour) + "_Singleton").AddComponent<PublicMonoBehaviour>();
+            }
+
+            return _instance;
+        }
+    }
+
+    private static bool _isDestroyed = false;
+
+    void OnDestroy()
+    {
+        if (this != _instance) return;
+
+        _isDestroyed = true;
+    }
 }
 
 public class MonoBehaviourSingleton<T> : MonoBehaviour where T : MonoBehaviour

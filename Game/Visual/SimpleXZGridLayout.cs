@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Serialization;
 
-public class WorldGrid : MonoBehaviour
+public class SimpleXZGridLayout : MonoBehaviour
 {
     [FormerlySerializedAs("gridSize")]
     [SerializeField] private Vector2 cellSize;

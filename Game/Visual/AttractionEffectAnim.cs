@@ -1,29 +1,14 @@
 using System.Collections;
 using UnityEngine;
 
-public class FXSpawner : MonoBehaviour
+public class AttractionEffectAnim : MonoBehaviour
 {
-    private static FXSpawner _instance;
-    public static FXSpawner Instance
+    public void FlyUpToTarget(Transform flyer, Transform target)
     {
-        get
-        {
-            if (_instance == null)
-            {
-                _instance = new GameObject("FXSpawner").AddComponent<FXSpawner>();
-            }
-            return _instance;
-        }
+        StartCoroutine(IEFlyUpToTarget(flyer, target));
     }
 
-    public void SpawnFlying(GameObject prefab, Transform target)
-    {
-        var copy = Instantiate(prefab, transform);
-        copy.transform.position = prefab.transform.position;
-        StartCoroutine(FlyUpToTarget(copy.transform, target));
-    }
-
-    private IEnumerator FlyUpToTarget(Transform flyer, Transform target)
+    private IEnumerator IEFlyUpToTarget(Transform flyer, Transform target)
     {
         var speed = 20f;
         var acc = 15f;
