@@ -16,6 +16,7 @@ public class SubAssetSelectAttribute : MoreButtonAttribute
         this.typeConstraint = typeConstraint;
     }
 
+#if UNITY_EDITOR
     public override void OnButtonClicked(SerializedProperty property)
     {
         var sibValue = InvokeMemberForValue(SiblingName, property);
@@ -47,6 +48,7 @@ public class SubAssetSelectAttribute : MoreButtonAttribute
 
         return method?.Invoke(obj, new object[] { }) ?? prop?.GetValue(obj) ?? field?.GetValue(obj);
     }
+#endif
 }
 
 
