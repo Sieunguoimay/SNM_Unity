@@ -5,7 +5,9 @@ namespace AnimationInstancing_v2
 {
     public class RuntimeHelper
     {
-        public static void MergeBone(SkinnedMeshRenderer[] meshRender, out List<Transform> boneList, out List<Matrix4x4> bindPoseList)
+        public static void MergeBone(SkinnedMeshRenderer[] meshRender, 
+            out List<Transform> boneList, 
+            out List<Matrix4x4> bindPoseList)
         {
             UnityEngine.Profiling.Profiler.BeginSample("MergeBone()");
             bindPoseList = new List<Matrix4x4>(150);
