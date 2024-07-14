@@ -3,13 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
+using static AnimationInstancing_v2.AnimationInstancingHelper;
 
 namespace AnimationInstancing_v2
 {
     public class AnimationInstancingRenderer : MonoBehaviour
     {
         [SerializeField] private InstanceAnimationData animationData;
-
+        [SerializeField] private int bonePerVertex = 2;
+        [SerializeField] private ShadowCastingMode shadowCastingMode;
+        [SerializeField] private bool receiveShadow;
 
         private void Start()
         {
@@ -17,23 +20,77 @@ namespace AnimationInstancing_v2
 
             DisableDefaultRenderersAndAnimator(lodInfoList);
 
+
             //Todo: CullingGroup
             var radius = CalcBoundingSphere(lodInfoList[0]);
 
-            InitializeAnimation(lodInfoList);
+            InitializeAnimation(lodInfoList, GetBonePerVertex());
+
+            UpdateLodVertexCaches(lodInfoList);
         }
 
-        private void InitializeAnimation(LodInfo[] lodInfoList)
+        private void UpdateLodVertexCaches(LodInfo[] lodInfoList)
         {
+            foreach (var lod in lodInfoList)
+            {
+                foreach (var cache in lod.vertexCacheList)
+                {
+                    cache.shadowcastingMode = shadowCastingMode;
+                    cache.receiveShadow = receiveShadow;
+                    cache.layer = gameObject.layer;
+                }
+            }
+        }
+
+        private int GetBonePerVertex()
+        {
+            return QualitySettings.skinWeights switch
+            {
+                SkinWeights.TwoBones => bonePerVertex > 2 ? 2 : bonePerVertex,
+                SkinWeights.OneBone => 1,
+                _ => 1,
+            };
+        }
+
+        private void InitializeAnimation(LodInfo[] lodInfoList, int bonePerVertex)
+        {
+            var vertexCachePool = AnimationInstancingRendererManager.Instance.vertexCachePool;
+
+            var aniTexture = new AnimationTexture
+            {
+                boneTexture = animationData.bakedBoneTextures,
+                blockWidth = animationData.textureBlockWidth,
+                blockHeight = animationData.textureBlockHeight,
+            };
+
             if (lodInfoList[0].skinnedMeshRenderer.Length == 0)
             {
                 // This is only a MeshRenderer, it has no animations.
-                // AnimationInstancingRendererManager.Instance.AddMeshVertex(prototype.name,
-                //     lodInfoList,
-                //     null,
-                //     null,
-                //     bonePerVertex);
-                // return true;
+                AnimationInstancingHelper.AddMeshVertex(
+                    vertexCachePool,
+                    lodInfoList,
+                    null,
+                    null,
+                    aniTexture,
+                    bonePerVertex,
+                    null);
+                return;
+            }
+            else
+            {
+                GetAllBones(lodInfoList, animationData.extraBoneInfo, out var bones, out var bindPose);
+
+                AnimationInstancingHelper.AddMeshVertex(
+                        vertexCachePool,
+                        lodInfoList,
+                        bones.ToArray(),
+                        bindPose.ToArray(),
+                        aniTexture,
+                        bonePerVertex,
+                        null);
+
+                Destroy(GetComponent<Animator>());
+                //PlayAnimation(0);
             }
 
         }
@@ -134,6 +191,29 @@ namespace AnimationInstancing_v2
             return radius;
         }
 
+
+        public void GetAllBones(LodInfo[] lodInfoList, ExtraBoneInfo extraBoneInfo,
+            out List<Transform> boneList,
+            out List<Matrix4x4> bindPoseList)
+        {
+            RuntimeHelper.MergeBone(lodInfoList[0].skinnedMeshRenderer, out boneList, out bindPoseList);
+
+            if (extraBoneInfo != null)
+            {
+                var transforms = gameObject.GetComponentsInChildren<Transform>();
+                for (int i = 0; i != extraBoneInfo.extraBoneNames.Length; ++i)
+                {
+                    for (int j = 0; j != transforms.Length; ++j)
+                    {
+                        if (extraBoneInfo.extraBoneNames[i] == transforms[j].name)
+                        {
+                            boneList.Add(transforms[j]);
+                        }
+                    }
+                    bindPoseList.Add(extraBoneInfo.extraBindPoseMatrices[i]);
+                }
+            }
+        }
     }
 
     public class LodInfo
@@ -157,7 +237,7 @@ namespace AnimationInstancing_v2
         public Material[] materials = null;
         public Matrix4x4[] bindPose;
         public Transform[] bonePose;
-        public int boneTextureIndex = -1;
+        //public int boneTextureIndex = -1;
 
         // these are temporary, should be moved to InstancingPackage
         public ShadowCastingMode shadowcastingMode;

@@ -6,22 +6,17 @@ namespace AnimationInstancing_v2
 {
     public class AnimationInstancingHelper
     {
+        private static readonly int instancingPackageSize = 200;
+
         public static void AddMeshVertex(
             Dictionary<int, VertexCache> vertexCachePool,
-            Dictionary<int, InstanceData> instanceDataPool,
-            string prefabName,
             LodInfo[] lodInfo,
             Transform[] bones,
             Matrix4x4[] bindPose,
-            IReadOnlyList<AnimationTexture> animationTextureList,
+            AnimationTexture texture,
             int bonePerVertex,
-            string alias,
-            bool useInstancing,
-            int instancingPackageSize)
+            string alias)
         {
-            var boneTextureIndex = FindTexture_internal(animationTextureList, prefabName);
-            var prefabNameHash = prefabName.GetHashCode();
-            var texture = boneTextureIndex > 0 ? animationTextureList[boneTextureIndex] : null;
             var packageCount = texture != null ? texture.boneTexture.Length : 1;
 
             UnityEngine.Profiling.Profiler.BeginSample("AddMeshVertex()");
@@ -46,7 +41,6 @@ namespace AnimationInstancing_v2
                                 lod.skinnedMeshRenderer[i].sharedMaterials,
                                 texture,
                                 packageCount,
-                                useInstancing,
                                 instancingPackageSize);
                             cache.instanceBlockList.Add(identify, block);
                         }
@@ -55,17 +49,28 @@ namespace AnimationInstancing_v2
                     }
                     else
                     {
-                        var vertexCache = CreateVertexCache(boneTextureIndex, renderName + aliasName, m, bindPose);
-                        var matBlock = CreateBlock(vertexCache.mesh, lod.skinnedMeshRenderer[i].sharedMaterials,
-                            texture, packageCount, useInstancing, instancingPackageSize);
+                        var vertexCache = CreateVertexCache(renderName + aliasName, m, bindPose);
+                        var matBlock = CreateBlock(
+                            vertexCache.mesh, 
+                            lod.skinnedMeshRenderer[i].sharedMaterials,
+                            texture, 
+                            packageCount, 
+                            instancingPackageSize);
+
                         vertexCache.instanceBlockList.Add(identify, matBlock);
-                        SetupVertexCache_ForSkinnedMeshRenderer(texture, vertexCache, matBlock,
-                            lod.skinnedMeshRenderer[i], bones, bonePerVertex, useInstancing, instancingPackageSize);
+
+                        SetupVertexCache_ForSkinnedMeshRenderer(
+                            texture, 
+                            vertexCache, 
+                            matBlock,
+                            lod.skinnedMeshRenderer[i], 
+                            bones, 
+                            bonePerVertex,
+                            instancingPackageSize);
                         lod.vertexCacheList[i] = vertexCache;
                         lod.materialBlockList[i] = matBlock;
 
                         vertexCachePool[renderName + aliasName] = vertexCache;
-                        instanceDataPool.TryAdd(prefabNameHash + aliasName, CreateInstanceData(packageCount));
                     }
                 }
 
@@ -87,7 +92,6 @@ namespace AnimationInstancing_v2
                                 lod.meshRenderer[i].sharedMaterials,
                                 texture,
                                 packageCount,
-                                useInstancing,
                                 instancingPackageSize);
                             cache.instanceBlockList.TryAdd(identify, block);
                         }
@@ -96,17 +100,27 @@ namespace AnimationInstancing_v2
                     }
                     else
                     {
-                        var vertexCache = CreateVertexCache(boneTextureIndex, renderName + aliasName, m, bindPose);
-                        var matBlock = CreateBlock(vertexCache.mesh, lod.meshRenderer[i].sharedMaterials,
-                            texture, packageCount, useInstancing, instancingPackageSize);
+                        var vertexCache = CreateVertexCache(renderName + aliasName, m, bindPose);
+                        var matBlock = CreateBlock(
+                            vertexCache.mesh, 
+                            lod.meshRenderer[i].sharedMaterials,
+                            texture, 
+                            packageCount, 
+                            instancingPackageSize);
+
                         vertexCache.instanceBlockList.Add(identify, matBlock);
-                        SetupVertexCache_ForMeshRenderer(texture, vertexCache, matBlock, lod.meshRenderer[i],
-                            bones, useInstancing, instancingPackageSize);
+
+                        SetupVertexCache_ForMeshRenderer(
+                            texture, 
+                            vertexCache, 
+                            matBlock, 
+                            lod.meshRenderer[i],
+                            bones, 
+                            instancingPackageSize);
                         lod.vertexCacheList[lod.skinnedMeshRenderer.Length + i] = vertexCache;
                         lod.materialBlockList[lod.skinnedMeshRenderer.Length + i] = matBlock;
 
                         vertexCachePool[renderName + aliasName] = vertexCache;
-                        instanceDataPool.TryAdd(prefabNameHash + aliasName, CreateInstanceData(packageCount));
                     }
                 }
             }
@@ -129,7 +143,6 @@ namespace AnimationInstancing_v2
             Material[] materials,
             AnimationTexture texture,
             int packageCount,
-            bool useInstancing,
             int instancingPackageSize)
         {
             var block = new MaterialBlock
@@ -143,7 +156,7 @@ namespace AnimationInstancing_v2
 
                 var package = CreatePackage(block.instanceData,
                     mesh, materials, i,
-                    useInstancing, instancingPackageSize);
+                    instancingPackageSize);
 
                 block.packageList[i].Add(package);
 
@@ -182,7 +195,6 @@ namespace AnimationInstancing_v2
             Mesh mesh,
             Material[] originalMaterial,
             int animationIndex,
-            bool useInstancing,
             int instancingPackageSize)
         {
             var package = new InstancingPackage
@@ -196,12 +208,12 @@ namespace AnimationInstancing_v2
             {
                 package.material[i] = new Material(originalMaterial[i]);
 #if UNITY_5_6_OR_NEWER
-                package.material[i].enableInstancing = useInstancing;
+                package.material[i].enableInstancing = true;
 #endif
-                if (useInstancing)
-                    package.material[i].EnableKeyword("INSTANCING_ON");
-                else
-                    package.material[i].DisableKeyword("INSTANCING_ON");
+                //if (useInstancing)
+                package.material[i].EnableKeyword("INSTANCING_ON");
+                //else
+                //package.material[i].DisableKeyword("INSTANCING_ON");
 
                 package.propertyBlock = new MaterialPropertyBlock();
                 package.material[i].EnableKeyword("USE_CONSTANT_BUFFER");
@@ -220,7 +232,6 @@ namespace AnimationInstancing_v2
         }
 
         private static VertexCache CreateVertexCache(
-            int boneTextureIndex,
             int nameCode,
             Mesh mesh,
             Matrix4x4[] bindPose)
@@ -229,7 +240,6 @@ namespace AnimationInstancing_v2
             {
                 nameCode = nameCode,
                 mesh = mesh,
-                boneTextureIndex = boneTextureIndex,
                 weight = new Vector4[mesh.vertexCount],
                 boneIndex = new Vector4[mesh.vertexCount],
                 instanceBlockList = new Dictionary<int, MaterialBlock>(),
@@ -239,19 +249,6 @@ namespace AnimationInstancing_v2
             return vertexCache;
         }
 
-        private static int FindTexture_internal(IReadOnlyList<AnimationTexture> animationTextureList, string name)
-        {
-            for (int i = 0; i != animationTextureList.Count; ++i)
-            {
-                var texture = animationTextureList[i];
-                if (texture.name == name)
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
         private static void SetupVertexCache_ForSkinnedMeshRenderer(
             AnimationTexture texture,
             VertexCache vertexCache,
@@ -259,7 +256,6 @@ namespace AnimationInstancing_v2
             SkinnedMeshRenderer render,
             Transform[] boneTransform,
             int bonePerVertex,
-            bool useInstancing,
             int instancingPackageSize)
         {
             int[] boneIndex = null;
@@ -355,7 +351,7 @@ namespace AnimationInstancing_v2
             for (int i = 0; i != block.packageList.Length; ++i)
             {
                 var package = CreatePackage(block.instanceData, vertexCache.mesh,
-                    render.sharedMaterials, i, useInstancing, instancingPackageSize);
+                    render.sharedMaterials, i, instancingPackageSize);
                 block.packageList[i].Add(package);
                 //vertexCache.packageList[i].Add(package);
 
@@ -373,7 +369,6 @@ namespace AnimationInstancing_v2
             MaterialBlock block,
             MeshRenderer render,
             Transform[] boneTransform,
-            bool useInstancing,
             int instancingPackageSize)
         {
             int boneIndex = -1;
@@ -398,7 +393,7 @@ namespace AnimationInstancing_v2
             for (int i = 0; i != block.packageList.Length; ++i)
             {
                 var package = CreatePackage(block.instanceData, vertexCache.mesh,
-                    render.sharedMaterials, i, useInstancing, instancingPackageSize);
+                    render.sharedMaterials, i, instancingPackageSize);
                 block.packageList[i].Add(package);
 
                 if (texture != null)

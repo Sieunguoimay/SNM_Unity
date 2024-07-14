@@ -8,16 +8,10 @@ namespace AnimationInstancing_v2
     public class BakedAnimationSaver
     {
         public static void SaveAll(
-            List<AnimationInfo> animInfoList,
-            ExtraBoneInfo extraBoneInfo,
-            Texture2D[] bakedBoneTextures,
+            InstanceAnimationData animationData,
             string savePath)
         {
-            var asset = ScriptableObject.CreateInstance<InstanceAnimationData>();
-            asset.animInfoList = animInfoList;
-            asset.extraBoneInfo = extraBoneInfo;
-            asset.bakedBoneTextures = bakedBoneTextures;
-
+            var asset = animationData;
             AssetDatabase.CreateAsset(asset, savePath);
             foreach (var t in asset.bakedBoneTextures)
             {

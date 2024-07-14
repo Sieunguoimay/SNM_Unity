@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AnimationInstancing_v2
@@ -20,6 +21,7 @@ namespace AnimationInstancing_v2
         }
 
         private static bool _destroyed = false;
+        public Dictionary<int, VertexCache> vertexCachePool = new();
 
         private void OnDestroy()
         {

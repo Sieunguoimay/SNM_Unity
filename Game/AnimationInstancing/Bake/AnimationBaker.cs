@@ -11,15 +11,11 @@ namespace AnimationInstancing_v2
             GameObject prefab,
             List<string> selectedExtraBones,
             List<string> selectedAnims,
-            out List<AnimationInfo> animInfoList,
-            out ExtraBoneInfo extraBoneInfo,
-            out Texture2D[] bakedBoneTextures)
+            out InstanceAnimationData animationData)
         {
             if (prefab == null)
             {
-                animInfoList = new();
-                extraBoneInfo = new();
-                bakedBoneTextures = System.Array.Empty<Texture2D>();
+                animationData = null;
                 return;
             }
 
@@ -31,19 +27,26 @@ namespace AnimationInstancing_v2
             CreateBoneBakeInfos(prefab, go, selectedExtraBones,
                 out var boneList,
                 out var bindPoseList,
-                out extraBoneInfo);
+                out var extraBoneInfo);
             CreateAnimationBakeInfos(go, selectedAnims,
                 out var animBakeInfoList,
                 out var cacheTransitions,
                 out var cacheAnimationEvents);
             GenerateAnimationPoseData(animBakeInfoList, boneList, bindPoseList,
-                out animInfoList,
+                out var animInfoList,
                 out var animPoseDataList);
             ResetAnimationController(cacheTransitions, cacheAnimationEvents);
 
             AnimationTextureBaker.GenerateTextures(animInfoList, animPoseDataList, boneList.Length,
-                out bakedBoneTextures);
+                out var bakedBoneTextures);
 
+            animationData = ScriptableObject.CreateInstance<InstanceAnimationData>();
+            animationData.animInfoList = animInfoList;
+            animationData.extraBoneInfo = extraBoneInfo;
+            animationData.bakedBoneTextures = bakedBoneTextures;
+            animationData.textureBlockWidth = 4;
+            animationData.textureBlockHeight = boneList.Length;
+            
             Object.DestroyImmediate(go);
         }
 
@@ -65,7 +68,7 @@ namespace AnimationInstancing_v2
             extraBoneInfo = new ExtraBoneInfo
             {
                 extraBoneNames = extraBones.Select(b => b.name).ToArray(),
-                extraBindPoses = extraBindPoses.ToArray()
+                extraBindPoseMatrices = extraBindPoses.ToArray()
             };
         }
 

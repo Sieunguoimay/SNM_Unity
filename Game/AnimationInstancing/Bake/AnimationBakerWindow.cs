@@ -115,13 +115,11 @@ namespace AnimationInstancing_v2
                     serializedData.prefab,
                     serializedData.selectedExtraBones,
                     serializedData.selectedAnims,
-                    out var animInfoList,
-                    out var extraBoneInfo,
-                    out var bakedBoneTextures);
+                    out var animationData);
 
                 var savePath = AssetDatabase.GetAssetPath(serializedData.prefab).Replace(".prefab", ".asset");
 
-                BakedAnimationSaver.SaveAll(animInfoList, extraBoneInfo, bakedBoneTextures, savePath);
+                BakedAnimationSaver.SaveAll(animationData, savePath);
             }
 
             private bool ValidatePrefab(GameObject prefab)
