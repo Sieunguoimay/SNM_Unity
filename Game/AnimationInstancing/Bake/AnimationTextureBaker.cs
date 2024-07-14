@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using static AnimationInstancing_v2.AnimationBaker;
@@ -9,11 +8,23 @@ namespace AnimationInstancing_v2
     {
         private static readonly int[] stardardTextureSize = { 64, 128, 256, 512, 1024 };
 
+        public static void GenerateTextures(
+            List<AnimationInfo> animInfoList,
+            List<AnimationPoseData> animPoseDataList,
+            int boneCount,
+            out Texture2D[] bakedBoneTextures)
+        {
+            PrepareBoneTexture(animInfoList, 4, boneCount,
+                out bakedBoneTextures);
+
+            SetupAnimationTexture(animInfoList, animPoseDataList,
+                bakedBoneTextures, 4, boneCount);
+        }
+
         public static void PrepareBoneTexture(List<AnimationInfo> infoList,
             int textureBlockWidth,
             int textureBlockHeight,
             out Texture2D[] bakedBoneTextures)
-
         {
             var frames = new int[infoList.Count];
             for (var i = 0; i != infoList.Count; ++i)
@@ -25,13 +36,14 @@ namespace AnimationInstancing_v2
             Debug.Assert(textureWidth > 0);
 
             bakedBoneTextures = new Texture2D[count];
-            TextureFormat format = TextureFormat.RGBAHalf;
+            var format = TextureFormat.RGBAHalf;
             for (int i = 0; i != count; ++i)
             {
-                int width = count > 1 && i < count ? stardardTextureSize[stardardTextureSize.Length - 1] : textureWidth;
+                int width = count > 1 && i < count ? stardardTextureSize[^1] : textureWidth;
                 bakedBoneTextures[i] = new Texture2D(width, width, format, false)
                 {
-                    filterMode = FilterMode.Point
+                    filterMode = FilterMode.Point,
+                    name = $"{textureWidth}"
                 };
             }
         }
@@ -129,25 +141,24 @@ namespace AnimationInstancing_v2
             return textureWidth;
         }
 
-
-        public static void SetupAnimationTexture(
+        private static void SetupAnimationTexture(
             List<AnimationInfo> infoList,
-            List<GenerateObjectInfo> generateObjectData,
-            Dictionary<int, ArrayList> poseMatrices,
+            List<AnimationPoseData> animPoseDataList,
             Texture2D[] bakedBoneTexture,
             int textureBlockWidth = 4,
-            int textureBlockHeight = 10
-            )
+            int textureBlockHeight = 10)
         {
+            if (animPoseDataList.Count <= 1) return;
+
             int pixelx = 0;
             int pixely = 0;
             int bakedTextureIndex = 0;
-            int preNameCode = generateObjectData[0].stateName;
-            int count = generateObjectData.Count;
+            int preNameCode = animPoseDataList[0].stateName;
+            int count = animPoseDataList.Count;
             for (int i = 0; i != count; ++i)
             {
-                var matrixData = generateObjectData[i];
-                if (matrixData.boneMatrix == null)
+                var matrixData = animPoseDataList[i];
+                if (matrixData.poseMatrices == null)
                     continue;
                 if (preNameCode != matrixData.stateName)
                 {
@@ -155,7 +166,7 @@ namespace AnimationInstancing_v2
                     int totalFrames = count - i;
                     for (int j = i; j != count; ++j)
                     {
-                        if (preNameCode != generateObjectData[j].stateName)
+                        if (preNameCode != animPoseDataList[j].stateName)
                         {
                             totalFrames = j - i;
                             break;
@@ -190,10 +201,10 @@ namespace AnimationInstancing_v2
                         }
                     }
                 }
-                if (matrixData.boneMatrix != null)
+                if (matrixData.poseMatrices != null)
                 {
                     Debug.Assert(pixely + textureBlockHeight <= bakedBoneTexture[bakedTextureIndex].height);
-                    var color = Convert2Color(matrixData.boneMatrix);
+                    var color = Convert2Color(matrixData.poseMatrices);
                     bakedBoneTexture[bakedTextureIndex].SetPixels(pixelx, pixely, textureBlockWidth, textureBlockHeight, color);
                     matrixData.frameIndex = pixelx / textureBlockWidth + pixely / textureBlockHeight * bakedBoneTexture[bakedTextureIndex].width / textureBlockWidth;
                     pixelx += textureBlockWidth;
@@ -204,7 +215,7 @@ namespace AnimationInstancing_v2
                     }
                     if (pixely + textureBlockHeight > bakedBoneTexture[bakedTextureIndex].height)
                     {
-                        Debug.Assert(generateObjectData[i + 1].stateName != matrixData.stateName);
+                        Debug.Assert(animPoseDataList[i + 1].stateName != matrixData.stateName);
                         ++bakedTextureIndex;
                         pixelx = 0;
                         pixely = 0;
@@ -214,16 +225,16 @@ namespace AnimationInstancing_v2
                 else
                 {
                     Debug.Assert(false);
-                    var list = poseMatrices[matrixData.stateName];
-                    var originalData = list[matrixData.boneListIndex] as GenerateObjectInfo;
-                    matrixData.frameIndex = originalData.frameIndex;
-
+                    // var list = poseMatrices[matrixData.stateName];
+                    // var originalData = list[matrixData.boneListIndex] as GenerateObjectInfo;
+                    // matrixData.frameIndex = originalData.frameIndex;
                 }
             }
         }
-        public static Color[] Convert2Color(Matrix4x4[] boneMatrix)
+
+        private static Color[] Convert2Color(Matrix4x4[] boneMatrix)
         {
-            Color[] color = new Color[boneMatrix.Length * 4];
+            var color = new Color[boneMatrix.Length * 4];
             int index = 0;
             foreach (var obj in boneMatrix)
             {

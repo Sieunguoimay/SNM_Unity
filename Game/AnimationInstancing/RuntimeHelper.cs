@@ -5,17 +5,19 @@ namespace AnimationInstancing_v2
 {
     public class RuntimeHelper
     {
-        public static void MergeBone(SkinnedMeshRenderer[] meshRender, 
-            out List<Transform> boneList, 
+        public static void MergeBone(SkinnedMeshRenderer[] skinnedMeshRenderers,
+            out List<Transform> boneList,
             out List<Matrix4x4> bindPoseList)
         {
             UnityEngine.Profiling.Profiler.BeginSample("MergeBone()");
             bindPoseList = new List<Matrix4x4>(150);
             boneList = new List<Transform>(150);
-            for (int i = 0; i != meshRender.Length; ++i)
+            for (int i = 0; i != skinnedMeshRenderers.Length; ++i)
             {
-                Transform[] bones = meshRender[i].bones;
-                Matrix4x4[] checkBindPose = meshRender[i].sharedMesh.bindposes;
+                if (skinnedMeshRenderers[i] == null || skinnedMeshRenderers[i].sharedMesh == null) continue;
+
+                var bones = skinnedMeshRenderers[i].bones;
+                var checkBindPose = skinnedMeshRenderers[i].sharedMesh.bindposes;
                 for (int j = 0; j != bones.Length; ++j)
                 {
 #if UNITY_EDITOR
@@ -33,7 +35,6 @@ namespace AnimationInstancing_v2
                         bindPoseList[index] = checkBindPose[j];
                     }
                 }
-                meshRender[i].enabled = false;
             }
             UnityEngine.Profiling.Profiler.EndSample();
         }

@@ -1,22 +1,27 @@
-using System.Collections;
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace AnimationInstancing_v2
 {
     public class AnimationBaker
     {
-        public void BakeWithAnimator(
+        public static void BakeWithAnimator(
             GameObject prefab,
-            Dictionary<string, bool> selectedExtraBones,
-            Dictionary<string, bool> selectedAnims)
+            List<string> selectedExtraBones,
+            List<string> selectedAnims,
+            out List<AnimationInfo> animInfoList,
+            out ExtraBoneInfo extraBoneInfo,
+            out Texture2D[] bakedBoneTextures)
         {
-            if (prefab == null) return;
-            var script = prefab.GetComponent<AnimationInstancing>();
-            Debug.Assert(script);
-            if (script == null) return;
+            if (prefab == null)
+            {
+                animInfoList = new();
+                extraBoneInfo = new();
+                bakedBoneTextures = System.Array.Empty<Texture2D>();
+                return;
+            }
 
             var go = Object.Instantiate(prefab);
             go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
@@ -26,162 +31,33 @@ namespace AnimationInstancing_v2
             CreateBoneBakeInfos(prefab, go, selectedExtraBones,
                 out var boneList,
                 out var bindPoseList,
-                out var extraBoneInfo);
+                out extraBoneInfo);
             CreateAnimationBakeInfos(go, selectedAnims,
-                out var bakeInfos,
+                out var animBakeInfoList,
                 out var cacheTransitions,
                 out var cacheAnimationEvents);
-            GenerateAnimationBakeData(bakeInfos, boneList, bindPoseList,
-                out var poseMatrices,
-                out var animInfoList,
-                out var generatedObjectInfoList);
+            GenerateAnimationPoseData(animBakeInfoList, boneList, bindPoseList,
+                out animInfoList,
+                out var animPoseDataList);
             ResetAnimationController(cacheTransitions, cacheAnimationEvents);
-            GenerateTextures(poseMatrices, animInfoList, generatedObjectInfoList, boneList.Length,
-                out var bakedBoneTextures);
 
-            BakedAnimationSaver.SaveAll(animInfoList, extraBoneInfo, bakedBoneTextures);
-        }
-
-        private static void GenerateTextures(
-            Dictionary<int, ArrayList> poseMatrices,
-            List<AnimationInfo> animInfoList,
-            List<GenerateObjectInfo> generatedObjectInfoList,
-            int boneCount,
-            out Texture2D[] bakedBoneTextures)
-        {
-            AnimationTextureBaker.PrepareBoneTexture(
-                animInfoList,
-                4, boneCount,
+            AnimationTextureBaker.GenerateTextures(animInfoList, animPoseDataList, boneList.Length,
                 out bakedBoneTextures);
 
-            AnimationTextureBaker.SetupAnimationTexture(
-                animInfoList,
-                generatedObjectInfoList,
-                poseMatrices,
-                bakedBoneTextures,
-                4, boneCount);
-        }
-
-        private void GenerateAnimationBakeData(
-            List<AnimationBakeInfo> animBakeInfos,
-            Transform[] boneList,
-            Matrix4x4[] bindPoseList,
-            out Dictionary<int, ArrayList> poseMatrices,
-            out List<AnimationInfo> animInfoList,
-            out List<GenerateObjectInfo> generatedObjectInfoList)
-        {
-            poseMatrices = new Dictionary<int, ArrayList>();
-            animInfoList = new List<AnimationInfo>();
-            generatedObjectInfoList = new List<GenerateObjectInfo>();
-
-            var index = 0;
-            AnimationBakeInfo animBakeInfo = null;
-
-            while (true)
-            {
-                if (index < animBakeInfos.Count)
-                {
-                    if (animBakeInfo == null)
-                    {
-                        animBakeInfo = animBakeInfos[index++];
-
-                        animBakeInfo.animator.gameObject.SetActive(true);
-                        animBakeInfo.animator.Update(0);
-                        animBakeInfo.animator.Play(animBakeInfo.info.animationNameHash);
-                        animBakeInfo.animator.Update(0);
-                        animBakeInfo.workingFrame = 0;
-
-                        continue;
-                    }
-                }
-
-                if (animBakeInfo != null)
-                {
-                    var generated = GenerateBoneMatrix(boneList, bindPoseList,
-                        animBakeInfo.info.animationNameHash, animBakeInfo.workingFrame);
-
-                    AddPoseMatrixToPool(poseMatrices, animBakeInfo.info.animationNameHash, generated);
-
-                    animBakeInfo.info.velocity[animBakeInfo.workingFrame] = animBakeInfo.animator.velocity;
-                    animBakeInfo.info.angularVelocity[animBakeInfo.workingFrame] = animBakeInfo.animator.angularVelocity * Mathf.Rad2Deg;
-                    animBakeInfo.workingFrame++;
-
-                    if (animBakeInfo.workingFrame >= animBakeInfo.info.totalFrame)
-                    {
-                        animInfoList.Add(animBakeInfo.info);
-                        if (animBakeInfo.animator != null)
-                        {
-                            animBakeInfo.animator.gameObject.transform
-                                .SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-                        }
-                        animBakeInfo = null;
-
-                        if (index >= animBakeInfos.Count)
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                    }
-
-                    var deltaTime = animBakeInfo.length / (animBakeInfo.info.totalFrame - 1);
-                    animBakeInfo.animator.Update(deltaTime);
-                }
-            }
-
-        }
-
-        private GenerateObjectInfo GenerateBoneMatrix(
-            Transform[] boneList, Matrix4x4[] bindPoseList,
-            int stateName, float stateTime)
-        {
-            UnityEngine.Profiling.Profiler.BeginSample("AddBoneMatrix()");
-
-            var poseMatrix = CalculateSkinMatrix(boneList, bindPoseList);
-
-            var generated = new GenerateObjectInfo
-            {
-                nameCode = -1,
-                stateName = stateName,
-                animationTime = stateTime,
-                worldMatrix = Matrix4x4.identity,
-                frameIndex = -1,
-                boneListIndex = -1,
-                boneMatrix = poseMatrix
-            };
-
-            UnityEngine.Profiling.Profiler.EndSample();
-
-            return generated;
-        }
-
-        private static void AddPoseMatrixToPool(Dictionary<int, ArrayList> poseMatrices, int stateName, GenerateObjectInfo matrixData)
-        {
-            var data = new GenerateObjectInfo();
-
-            GenerateObjectInfo.CopyMatrixData(data, matrixData);
-
-            if (poseMatrices.ContainsKey(stateName))
-            {
-                poseMatrices[stateName].Add(data);
-            }
-            else
-            {
-                poseMatrices[stateName] = new ArrayList() { data };
-            }
+            Object.DestroyImmediate(go);
         }
 
         private static void CreateBoneBakeInfos(
             GameObject prefab, GameObject go,
-            Dictionary<string, bool> selectedExtraBones,
+            List<string> selectedExtraBones,
             out Transform[] boneList,
             out Matrix4x4[] bindPoseList,
             out ExtraBoneInfo extraBoneInfo)
         {
             var skinnedMeshRenderers = go.GetComponentsInChildren<SkinnedMeshRenderer>();
+
             RuntimeHelper.MergeBone(skinnedMeshRenderers, out var mainBones, out var mainBindPoses);
+
             GetExtraBones(prefab, go, selectedExtraBones, out var extraBones, out var extraBindPoses);
 
             boneList = mainBones.Concat(extraBones).ToArray();
@@ -193,26 +69,27 @@ namespace AnimationInstancing_v2
             };
         }
 
-        private static void CreateAnimationBakeInfos(GameObject go, Dictionary<string, bool> selectedAnims,
+        private static void CreateAnimationBakeInfos(GameObject go, List<string> selectedAnims,
             out List<AnimationBakeInfo> bakeInfos,
             out Dictionary<UnityEditor.Animations.AnimatorState, UnityEditor.Animations.AnimatorStateTransition[]> cacheTransitions,
             out Dictionary<AnimationClip, UnityEngine.AnimationEvent[]> cacheAnimationEvents)
         {
             var skinnedMeshRenderers = go.GetComponentsInChildren<SkinnedMeshRenderer>();
-            var script = go.GetComponent<AnimationInstancing>();
             var animator = go.GetComponentInChildren<Animator>();
             animator.applyRootMotion = true;
 
             var controller = animator.runtimeAnimatorController as UnityEditor.Animations.AnimatorController;
-            Debug.Assert(controller.layers.Length > 0);
+            Debug.Assert(controller != null && controller.layers.Length > 0);
             var layer = controller.layers[0];
 
             bakeInfos = new();
             cacheTransitions = new();
             cacheAnimationEvents = new();
 
+            var selectedAnimsDic = selectedAnims.ToDictionary(a => a, a => true);
+
             AnalyzeStateMachine(
-                layer.stateMachine, animator, skinnedMeshRenderers, script, selectedAnims,
+                layer.stateMachine, animator, skinnedMeshRenderers, selectedAnimsDic,
                 0, 15, 0,
                 bakeInfos, cacheTransitions, cacheAnimationEvents);
 
@@ -235,7 +112,7 @@ namespace AnimationInstancing_v2
         private static void GetExtraBones(
             GameObject generatedObject,
             GameObject prefab,
-            Dictionary<string, bool> selectedExtraBones,
+            List<string> selectedExtraBones,
             out List<Transform> listTransform, out List<Matrix4x4> bindPose)
         {
             bindPose = new List<Matrix4x4>(150);
@@ -246,12 +123,10 @@ namespace AnimationInstancing_v2
 
             foreach (var obj in selectedExtraBones)
             {
-                if (!obj.Value) continue;
-
                 for (int i = 0; i != trans.Length; ++i)
                 {
                     var tran = trans[i];
-                    if (tran.name == obj.Key)
+                    if (tran.name == obj)
                     {
                         bindPose.Add(tran.localToWorldMatrix);
                         listTransform.Add(bakedTrans[i]);
@@ -264,7 +139,6 @@ namespace AnimationInstancing_v2
             UnityEditor.Animations.AnimatorStateMachine stateMachine,
             Animator animator,
             SkinnedMeshRenderer[] meshRender,
-            AnimationInstancing instance,
             Dictionary<string, bool> selectedAnims,
             int layer, int bakeFPS, int animationIndex,
             List<AnimationBakeInfo> bakeInfos,
@@ -352,13 +226,105 @@ namespace AnimationInstancing_v2
             {
                 AnalyzeStateMachine(
                     stateMachine.stateMachines[i].stateMachine,
-                    animator, meshRender, instance, selectedAnims,
+                    animator, meshRender, selectedAnims,
                     layer, bakeFPS, animationIndex,
                     bakeInfos, cacheTransition, cacheAnimationEvent);
             }
         }
 
-        public static Matrix4x4[] CalculateSkinMatrix(Transform[] bonePose, Matrix4x4[] bindPose)
+        private static void GenerateAnimationPoseData(
+            List<AnimationBakeInfo> animBakeInfos,
+            Transform[] boneList,
+            Matrix4x4[] bindPoseList,
+            out List<AnimationInfo> animInfoList,
+            out List<AnimationPoseData> animPoseDataList)
+        {
+            animInfoList = new List<AnimationInfo>();
+            animPoseDataList = new List<AnimationPoseData>();
+
+            var index = 0;
+            AnimationBakeInfo animBakeInfo = null;
+
+            if (animBakeInfos.Count == 0) return;
+
+            while (true)
+            {
+                if (index < animBakeInfos.Count)
+                {
+                    if (animBakeInfo == null)
+                    {
+                        animBakeInfo = animBakeInfos[index++];
+
+                        animBakeInfo.animator.gameObject.SetActive(true);
+                        animBakeInfo.animator.Update(0);
+                        animBakeInfo.animator.Play(animBakeInfo.info.animationNameHash);
+                        animBakeInfo.animator.Update(0);
+                        animBakeInfo.workingFrame = 0;
+
+                        continue;
+                    }
+                }
+
+                if (animBakeInfo != null)
+                {
+                    var poseData = GeneratePoseData(boneList, bindPoseList,
+                        animBakeInfo.info.animationNameHash, animBakeInfo.workingFrame);
+
+                    animPoseDataList.Add(poseData);
+
+                    animBakeInfo.info.velocity[animBakeInfo.workingFrame] = animBakeInfo.animator.velocity;
+                    animBakeInfo.info.angularVelocity[animBakeInfo.workingFrame] = animBakeInfo.animator.angularVelocity * Mathf.Rad2Deg;
+                    animBakeInfo.workingFrame++;
+
+                    if (animBakeInfo.workingFrame >= animBakeInfo.info.totalFrame)
+                    {
+                        animInfoList.Add(animBakeInfo.info);
+                        if (animBakeInfo.animator != null)
+                        {
+                            animBakeInfo.animator.gameObject.transform
+                                .SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                        }
+                        animBakeInfo = null;
+
+                        if (index >= animBakeInfos.Count)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+
+                    var deltaTime = animBakeInfo.length / (animBakeInfo.info.totalFrame - 1);
+                    animBakeInfo.animator.Update(deltaTime);
+                }
+            }
+
+        }
+
+        private static AnimationPoseData GeneratePoseData(
+            Transform[] boneList, Matrix4x4[] bindPoseList,
+            int stateName, float stateTime)
+        {
+            UnityEngine.Profiling.Profiler.BeginSample("GeneratePoseData()");
+
+            var poseMatrices = CalculatePoseMatrices(boneList, bindPoseList);
+
+            var generated = new AnimationPoseData
+            {
+                stateName = stateName,
+                animationTime = stateTime,
+                frameIndex = -1,
+                poseMatrices = poseMatrices
+            };
+
+            UnityEngine.Profiling.Profiler.EndSample();
+
+            return generated;
+        }
+
+        private static Matrix4x4[] CalculatePoseMatrices(Transform[] bonePose, Matrix4x4[] bindPose)
         {
             if (bonePose.Length == 0) return null;
 
@@ -368,12 +334,12 @@ namespace AnimationInstancing_v2
                 root = root.parent;
             }
             var rootMat = root.worldToLocalMatrix;
-            var matrix = new Matrix4x4[bonePose.Length];
+            var matrices = new Matrix4x4[bonePose.Length];
             for (int i = 0; i != bonePose.Length; ++i)
             {
-                matrix[i] = rootMat * bonePose[i].localToWorldMatrix * bindPose[i];
+                matrices[i] = rootMat * bonePose[i].localToWorldMatrix * bindPose[i];
             }
-            return matrix;
+            return matrices;
         }
 
         private class AnimationBakeInfo
@@ -385,83 +351,21 @@ namespace AnimationInstancing_v2
             public AnimationInfo info;
         }
 
-        public class GenerateObjectInfo
+        public class AnimationPoseData
         {
-            public Matrix4x4 worldMatrix;
-            public int nameCode;
             public float animationTime;
             public int stateName;
             public int frameIndex;
-            public int boneListIndex = -1;
-            public Matrix4x4[] boneMatrix;
+            public Matrix4x4[] poseMatrices;
 
-            public static void CopyMatrixData(GenerateObjectInfo dst, GenerateObjectInfo src)
+            public static void CopyData(AnimationPoseData dst, AnimationPoseData src)
             {
                 dst.animationTime = src.animationTime;
-                dst.boneListIndex = src.boneListIndex;
                 dst.frameIndex = src.frameIndex;
-                dst.nameCode = src.nameCode;
                 dst.stateName = src.stateName;
-                dst.worldMatrix = src.worldMatrix;
-                dst.boneMatrix = src.boneMatrix;
+                dst.poseMatrices = src.poseMatrices;
             }
         }
     }
-
-    public class ExtraBoneInfo
-    {
-        public string[] extraBoneNames;
-        public Matrix4x4[] extraBindPoses;
-    }
-
-    public class AnimationInfo
-    {
-        public string animationName;
-        public int animationNameHash;
-        public int totalFrame;
-        public int fps;
-        public int animationIndex;
-        public int textureIndex;
-        public bool rootMotion;
-        public WrapMode wrapMode;
-        public Vector3[] velocity;
-        public Vector3[] angularVelocity;
-        public List<AnimationEvent> eventList;
-    }
-
-    public class AnimationEvent
-    {
-        public string function;
-        public int intParameter;
-        public float floatParameter;
-        public string stringParameter;
-        public string objectParameter;
-        public float time;
-    }
-
-    public class MaterialBlock
-    {
-        public InstanceData instanceData;
-        public int[] runtimePackageIndex;
-        // array[index base on texture][package index]
-        public List<InstancingPackage>[] packageList;
-    }
-
-    public class InstanceData
-    {
-        public List<Matrix4x4[]>[] worldMatrix;
-        public List<float[]>[] frameIndex;
-        public List<float[]>[] preFrameIndex;
-        public List<float[]>[] transitionProgress;
-    }
-
-    public class InstancingPackage
-    {
-        public Material[] material;
-        public int animationTextureIndex = 0;
-        public int subMeshCount = 1;
-        public int instancingCount;
-        public int size;
-        public MaterialPropertyBlock propertyBlock;
-    }
 }
+#endif
