@@ -66,7 +66,7 @@ namespace AnimationInstancing_v2
             if (lodInfoList[0].skinnedMeshRenderer.Length == 0)
             {
                 // This is only a MeshRenderer, it has no animations.
-                AnimationInstancingHelper.AddMeshVertex(
+                AnimationInstancingHelper.AddToVertexCachePool(
                     vertexCachePool,
                     lodInfoList,
                     null,
@@ -80,7 +80,7 @@ namespace AnimationInstancing_v2
             {
                 GetAllBones(lodInfoList, animationData.extraBoneInfo, out var bones, out var bindPose);
 
-                AnimationInstancingHelper.AddMeshVertex(
+                AnimationInstancingHelper.AddToVertexCachePool(
                         vertexCachePool,
                         lodInfoList,
                         bones.ToArray(),
@@ -89,7 +89,7 @@ namespace AnimationInstancing_v2
                         bonePerVertex,
                         null);
 
-                Destroy(GetComponent<Animator>());
+                // Destroy(GetComponent<Animator>());
                 //PlayAnimation(0);
             }
 

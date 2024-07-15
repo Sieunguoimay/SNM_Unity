@@ -8,7 +8,7 @@ namespace AnimationInstancing_v2
     {
         private static readonly int instancingPackageSize = 200;
 
-        public static void AddMeshVertex(
+        public static void AddToVertexCachePool(
             Dictionary<int, VertexCache> vertexCachePool,
             LodInfo[] lodInfo,
             Transform[] bones,
