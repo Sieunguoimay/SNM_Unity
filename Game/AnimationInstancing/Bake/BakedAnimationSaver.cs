@@ -13,7 +13,7 @@ namespace AnimationInstancing_v2
         {
             var asset = animationData;
             AssetDatabase.CreateAsset(asset, savePath);
-            foreach (var t in asset.bakedBoneTextures)
+            foreach (var t in asset.animationTextureData.bakedBoneTextures)
             {
                 AssetDatabase.AddObjectToAsset(t, asset);
             }
