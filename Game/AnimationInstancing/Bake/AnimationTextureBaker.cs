@@ -8,24 +8,24 @@ namespace AnimationInstancing_v2
     {
         private static readonly int[] stardardTextureSize = { 64, 128, 256, 512, 1024 };
 
-        public static void GenerateTextures(
+        public static AnimationTextureData GenerateAnimationTextureData(
             List<AnimationInfo> animInfoList,
             List<AnimationPoseData> animPoseDataList,
-            int boneCount,
-            out Texture2D[] bakedBoneTextures)
+            int boneCount)
         {
-            PrepareBoneTexture(animInfoList, 4, boneCount,
-                out bakedBoneTextures);
+            var animationTextureData = CreateAnimationTextureData(animInfoList, boneCount);
 
-            SetupAnimationTexture(animInfoList, animPoseDataList,
-                bakedBoneTextures, 4, boneCount);
+            FillAnimationTexture(animationTextureData, animInfoList, animPoseDataList);
+
+            return animationTextureData;
         }
 
-        public static void PrepareBoneTexture(List<AnimationInfo> infoList,
-            int textureBlockWidth,
-            int textureBlockHeight,
-            out Texture2D[] bakedBoneTextures)
+        public static AnimationTextureData CreateAnimationTextureData(
+            List<AnimationInfo> infoList, 
+            int boneCount)
         {
+            var textureBlockWidth = 4;
+            var textureBlockHeight = boneCount;
             var frames = new int[infoList.Count];
             for (var i = 0; i != infoList.Count; ++i)
             {
@@ -35,7 +35,7 @@ namespace AnimationInstancing_v2
             var textureWidth = CalculateTextureSize(out int count, frames, textureBlockWidth, textureBlockHeight);
             Debug.Assert(textureWidth > 0);
 
-            bakedBoneTextures = new Texture2D[count];
+            var bakedBoneTextures = new Texture2D[count];
             var format = TextureFormat.RGBAHalf;
             for (int i = 0; i != count; ++i)
             {
@@ -46,6 +46,13 @@ namespace AnimationInstancing_v2
                     name = $"{textureWidth}"
                 };
             }
+
+            return new AnimationTextureData
+            {
+                textureBlockWidth = textureBlockWidth,
+                textureBlockHeight = textureBlockHeight,
+                bakedBoneTextures = bakedBoneTextures,
+            };
         }
 
         // calculate the texture count and every size
@@ -141,14 +148,16 @@ namespace AnimationInstancing_v2
             return textureWidth;
         }
 
-        private static void SetupAnimationTexture(
+        private static void FillAnimationTexture(
+            AnimationTextureData animationTextureData,
             List<AnimationInfo> infoList,
-            List<AnimationPoseData> animPoseDataList,
-            Texture2D[] bakedBoneTexture,
-            int textureBlockWidth = 4,
-            int textureBlockHeight = 10)
+            List<AnimationPoseData> animPoseDataList)
         {
             if (animPoseDataList.Count <= 1) return;
+
+            var bakedBoneTexture = animationTextureData.bakedBoneTextures;
+            var textureBlockWidth = animationTextureData.textureBlockWidth;
+            var textureBlockHeight = animationTextureData.textureBlockHeight;
 
             int pixelx = 0;
             int pixely = 0;
@@ -225,9 +234,6 @@ namespace AnimationInstancing_v2
                 else
                 {
                     Debug.Assert(false);
-                    // var list = poseMatrices[matrixData.stateName];
-                    // var originalData = list[matrixData.boneListIndex] as GenerateObjectInfo;
-                    // matrixData.frameIndex = originalData.frameIndex;
                 }
             }
         }

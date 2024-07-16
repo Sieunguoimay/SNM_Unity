@@ -14,19 +14,28 @@ namespace AnimationInstancing_v2
         [SerializeField] private ShadowCastingMode shadowCastingMode;
         [SerializeField] private bool receiveShadow;
 
+        private LodInfo[] _lodInfoList;
+        public IReadOnlyList<LodInfo> LodInfoList => _lodInfoList;
+
         private void Start()
         {
-            var lodInfoList = GetLodInfoList(gameObject);
+            _lodInfoList = GetLodInfoList(gameObject);
 
-            DisableDefaultRenderersAndAnimator(lodInfoList);
-
+            DisableDefaultRenderersAndAnimator(_lodInfoList);
 
             //Todo: CullingGroup
-            var radius = CalcBoundingSphere(lodInfoList[0]);
+            var radius = CalcBoundingSphere(_lodInfoList[0]);
 
-            InitializeAnimation(lodInfoList, GetBonePerVertex());
+            InitializeAnimation(_lodInfoList, GetBonePerVertex());
 
-            UpdateLodVertexCaches(lodInfoList);
+            UpdateLodVertexCaches(_lodInfoList);
+
+            AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
+        }
+
+        private void OnDestroy()
+        {
+            AnimationInstancingRendererManager.Instance?.UnregisterAnimationInstancingRenderer(this);
         }
 
         private void UpdateLodVertexCaches(LodInfo[] lodInfoList)
@@ -56,42 +65,18 @@ namespace AnimationInstancing_v2
         {
             var vertexCachePool = AnimationInstancingRendererManager.Instance.vertexCachePool;
 
-            var aniTexture = new AnimationTexture
-            {
-                boneTexture = animationData.bakedBoneTextures,
-                blockWidth = animationData.textureBlockWidth,
-                blockHeight = animationData.textureBlockHeight,
-            };
+            GetAllBones(lodInfoList, animationData.extraBoneInfo, gameObject,
+                out var bones,
+                out var bindPose);
 
-            if (lodInfoList[0].skinnedMeshRenderer.Length == 0)
-            {
-                // This is only a MeshRenderer, it has no animations.
-                AnimationInstancingHelper.AddToVertexCachePool(
+            AnimationInstancingHelper.AddToVertexCachePool(
                     vertexCachePool,
                     lodInfoList,
-                    null,
-                    null,
-                    aniTexture,
+                    bones?.ToArray(),
+                    bindPose?.ToArray(),
+                    animationData.animationTextureData,
                     bonePerVertex,
                     null);
-                return;
-            }
-            else
-            {
-                GetAllBones(lodInfoList, animationData.extraBoneInfo, out var bones, out var bindPose);
-
-                AnimationInstancingHelper.AddToVertexCachePool(
-                        vertexCachePool,
-                        lodInfoList,
-                        bones.ToArray(),
-                        bindPose.ToArray(),
-                        aniTexture,
-                        bonePerVertex,
-                        null);
-
-                // Destroy(GetComponent<Animator>());
-                //PlayAnimation(0);
-            }
 
         }
 
@@ -192,10 +177,20 @@ namespace AnimationInstancing_v2
         }
 
 
-        public void GetAllBones(LodInfo[] lodInfoList, ExtraBoneInfo extraBoneInfo,
+        public static void GetAllBones(
+            LodInfo[] lodInfoList,
+            ExtraBoneInfo extraBoneInfo,
+            GameObject gameObject,
             out List<Transform> boneList,
             out List<Matrix4x4> bindPoseList)
         {
+            if (lodInfoList[0].skinnedMeshRenderer.Length == 0)
+            {
+                boneList = null;
+                bindPoseList = null;
+                return;
+            }
+
             RuntimeHelper.MergeBone(lodInfoList[0].skinnedMeshRenderer, out boneList, out bindPoseList);
 
             if (extraBoneInfo != null)

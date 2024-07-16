@@ -8,11 +8,17 @@ namespace AnimationInstancing_v2
     {
         public List<AnimationInfo> animInfoList;
         public ExtraBoneInfo extraBoneInfo;
+        public AnimationTextureData animationTextureData;
+    }
+
+    [System.Serializable]
+    public class AnimationTextureData
+    {
         public Texture2D[] bakedBoneTextures;
         public int textureBlockWidth;
         public int textureBlockHeight;
     }
-    
+
     [System.Serializable]
     public class ExtraBoneInfo
     {

@@ -37,16 +37,14 @@ namespace AnimationInstancing_v2
                 out var animPoseDataList);
             ResetAnimationController(cacheTransitions, cacheAnimationEvents);
 
-            AnimationTextureBaker.GenerateTextures(animInfoList, animPoseDataList, boneList.Length,
-                out var bakedBoneTextures);
+            var animationTextureData = AnimationTextureBaker
+                .GenerateAnimationTextureData(animInfoList, animPoseDataList, boneList.Length);
 
             animationData = ScriptableObject.CreateInstance<InstanceAnimationData>();
             animationData.animInfoList = animInfoList;
             animationData.extraBoneInfo = extraBoneInfo;
-            animationData.bakedBoneTextures = bakedBoneTextures;
-            animationData.textureBlockWidth = 4;
-            animationData.textureBlockHeight = boneList.Length;
-            
+            animationData.animationTextureData = animationTextureData;
+
             Object.DestroyImmediate(go);
         }
 

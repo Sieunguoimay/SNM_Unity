@@ -11,13 +11,14 @@ namespace AnimationInstancing_v2
         public static void AddToVertexCachePool(
             Dictionary<int, VertexCache> vertexCachePool,
             LodInfo[] lodInfo,
+
             Transform[] bones,
             Matrix4x4[] bindPose,
-            AnimationTexture texture,
+            AnimationTextureData texture,
             int bonePerVertex,
             string alias)
         {
-            var packageCount = texture != null ? texture.boneTexture.Length : 1;
+            var packageCount = texture != null ? texture.bakedBoneTextures.Length : 1;
 
             UnityEngine.Profiling.Profiler.BeginSample("AddMeshVertex()");
             for (int x = 0; x != lodInfo.Length; ++x)
@@ -30,102 +31,112 @@ namespace AnimationInstancing_v2
 
                     int renderName = lod.skinnedMeshRenderer[i].name.GetHashCode();
                     int aliasName = 0;
-                    int identify = GetIdentify(lod.skinnedMeshRenderer[i].sharedMaterials);
-
+                    var materials = lod.skinnedMeshRenderer[i].sharedMaterials;
+                    int identify = GetIdentify(materials);
                     if (vertexCachePool.TryGetValue(renderName + aliasName, out VertexCache cache))
                     {
-                        if (!cache.instanceBlockList.TryGetValue(identify, out MaterialBlock block))
-                        {
-                            block = CreateBlock(
-                                cache.mesh,
-                                lod.skinnedMeshRenderer[i].sharedMaterials,
-                                texture,
-                                packageCount,
-                                instancingPackageSize);
-                            cache.instanceBlockList.Add(identify, block);
-                        }
-                        lod.vertexCacheList[i] = cache;
-                        lod.materialBlockList[i] = block;
+                        Found(texture, packageCount, lod, i, materials, identify, cache);
                     }
                     else
                     {
-                        var vertexCache = CreateVertexCache(renderName + aliasName, m, bindPose);
-                        var matBlock = CreateBlock(
-                            vertexCache.mesh, 
-                            lod.skinnedMeshRenderer[i].sharedMaterials,
-                            texture, 
-                            packageCount, 
-                            instancingPackageSize);
+                        MaterialBlock matBlock;
+                        VertexCache vertexCache;
 
-                        vertexCache.instanceBlockList.Add(identify, matBlock);
+                        NotFound(vertexCachePool, bindPose, texture, packageCount, lod, i,
+                            m, renderName, aliasName, materials, identify, out matBlock, out vertexCache);
 
                         SetupVertexCache_ForSkinnedMeshRenderer(
-                            texture, 
-                            vertexCache, 
+                            texture,
+                            vertexCache,
                             matBlock,
-                            lod.skinnedMeshRenderer[i], 
-                            bones, 
+                            lod.skinnedMeshRenderer[i],
+                            bones,
                             bonePerVertex,
                             instancingPackageSize);
-                        lod.vertexCacheList[i] = vertexCache;
-                        lod.materialBlockList[i] = matBlock;
-
-                        vertexCachePool[renderName + aliasName] = vertexCache;
                     }
                 }
 
-                for (int i = 0, j = lod.skinnedMeshRenderer.Length; i != lod.meshRenderer.Length; ++i, ++j)
+                for (int i = 0; i != lod.meshRenderer.Length; ++i)
                 {
                     var m = lod.meshFilter[i].sharedMesh;
                     if (m == null) continue;
 
                     int renderName = lod.meshRenderer[i].name.GetHashCode();
                     int aliasName = alias != null ? alias.GetHashCode() : 0;
-                    int identify = GetIdentify(lod.meshRenderer[i].sharedMaterials);
+                    var materials = lod.meshRenderer[i].sharedMaterials;
+                    int identify = GetIdentify(materials);
 
                     if (vertexCachePool.TryGetValue(renderName + aliasName, out VertexCache cache))
                     {
-                        if (!cache.instanceBlockList.TryGetValue(identify, out MaterialBlock block))
-                        {
-                            block = CreateBlock(
-                                cache.mesh,
-                                lod.meshRenderer[i].sharedMaterials,
-                                texture,
-                                packageCount,
-                                instancingPackageSize);
-                            cache.instanceBlockList.TryAdd(identify, block);
-                        }
-                        lod.vertexCacheList[j] = cache;
-                        lod.materialBlockList[j] = block;
+                        Found(texture, packageCount, lod, lod.skinnedMeshRenderer.Length + i, materials, identify, cache);
                     }
                     else
                     {
-                        var vertexCache = CreateVertexCache(renderName + aliasName, m, bindPose);
-                        var matBlock = CreateBlock(
-                            vertexCache.mesh, 
-                            lod.meshRenderer[i].sharedMaterials,
-                            texture, 
-                            packageCount, 
-                            instancingPackageSize);
 
-                        vertexCache.instanceBlockList.Add(identify, matBlock);
+                        MaterialBlock matBlock;
+                        VertexCache vertexCache;
+
+                        NotFound(vertexCachePool, bindPose, texture, packageCount, lod,
+                            lod.skinnedMeshRenderer.Length + i,
+                            m, renderName, aliasName, materials, identify, out matBlock, out vertexCache);
 
                         SetupVertexCache_ForMeshRenderer(
-                            texture, 
-                            vertexCache, 
-                            matBlock, 
+                            texture,
+                            vertexCache,
+                            matBlock,
                             lod.meshRenderer[i],
-                            bones, 
+                            bones,
                             instancingPackageSize);
-                        lod.vertexCacheList[lod.skinnedMeshRenderer.Length + i] = vertexCache;
-                        lod.materialBlockList[lod.skinnedMeshRenderer.Length + i] = matBlock;
-
-                        vertexCachePool[renderName + aliasName] = vertexCache;
                     }
                 }
             }
 
             UnityEngine.Profiling.Profiler.EndSample();
+        }
+
+        private static void NotFound(Dictionary<int, VertexCache> vertexCachePool,
+            Matrix4x4[] bindPose,
+            AnimationTextureData texture,
+            int packageCount, LodInfo lod, int i, Mesh m, int renderName, int aliasName,
+            Material[] materials, int identify,
+            out MaterialBlock matBlock,
+            out VertexCache vertexCache)
+        {
+            matBlock = CreateBlock(
+                m,
+                materials,
+                texture,
+                packageCount,
+                instancingPackageSize);
+            vertexCache = new VertexCache
+            {
+                nameCode = renderName + aliasName,
+                mesh = m,
+                weight = new Vector4[m.vertexCount],
+                boneIndex = new Vector4[m.vertexCount],
+                instanceBlockList = new() { { identify, matBlock } },
+                bindPose = bindPose,
+                materials = materials,
+            };
+            lod.vertexCacheList[i] = vertexCache;
+            lod.materialBlockList[i] = matBlock;
+            vertexCachePool[renderName + aliasName] = vertexCache;
+        }
+
+        private static void Found(AnimationTextureData texture, int packageCount, LodInfo lod, int i, Material[] materials, int identify, VertexCache cache)
+        {
+            if (!cache.instanceBlockList.TryGetValue(identify, out MaterialBlock block))
+            {
+                block = CreateBlock(
+                    cache.mesh,
+                    materials,
+                    texture,
+                    packageCount,
+                    instancingPackageSize);
+                cache.instanceBlockList.Add(identify, block);
+            }
+            lod.vertexCacheList[i] = cache;
+            lod.materialBlockList[i] = block;
         }
 
         private static int GetIdentify(Material[] materials)
@@ -141,7 +152,7 @@ namespace AnimationInstancing_v2
         private static MaterialBlock CreateBlock(
             Mesh mesh,
             Material[] materials,
-            AnimationTexture texture,
+            AnimationTextureData texture,
             int packageCount,
             int instancingPackageSize)
         {
@@ -250,133 +261,149 @@ namespace AnimationInstancing_v2
         }
 
         private static void SetupVertexCache_ForSkinnedMeshRenderer(
-            AnimationTexture texture,
+            AnimationTextureData texture,
             VertexCache vertexCache,
             MaterialBlock block,
             SkinnedMeshRenderer render,
-            Transform[] boneTransform,
+            Transform[] allBones,
             int bonePerVertex,
             int instancingPackageSize)
         {
-            int[] boneIndex = null;
-            if (render.bones.Length != boneTransform.Length)
+            var boneIndicesMap = CalcBoneIndicesMap(render.bones, allBones, render.transform.parent);
+
+            UnityEngine.Profiling.Profiler.BeginSample("Copy the vertex data in SetupVertexCache()");
+            CopyBoneWeightsAndBoneIndices(
+                render.sharedMesh.boneWeights,
+                render.sharedMesh.vertexCount,
+                bonePerVertex, boneIndicesMap,
+                out var newBoneWeights,
+                out var newBoneIndices);
+            UnityEngine.Profiling.Profiler.EndSample();
+
+            AddBoneDataToMesh(vertexCache.mesh, newBoneWeights, newBoneIndices);
+
+            GenerateInstancePackages(texture, vertexCache, block, render.sharedMaterials, instancingPackageSize);
+        }
+
+        private static int[] CalcBoneIndicesMap(
+            Transform[] bones, 
+            Transform[] allBones, 
+            Transform defaultBone)
+        {
+            int[] boneIndicesMap = null;
+            if (bones.Length != allBones.Length)
             {
-                if (render.bones.Length == 0)
+                if (bones.Length == 0)
                 {
-                    boneIndex = new int[1];
-                    int hashRenderParentName = render.transform.parent.name.GetHashCode();
-                    for (int k = 0; k != boneTransform.Length; ++k)
+                    boneIndicesMap = new int[1];
+
+                    int hashRenderParentName = defaultBone.name.GetHashCode();
+
+                    for (int k = 0; k != allBones.Length; ++k)
                     {
-                        if (hashRenderParentName == boneTransform[k].name.GetHashCode())
+                        if (hashRenderParentName == allBones[k].name.GetHashCode())
                         {
-                            boneIndex[0] = k;
+                            boneIndicesMap[0] = k;
                             break;
                         }
                     }
                 }
                 else
                 {
-                    boneIndex = new int[render.bones.Length];
-                    for (int j = 0; j != render.bones.Length; ++j)
+                    boneIndicesMap = new int[bones.Length];
+                    for (int j = 0; j != bones.Length; ++j)
                     {
-                        boneIndex[j] = -1;
-                        Transform trans = render.bones[j];
+                        boneIndicesMap[j] = -1;
+
+                        var trans = bones[j];
                         int hashTransformName = trans.name.GetHashCode();
-                        for (int k = 0; k != boneTransform.Length; ++k)
+
+                        for (int k = 0; k != allBones.Length; ++k)
                         {
-                            if (hashTransformName == boneTransform[k].name.GetHashCode())
+                            if (hashTransformName == allBones[k].name.GetHashCode())
                             {
-                                boneIndex[j] = k;
+                                boneIndicesMap[j] = k;
                                 break;
                             }
                         }
                     }
-
-                    if (boneIndex.Length == 0)
-                    {
-                        boneIndex = null;
-                    }
                 }
             }
 
-            UnityEngine.Profiling.Profiler.BeginSample("Copy the vertex data in SetupVertexCache()");
-            Mesh m = render.sharedMesh;
-            BoneWeight[] boneWeights = m.boneWeights;
-            Debug.Assert(boneWeights.Length > 0);
-            for (int j = 0; j != m.vertexCount; ++j)
+            return boneIndicesMap;
+        }
+
+        private static void CopyBoneWeightsAndBoneIndices(
+            BoneWeight[] boneWeights,
+            int vertexCount,
+            int bonePerVertex,
+            int[] boneIndicesMap,
+            out Vector4[] outBoneWeights,
+            out Vector4[] outBoneIndices)
+        {
+            outBoneWeights = new Vector4[vertexCount];
+            outBoneIndices = new Vector4[vertexCount];
+
+            Debug.Assert(vertexCount > 0);
+            for (int j = 0; j != vertexCount; ++j)
             {
-                vertexCache.weight[j].x = boneWeights[j].weight0;
-                Debug.Assert(vertexCache.weight[j].x > 0.0f);
-                vertexCache.weight[j].y = boneWeights[j].weight1;
-                vertexCache.weight[j].z = boneWeights[j].weight2;
-                vertexCache.weight[j].w = boneWeights[j].weight3;
-                vertexCache.boneIndex[j].x
-                    = boneIndex == null ? boneWeights[j].boneIndex0 : boneIndex[boneWeights[j].boneIndex0];
-                vertexCache.boneIndex[j].y
-                    = boneIndex == null ? boneWeights[j].boneIndex1 : boneIndex[boneWeights[j].boneIndex1];
-                vertexCache.boneIndex[j].z
-                    = boneIndex == null ? boneWeights[j].boneIndex2 : boneIndex[boneWeights[j].boneIndex2];
-                vertexCache.boneIndex[j].w
-                    = boneIndex == null ? boneWeights[j].boneIndex3 : boneIndex[boneWeights[j].boneIndex3];
-                Debug.Assert(vertexCache.boneIndex[j].x >= 0);
+                outBoneWeights[j].x = boneWeights[j].weight0;
+                Debug.Assert(outBoneWeights[j].x > 0.0f);
+                outBoneWeights[j].y = boneWeights[j].weight1;
+                outBoneWeights[j].z = boneWeights[j].weight2;
+                outBoneWeights[j].w = boneWeights[j].weight3;
+
+                outBoneIndices[j].x = boneIndicesMap == null
+                    ? boneWeights[j].boneIndex0 : boneIndicesMap[boneWeights[j].boneIndex0];
+                outBoneIndices[j].y = boneIndicesMap == null
+                    ? boneWeights[j].boneIndex1 : boneIndicesMap[boneWeights[j].boneIndex1];
+                outBoneIndices[j].z = boneIndicesMap == null
+                    ? boneWeights[j].boneIndex2 : boneIndicesMap[boneWeights[j].boneIndex2];
+                outBoneIndices[j].w = boneIndicesMap == null
+                    ? boneWeights[j].boneIndex3 : boneIndicesMap[boneWeights[j].boneIndex3];
+
+                Debug.Assert(outBoneIndices[j].x >= 0);
+
                 if (bonePerVertex == 3)
                 {
-                    float rate = 1.0f / (vertexCache.weight[j].x + vertexCache.weight[j].y + vertexCache.weight[j].z);
-                    vertexCache.weight[j].x = vertexCache.weight[j].x * rate;
-                    vertexCache.weight[j].y = vertexCache.weight[j].y * rate;
-                    vertexCache.weight[j].z = vertexCache.weight[j].z * rate;
-                    vertexCache.weight[j].w = -0.1f;
+                    float rate = 1.0f / (outBoneWeights[j].x + outBoneWeights[j].y + outBoneWeights[j].z);
+                    outBoneWeights[j].x = outBoneWeights[j].x * rate;
+                    outBoneWeights[j].y = outBoneWeights[j].y * rate;
+                    outBoneWeights[j].z = outBoneWeights[j].z * rate;
+                    outBoneWeights[j].w = -0.1f;
                 }
                 else if (bonePerVertex == 2)
                 {
-                    float rate = 1.0f / (vertexCache.weight[j].x + vertexCache.weight[j].y);
-                    vertexCache.weight[j].x = vertexCache.weight[j].x * rate;
-                    vertexCache.weight[j].y = vertexCache.weight[j].y * rate;
-                    vertexCache.weight[j].z = -0.1f;
-                    vertexCache.weight[j].w = -0.1f;
+                    float rate = 1.0f / (outBoneWeights[j].x + outBoneWeights[j].y);
+                    outBoneWeights[j].x = outBoneWeights[j].x * rate;
+                    outBoneWeights[j].y = outBoneWeights[j].y * rate;
+                    outBoneWeights[j].z = -0.1f;
+                    outBoneWeights[j].w = -0.1f;
                 }
                 else if (bonePerVertex == 1)
                 {
-                    vertexCache.weight[j].x = 1.0f;
-                    vertexCache.weight[j].y = -0.1f;
-                    vertexCache.weight[j].z = -0.1f;
-                    vertexCache.weight[j].w = -0.1f;
-                }
-            }
-            UnityEngine.Profiling.Profiler.EndSample();
-
-            if (vertexCache.materials == null)
-                vertexCache.materials = render.sharedMaterials;
-            SetupAdditionalData(vertexCache);
-            for (int i = 0; i != block.packageList.Length; ++i)
-            {
-                var package = CreatePackage(block.instanceData, vertexCache.mesh,
-                    render.sharedMaterials, i, instancingPackageSize);
-                block.packageList[i].Add(package);
-                //vertexCache.packageList[i].Add(package);
-
-                if (texture != null)
-                {
-                    PreparePackageMaterial(package, texture, i);
+                    outBoneWeights[j].x = 1.0f;
+                    outBoneWeights[j].y = -0.1f;
+                    outBoneWeights[j].z = -0.1f;
+                    outBoneWeights[j].w = -0.1f;
                 }
             }
         }
 
-
         private static void SetupVertexCache_ForMeshRenderer(
-            AnimationTexture texture,
+            AnimationTextureData texture,
             VertexCache vertexCache,
             MaterialBlock block,
             MeshRenderer render,
-            Transform[] boneTransform,
+            Transform[] allBones,
             int instancingPackageSize)
         {
             int boneIndex = -1;
-            if (boneTransform != null)
+            if (allBones != null)
             {
-                for (int k = 0; k != boneTransform.Length; ++k)
+                for (int k = 0; k != allBones.Length; ++k)
                 {
-                    if (render.transform.parent.name.GetHashCode() == boneTransform[k].name.GetHashCode())
+                    if (render.transform.parent.name.GetHashCode() == allBones[k].name.GetHashCode())
                     {
                         boneIndex = k;
                         break;
@@ -386,14 +413,30 @@ namespace AnimationInstancing_v2
             if (boneIndex >= 0)
             {
                 //todo
-                BindAttachment(vertexCache, vertexCache, vertexCache.mesh, boneIndex);
+                BindAttachmentToBone(vertexCache, vertexCache, vertexCache.mesh, boneIndex);
             }
-            vertexCache.materials ??= render.sharedMaterials;
-            SetupAdditionalData(vertexCache);
+
+            AddBoneDataToMesh(vertexCache.mesh, vertexCache.weight, vertexCache.boneIndex);
+
+            GenerateInstancePackages(texture, vertexCache, block, render.sharedMaterials, instancingPackageSize);
+        }
+
+        private static void GenerateInstancePackages(
+            AnimationTextureData texture, 
+            VertexCache vertexCache, 
+            MaterialBlock block, 
+            Material[] materials, 
+            int instancingPackageSize)
+        {
             for (int i = 0; i != block.packageList.Length; ++i)
             {
-                var package = CreatePackage(block.instanceData, vertexCache.mesh,
-                    render.sharedMaterials, i, instancingPackageSize);
+                var package = CreatePackage(
+                    block.instanceData, 
+                    vertexCache.mesh,
+                    materials, 
+                    i, 
+                    instancingPackageSize);
+
                 block.packageList[i].Add(package);
 
                 if (texture != null)
@@ -403,28 +446,25 @@ namespace AnimationInstancing_v2
             }
         }
 
-        public static void SetupAdditionalData(VertexCache vertexCache)
+        public static void AddBoneDataToMesh(Mesh mesh, Vector4[] boneWeights, Vector4[] boneIndices)
         {
-            var colors = new Color[vertexCache.weight.Length];
+            var colors = new Color[boneWeights.Length];
             for (int i = 0; i != colors.Length; ++i)
             {
-                colors[i].r = vertexCache.weight[i].x;
-                colors[i].g = vertexCache.weight[i].y;
-                colors[i].b = vertexCache.weight[i].z;
-                colors[i].a = vertexCache.weight[i].w;
+                colors[i].r = boneWeights[i].x;
+                colors[i].g = boneWeights[i].y;
+                colors[i].b = boneWeights[i].z;
+                colors[i].a = boneWeights[i].w;
             }
-            vertexCache.mesh.colors = colors;
-
-            var uv2 = new List<Vector4>(vertexCache.boneIndex.Length);
-            for (int i = 0; i != vertexCache.boneIndex.Length; ++i)
-            {
-                uv2.Add(vertexCache.boneIndex[i]);
-            }
-            vertexCache.mesh.SetUVs(2, uv2);
-            vertexCache.mesh.UploadMeshData(false);
+            mesh.colors = colors;
+            mesh.SetUVs(2, boneIndices);
+            mesh.UploadMeshData(false);
         }
 
-        public static void BindAttachment(VertexCache parentCache, VertexCache attachmentCache, Mesh sharedMesh, int boneIndex)
+        public static void BindAttachmentToBone(VertexCache parentCache,
+            VertexCache attachmentCache,
+            Mesh sharedMesh,
+            int boneIndex)
         {
             var mat = parentCache.bindPose[boneIndex].inverse;
             attachmentCache.mesh = Object.Instantiate(sharedMesh);
@@ -450,26 +490,17 @@ namespace AnimationInstancing_v2
 
         public static void PreparePackageMaterial(
             InstancingPackage package,
-            AnimationTexture texture,
+            AnimationTextureData texture,
             int aniTextureIndex)
         {
             for (int i = 0; i != package.subMeshCount; ++i)
             {
-                package.material[i].SetTexture("_boneTexture", texture.boneTexture[aniTextureIndex]);
-                package.material[i].SetInt("_boneTextureWidth", texture.boneTexture[aniTextureIndex].width);
-                package.material[i].SetInt("_boneTextureHeight", texture.boneTexture[aniTextureIndex].height);
-                package.material[i].SetInt("_boneTextureBlockWidth", texture.blockWidth);
-                package.material[i].SetInt("_boneTextureBlockHeight", texture.blockHeight);
+                package.material[i].SetTexture("_boneTexture", texture.bakedBoneTextures[aniTextureIndex]);
+                package.material[i].SetInt("_boneTextureWidth", texture.bakedBoneTextures[aniTextureIndex].width);
+                package.material[i].SetInt("_boneTextureHeight", texture.bakedBoneTextures[aniTextureIndex].height);
+                package.material[i].SetInt("_boneTextureBlockWidth", texture.textureBlockWidth);
+                package.material[i].SetInt("_boneTextureBlockHeight", texture.textureBlockHeight);
             }
         }
-
-        public class AnimationTexture
-        {
-            public string name { get; set; }
-            public Texture2D[] boneTexture { get; set; }
-            public int blockWidth { get; set; }
-            public int blockHeight { get; set; }
-        }
-
     }
 }
