@@ -10,20 +10,20 @@ namespace AnimationInstancing_v2
 
         public static void AddToVertexCachePool(
             Dictionary<int, VertexCache> vertexCachePool,
-            LodInfo[] lodInfo,
+            LodInfo[] lodInfoList,
 
             Transform[] allBones,
             Matrix4x4[] bindPose,
-            AnimationTextureData texture,
+            AnimationTextureData textureData,
             int bonePerVertex,
             string alias)
         {
-            var packageCount = texture != null ? texture.bakedBoneTextures.Length : 1;
+            var textureCount = textureData != null ? textureData.bakedBoneTextures.Length : 1;
 
             UnityEngine.Profiling.Profiler.BeginSample("AddMeshVertex()");
-            for (int x = 0; x != lodInfo.Length; ++x)
+            for (int lodIndex = 0; lodIndex != lodInfoList.Length; ++lodIndex)
             {
-                var lod = lodInfo[x];
+                var lod = lodInfoList[lodIndex];
                 for (int i = 0; i != lod.skinnedMeshRenderer.Length; ++i)
                 {
                     var m = lod.skinnedMeshRenderer[i].sharedMesh;
@@ -34,16 +34,25 @@ namespace AnimationInstancing_v2
                     int aliasName = 0;
                     var materials = lod.skinnedMeshRenderer[i].sharedMaterials;
                     int identify = GetIdentify(materials);
+                    var rendererIndex = i;
+
                     if (vertexCachePool.TryGetValue(renderName + aliasName, out VertexCache cache))
                     {
-                        Found(texture, packageCount, lod, i, materials, identify, cache);
+                        if (!cache.instanceBlockList.TryGetValue(identify, out MaterialBlock block))
+                        {
+                            cache.instanceBlockList.Add(identify, CreateMaterialBlock(
+                                textureData, materials, cache.mesh.subMeshCount));
+                        }
+
+                        lod.materialBlockList[rendererIndex] = block;
+                        lod.vertexCacheList[rendererIndex] = cache;
                     }
                     else
                     {
 
-                        NotFound(vertexCachePool, bindPose, texture, packageCount, lod, i,
-                            m, renderName, aliasName, materials, identify, 
-                            out MaterialBlock matBlock, 
+                        NotFoundVertexCache(vertexCachePool, bindPose, textureData, textureCount, lod, i,
+                            m, renderName, aliasName, materials, identify,
+                            out MaterialBlock matBlock,
                             out VertexCache vertexCache);
 
                         var boneIndicesMap = CalcBoneIndicesMap(render.bones, allBones, render.transform.parent);
@@ -59,7 +68,7 @@ namespace AnimationInstancing_v2
 
                         AddBoneDataToMesh(vertexCache.mesh, newBoneWeights, newBoneIndices);
 
-                        SetupMaterialBlockData(matBlock, texture, vertexCache, render.sharedMaterials, instancingPackageSize);
+                        SetupMaterialBlockData(matBlock, textureData, vertexCache, render.sharedMaterials, instancingPackageSize);
 
                     }
                 }
@@ -74,14 +83,24 @@ namespace AnimationInstancing_v2
                     int aliasName = alias != null ? alias.GetHashCode() : 0;
                     var materials = render.sharedMaterials;
                     int identify = GetIdentify(materials);
+                    var rendererIndex = lod.skinnedMeshRenderer.Length + i;
 
                     if (vertexCachePool.TryGetValue(renderName + aliasName, out VertexCache cache))
                     {
-                        Found(texture, packageCount, lod, lod.skinnedMeshRenderer.Length + i, materials, identify, cache);
+                        if (!cache.instanceBlockList.TryGetValue(identify, out MaterialBlock block))
+                        {
+                            cache.instanceBlockList.Add(identify, CreateMaterialBlock(
+                                textureData, materials, cache.mesh.subMeshCount));
+                        }
+
+                        lod.materialBlockList[rendererIndex] = block;
+                        lod.vertexCacheList[rendererIndex] = cache;
                     }
                     else
                     {
-                        NotFound(vertexCachePool, bindPose, texture, packageCount, lod,
+                        NotFoundVertexCache(vertexCachePool,
+                            bindPose, textureData,
+                            textureCount, lod,
                             lod.skinnedMeshRenderer.Length + i,
                             m, renderName, aliasName, materials, identify,
                             out MaterialBlock matBlock,
@@ -107,7 +126,7 @@ namespace AnimationInstancing_v2
 
                         AddBoneDataToMesh(vertexCache.mesh, vertexCache.weight, vertexCache.boneIndex);
 
-                        SetupMaterialBlockData(matBlock, texture, vertexCache, render.sharedMaterials, instancingPackageSize);
+                        SetupMaterialBlockData(matBlock, textureData, vertexCache, render.sharedMaterials, instancingPackageSize);
                     }
                 }
             }
@@ -115,7 +134,7 @@ namespace AnimationInstancing_v2
             UnityEngine.Profiling.Profiler.EndSample();
         }
 
-        private static void NotFound(Dictionary<int, VertexCache> vertexCachePool,
+        private static void NotFoundVertexCache(Dictionary<int, VertexCache> vertexCachePool,
             Matrix4x4[] bindPose,
             AnimationTextureData texture,
             int packageCount, LodInfo lod, int i, Mesh m, int renderName, int aliasName,
@@ -151,27 +170,93 @@ namespace AnimationInstancing_v2
             vertexCachePool[renderName + aliasName] = vertexCache;
         }
 
-        private static void Found(AnimationTextureData texture, int packageCount, LodInfo lod, int i, Material[] materials, int identify, VertexCache cache)
+        private static MaterialBlock CreateMaterialBlock(
+            AnimationTextureData textureData,
+            Material[] materials,
+            int subMeshCount)
         {
-            if (!cache.instanceBlockList.TryGetValue(identify, out MaterialBlock block))
-            {
-                block = new MaterialBlock
-                {
-                    instanceData = CreateInstanceData(packageCount),
-                    packageList = new List<InstancingPackage>[packageCount],
-                    runtimePackageIndex = new int[packageCount]
-                };
+            var textureCount = textureData != null ? textureData.bakedBoneTextures.Length : 1;
+                // SetupBlockData(
+            //     block,
+            //     vertexCache.mesh,
+            //     materials,
+            //     textureData,
+            //     instancingPackageSize);
 
-                SetupBlockData(
-                    block,
-                    cache.mesh,
-                    materials,
-                    texture,
-                    instancingPackageSize);
-                cache.instanceBlockList.Add(identify, block);
+            var worldMatrixList = new List<Matrix4x4[]>[textureCount];
+            var frameIndexList = new List<float[]>[textureCount];
+            var preFrameIndexList = new List<float[]>[textureCount];
+            var transitionProgressList = new List<float[]>[textureCount];
+            var packageList = new List<InstancingPackage>[textureCount];
+
+            for (int textureIndex = 0; textureIndex != textureCount; ++textureIndex)
+            {
+                // var package = CreatePackage(
+                //     vertexCache.mesh, materials,
+                //     instancingPackageSize);
+
+                worldMatrixList[textureIndex] = new() { new Matrix4x4[instancingPackageSize] };
+                frameIndexList[textureIndex] = new() { new float[instancingPackageSize] };
+                preFrameIndexList[textureIndex] = new() { new float[instancingPackageSize] };
+                transitionProgressList[textureIndex] = new() { new float[instancingPackageSize] };
+
+                packageList[textureIndex] = new()
+                {
+                    new InstancingPackage() {
+                        material = SetupInstancingMaterials(materials, subMeshCount, textureData, textureIndex),
+                        subMeshCount = subMeshCount,
+                        size = 1,
+                        instancingCount = 1,
+                        propertyBlock = new MaterialPropertyBlock()
+                    }
+                };
             }
-            lod.vertexCacheList[i] = cache;
-            lod.materialBlockList[i] = block;
+
+            return new MaterialBlock
+            {
+                instanceData = new InstanceData
+                {
+                    worldMatrix = worldMatrixList,
+                    frameIndex = frameIndexList,
+                    preFrameIndex = preFrameIndexList,
+                    transitionProgress = transitionProgressList,
+                },
+                packageList = packageList,
+                runtimePackageIndex = new int[textureCount]
+            };
+        }
+
+        private static Material[] SetupInstancingMaterials(
+            Material[] materials, int count,
+            AnimationTextureData textureData, int textureIndex)
+        {
+            var copyMaterials = new Material[count];
+
+            for (int subMeshIndex = 0; subMeshIndex != count; ++subMeshIndex)
+            {
+                copyMaterials[subMeshIndex] = new Material(materials[subMeshIndex]);
+#if UNITY_5_6_OR_NEWER
+                copyMaterials[subMeshIndex].enableInstancing = true;
+#endif
+                //if (useInstancing)
+                copyMaterials[subMeshIndex].EnableKeyword("INSTANCING_ON");
+                //else
+                //copyMaterials[i].DisableKeyword("INSTANCING_ON");
+
+                copyMaterials[subMeshIndex].EnableKeyword("USE_CONSTANT_BUFFER");
+                copyMaterials[subMeshIndex].DisableKeyword("USE_COMPUTE_BUFFER");
+
+                if (textureData != null)
+                {
+                    copyMaterials[subMeshIndex].SetTexture("_boneTexture", textureData.bakedBoneTextures[textureIndex]);
+                    copyMaterials[subMeshIndex].SetInt("_boneTextureWidth", textureData.bakedBoneTextures[textureIndex].width);
+                    copyMaterials[subMeshIndex].SetInt("_boneTextureHeight", textureData.bakedBoneTextures[textureIndex].height);
+                    copyMaterials[subMeshIndex].SetInt("_boneTextureBlockWidth", textureData.textureBlockWidth);
+                    copyMaterials[subMeshIndex].SetInt("_boneTextureBlockHeight", textureData.textureBlockHeight);
+                }
+            }
+
+            return copyMaterials;
         }
 
         private static int GetIdentify(Material[] materials)
@@ -188,7 +273,7 @@ namespace AnimationInstancing_v2
             MaterialBlock block,
             Mesh mesh,
             Material[] materials,
-            AnimationTextureData texture,
+            AnimationTextureData textureData,
             int instancingPackageSize)
         {
 
@@ -204,9 +289,9 @@ namespace AnimationInstancing_v2
                     package
                 };
 
-                if (texture != null)
+                if (textureData != null)
                 {
-                    PreparePackageMaterial(package, texture, i);
+                    PreparePackageMaterial(package, textureData, i);
                 }
 
                 var data = block.instanceData;
@@ -238,7 +323,7 @@ namespace AnimationInstancing_v2
 
         private static InstancingPackage CreatePackage(
             Mesh mesh,
-            Material[] originalMaterial,
+            Material[] materials,
             int instancingPackageSize)
         {
             var package = new InstancingPackage
@@ -250,7 +335,7 @@ namespace AnimationInstancing_v2
 
             for (int i = 0; i != mesh.subMeshCount; ++i)
             {
-                package.material[i] = new Material(originalMaterial[i]);
+                package.material[i] = new Material(materials[i]);
 #if UNITY_5_6_OR_NEWER
                 package.material[i].enableInstancing = true;
 #endif
@@ -456,16 +541,16 @@ namespace AnimationInstancing_v2
 
         public static void PreparePackageMaterial(
             InstancingPackage package,
-            AnimationTextureData texture,
+            AnimationTextureData textureData,
             int aniTextureIndex)
         {
             for (int i = 0; i != package.subMeshCount; ++i)
             {
-                package.material[i].SetTexture("_boneTexture", texture.bakedBoneTextures[aniTextureIndex]);
-                package.material[i].SetInt("_boneTextureWidth", texture.bakedBoneTextures[aniTextureIndex].width);
-                package.material[i].SetInt("_boneTextureHeight", texture.bakedBoneTextures[aniTextureIndex].height);
-                package.material[i].SetInt("_boneTextureBlockWidth", texture.textureBlockWidth);
-                package.material[i].SetInt("_boneTextureBlockHeight", texture.textureBlockHeight);
+                package.material[i].SetTexture("_boneTexture", textureData.bakedBoneTextures[aniTextureIndex]);
+                package.material[i].SetInt("_boneTextureWidth", textureData.bakedBoneTextures[aniTextureIndex].width);
+                package.material[i].SetInt("_boneTextureHeight", textureData.bakedBoneTextures[aniTextureIndex].height);
+                package.material[i].SetInt("_boneTextureBlockWidth", textureData.textureBlockWidth);
+                package.material[i].SetInt("_boneTextureBlockHeight", textureData.textureBlockHeight);
             }
         }
     }
