@@ -11,7 +11,6 @@ namespace AnimationInstancing_v2
         public static void AddToVertexCachePool(
             Dictionary<int, VertexCache> vertexCachePool,
             LodInfo[] lodInfoList,
-
             Transform[] allBones,
             Matrix4x4[] bindPose,
             AnimationTextureData textureData,
@@ -35,55 +34,13 @@ namespace AnimationInstancing_v2
                     var rendererIndex = smrIndex;
 
                     NewMethod(vertexCachePool, allBones, bindPose, textureData,
-    lod, mesh, render, renderName, aliasName,
-    materials, identify, rendererIndex, true);
+                        mesh, render, renderName, aliasName,
+                        materials, identify, bonePerVertex,
+                        out MaterialBlock matBlock, out VertexCache vertexCache);
 
-                    if (vertexCachePool.TryGetValue(renderName + aliasName, out VertexCache cache))
-                    {
-                        if (!cache.instanceBlockList.TryGetValue(identify, out MaterialBlock block))
-                        {
-                            var matBlock = CreateMaterialBlock(textureData);
-
-                            AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 1);
-
-                            cache.instanceBlockList.Add(identify, matBlock);
-                        }
-
-                        lod.materialBlockList[rendererIndex] = block;
-                        lod.vertexCacheList[rendererIndex] = cache;
-                    }
-                    else
-                    {
-
-                        var matBlock = CreateMaterialBlock(textureData);
-                        AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 1);
-                        lod.materialBlockList[rendererIndex] = matBlock;
-
-
-
-
-                        var boneIndicesMap = CalcBoneIndicesMap(render.bones, allBones, render.transform.parent);
-
-                        UnityEngine.Profiling.Profiler.BeginSample("Copy the vertex data in SetupVertexCache()");
-                        CopyBoneWeightsAndBoneIndices(
-                            render.sharedMesh.boneWeights,
-                            render.sharedMesh.vertexCount,
-                            bonePerVertex, boneIndicesMap,
-                            out var newBoneWeights,
-                            out var newBoneIndices);
-                        UnityEngine.Profiling.Profiler.EndSample();
-
-
-                        var vertexCache = CreateVertexCache(bindPose, mesh, renderName, aliasName, materials, identify,
-                            matBlock, newBoneWeights, newBoneIndices);
-                        lod.vertexCacheList[rendererIndex] = vertexCache;
-                        vertexCachePool[renderName + aliasName] = vertexCache;
-
-
-                        AddBoneDataToMesh(vertexCache.mesh, newBoneWeights, newBoneIndices);
-
-                        AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 0);
-                    }
+                    lod.materialBlockList[rendererIndex] = matBlock;
+                    lod.vertexCacheList[rendererIndex] = vertexCache;
+                    vertexCachePool[renderName + aliasName] = vertexCache;
                 }
 
                 for (int mrIndex = 0; mrIndex != lod.meshRenderer.Length; ++mrIndex)
@@ -99,8 +56,13 @@ namespace AnimationInstancing_v2
                     var rendererIndex = lod.skinnedMeshRenderer.Length + mrIndex;
 
                     NewMethod(vertexCachePool, allBones, bindPose, textureData,
-                        lod, mesh, render, renderName, aliasName,
-                        materials, identify, rendererIndex, true);
+                        mesh, render, renderName, aliasName,
+                        materials, identify, bonePerVertex,
+                        out MaterialBlock matBlock, out VertexCache vertexCache);
+
+                    lod.materialBlockList[rendererIndex] = matBlock;
+                    lod.vertexCacheList[rendererIndex] = vertexCache;
+                    vertexCachePool[renderName + aliasName] = vertexCache;
                 }
             }
 
@@ -110,63 +72,95 @@ namespace AnimationInstancing_v2
         private static void NewMethod(
             Dictionary<int, VertexCache> vertexCachePool,
             Transform[] allBones, Matrix4x4[] bindPose,
-            AnimationTextureData textureData, LodInfo lod,
+            AnimationTextureData textureData,
             Mesh mesh, Renderer render, int renderName, int aliasName,
-            Material[] materials, int identify, int rendererIndex, bool isMeshRenderer)
+            Material[] materials, int identify, int bonePerVertex,
+            out MaterialBlock matBlock, out VertexCache vertexCache)
         {
-            if (vertexCachePool.TryGetValue(renderName + aliasName, out VertexCache cache))
+            if (vertexCachePool.TryGetValue(renderName + aliasName, out vertexCache))
             {
-
-                if (!cache.instanceBlockList.TryGetValue(identify, out MaterialBlock block))
+                if (!vertexCache.instanceBlockList.TryGetValue(identify, out matBlock))
                 {
-                    var matBlock = CreateMaterialBlock(textureData);
+                    matBlock = CreateMaterialBlock(textureData);
 
                     AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 1);
 
-                    cache.instanceBlockList.Add(identify, matBlock);
+                    vertexCache.instanceBlockList.Add(identify, matBlock);
                 }
-                lod.materialBlockList[rendererIndex] = block;
+            }
+            else
+            {
+                DoStuffs(allBones, bindPose, mesh, render, bonePerVertex,
+                    out Mesh me, out Vector4[] newBoneWeights, out Vector4[] newBoneIndices);
+
+                matBlock = CreateMaterialBlock(textureData);
+                AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 1);
+
+                vertexCache = CreateVertexCache(bindPose, me, renderName, aliasName,
+                    materials, new Dictionary<int, MaterialBlock>() { { identify, matBlock } },
+                    newBoneWeights, newBoneIndices);
 
 
-                lod.vertexCacheList[rendererIndex] = cache;
+                AddBoneDataToMesh(vertexCache.mesh, vertexCache.weight, vertexCache.boneIndex);
+                AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 0);
+            }
+
+        }
+
+        private static void DoStuffs(Transform[] allBones, Matrix4x4[] bindPose, Mesh mesh, Renderer render, int bonePerVertex, out Mesh me, out Vector4[] newBoneWeights, out Vector4[] newBoneIndices)
+        {
+            if (render is SkinnedMeshRenderer smr)
+            {
+                var boneIndicesMap = CalcBoneIndicesMap(smr.bones, allBones, render.transform.parent);
+
+                UnityEngine.Profiling.Profiler.BeginSample("Copy the vertex data in SetupVertexCache()");
+                CopyBoneWeightsAndBoneIndices(
+                    smr.sharedMesh.boneWeights,
+                    smr.sharedMesh.vertexCount,
+                    bonePerVertex, boneIndicesMap,
+                    out newBoneWeights,
+                    out newBoneIndices);
+                UnityEngine.Profiling.Profiler.EndSample();
+                me = mesh;
             }
             else
             {
 
-                var matBlock = CreateMaterialBlock(textureData);
-                AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 1);
-                lod.materialBlockList[rendererIndex] = matBlock;
-
-
-                var me = mesh;
-                var w = new Vector4[mesh.vertexCount];
-                var b = new Vector4[mesh.vertexCount];
-                
-
-                int boneIndex = GetBoneToAttach(allBones, render as MeshRenderer);
-                if (boneIndex >= 0)
-                {
-                    //todo
-                    BindAttachmentToBone(bindPose, mesh, boneIndex, out me, out w, out b);
-                }
-
-
-                var vertexCache = CreateVertexCache(bindPose, me, renderName, aliasName,
-                    materials, identify, matBlock, w, b);
-                lod.vertexCacheList[rendererIndex] = vertexCache;
-                vertexCachePool[renderName + aliasName] = vertexCache;
-
-                AddBoneDataToMesh(vertexCache.mesh, vertexCache.weight, vertexCache.boneIndex);
-
-                AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 0);
+                SetupAttachment(
+                    allBones, bindPose,
+                    mesh, render,
+                    out me, out newBoneWeights, out newBoneIndices);
             }
+        }
+
+        private static bool SetupAttachment(Transform[] allBones, Matrix4x4[] bindPose,
+            Mesh mesh, Renderer render,
+            out Mesh me,
+            out Vector4[] newBoneWeights,
+            out Vector4[] newBoneIndices)
+        {
+            me = mesh;
+            newBoneWeights = new Vector4[mesh.vertexCount];
+            newBoneIndices = new Vector4[mesh.vertexCount];
+
+            int boneIndex = GetBoneToAttach(allBones, render as MeshRenderer);
+            if (boneIndex >= 0)
+            {
+                //todo
+
+                me = CopySharedMesh(bindPose, mesh, boneIndex);
+
+                AssignAllVerticesToBone(newBoneWeights, newBoneIndices, mesh.vertexCount, boneIndex);
+
+                return true;
+            }
+            return false;
         }
 
         private static VertexCache CreateVertexCache(
             Matrix4x4[] bindPose, Mesh mesh,
             int renderName, int aliasName,
-            Material[] materials, int identify,
-            MaterialBlock matBlock, Vector4[] weight, Vector4[] boneIndex
+            Material[] materials, Dictionary<int, MaterialBlock> instanceBlockList, Vector4[] weight, Vector4[] boneIndex
             )
         {
             return new VertexCache
@@ -175,7 +169,7 @@ namespace AnimationInstancing_v2
                 mesh = mesh,
                 weight = weight,
                 boneIndex = boneIndex,
-                instanceBlockList = new Dictionary<int, MaterialBlock>() { { identify, matBlock } },
+                instanceBlockList = instanceBlockList,
                 bindPose = bindPose,
                 materials = materials,
             };
@@ -418,15 +412,9 @@ namespace AnimationInstancing_v2
             mesh.UploadMeshData(false);
         }
 
-        public static void BindAttachmentToBone(Matrix4x4[] bindPose,
-            Mesh sharedMesh,
-            int boneIndex, out Mesh mesh, out Vector4[] weight, out Vector4[] boneIndexList)
+        public static void AssignAllVerticesToBone(Vector4[] weight, Vector4[] boneIndexList, int vertexCount, int boneIndex)
         {
-            mesh = CopySharedMesh(bindPose, sharedMesh, boneIndex);
-            weight = new Vector4[mesh.vertexCount];
-            boneIndexList = new Vector4[mesh.vertexCount];
-
-            for (int j = 0; j != mesh.vertexCount; ++j)
+            for (int j = 0; j != vertexCount; ++j)
             {
                 weight[j].x = 1.0f;
                 weight[j].y = -0.1f;
