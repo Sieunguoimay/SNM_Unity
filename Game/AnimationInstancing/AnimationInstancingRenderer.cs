@@ -261,7 +261,7 @@ namespace AnimationInstancing_v2
         public int animationTextureIndex = 0;
         public int subMeshCount = 1;
         public int instancingCount;
-        public int size;
+        // public int size;
         public MaterialPropertyBlock propertyBlock;
     }
 }
