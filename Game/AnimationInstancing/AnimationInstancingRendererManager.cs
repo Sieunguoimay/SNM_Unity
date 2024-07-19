@@ -21,23 +21,22 @@ namespace AnimationInstancing_v2
         }
 
         private static bool _destroyed = false;
-        public readonly Dictionary<int, VertexCache> vertexCachePool = new();
-        private readonly List<AnimationInstancingRenderer> animationInstancingRenderers = new();
+        // private readonly List<AnimationInstancingRenderer> animationInstancingRenderers = new();
 
         private void OnDestroy()
         {
             _destroyed = true;
         }
 
-        public void RegisterAnimationInstancingRenderer(AnimationInstancingRenderer renderer)
-        {
-            animationInstancingRenderers.Add(renderer);
-        }
+        // public void RegisterAnimationInstancingRenderer(AnimationInstancingRenderer renderer)
+        // {
+        //     animationInstancingRenderers.Add(renderer);
+        // }
 
-        public void UnregisterAnimationInstancingRenderer(AnimationInstancingRenderer renderer)
-        {
-            animationInstancingRenderers.Add(renderer);
-        }
+        // public void UnregisterAnimationInstancingRenderer(AnimationInstancingRenderer renderer)
+        // {
+        //     animationInstancingRenderers.Add(renderer);
+        // }
 
         public void ApplyBoneMatrix()
         {

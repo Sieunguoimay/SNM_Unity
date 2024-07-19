@@ -4,110 +4,68 @@ using UnityEngine;
 
 namespace AnimationInstancing_v2
 {
-    public class AnimationInstancingHelper
+    public class AnimationInstancingPool
     {
         private static readonly int instancingPackageSize = 200;
+        public static readonly Dictionary<int, VertexCache> vertexCachePool = new();
 
-        public static void AddToVertexCachePool(
-            Dictionary<int, VertexCache> vertexCachePool,
-            LodInfo[] lodInfoList,
-            Transform[] allBones,
-            Matrix4x4[] bindPose,
-            AnimationTextureData textureData,
-            int bonePerVertex,
-            string alias)
-        {
-            UnityEngine.Profiling.Profiler.BeginSample("AddMeshVertex()");
-            for (int lodIndex = 0; lodIndex != lodInfoList.Length; ++lodIndex)
-            {
-                var lod = lodInfoList[lodIndex];
-                for (int smrIndex = 0; smrIndex != lod.skinnedMeshRenderer.Length; ++smrIndex)
-                {
-                    var mesh = lod.skinnedMeshRenderer[smrIndex].sharedMesh;
-                    if (mesh == null) continue;
-
-                    var render = lod.skinnedMeshRenderer[smrIndex];
-                    int renderName = lod.skinnedMeshRenderer[smrIndex].name.GetHashCode();
-                    int aliasName = 0;
-                    var materials = lod.skinnedMeshRenderer[smrIndex].sharedMaterials;
-                    int identify = GetIdentify(materials);
-                    var rendererIndex = smrIndex;
-
-                    NewMethod(vertexCachePool, allBones, bindPose, textureData,
-                        mesh, render, renderName, aliasName,
-                        materials, identify, bonePerVertex,
-                        out MaterialBlock matBlock, out VertexCache vertexCache);
-
-                    lod.materialBlockList[rendererIndex] = matBlock;
-                    lod.vertexCacheList[rendererIndex] = vertexCache;
-                    vertexCachePool[renderName + aliasName] = vertexCache;
-                }
-
-                for (int mrIndex = 0; mrIndex != lod.meshRenderer.Length; ++mrIndex)
-                {
-                    var mesh = lod.meshFilter[mrIndex].sharedMesh;
-                    if (mesh == null) continue;
-
-                    var render = lod.meshRenderer[mrIndex];
-                    int renderName = render.name.GetHashCode();
-                    int aliasName = alias != null ? alias.GetHashCode() : 0;
-                    var materials = render.sharedMaterials;
-                    int identify = GetIdentify(materials);
-                    var rendererIndex = lod.skinnedMeshRenderer.Length + mrIndex;
-
-                    NewMethod(vertexCachePool, allBones, bindPose, textureData,
-                        mesh, render, renderName, aliasName,
-                        materials, identify, bonePerVertex,
-                        out MaterialBlock matBlock, out VertexCache vertexCache);
-
-                    lod.materialBlockList[rendererIndex] = matBlock;
-                    lod.vertexCacheList[rendererIndex] = vertexCache;
-                    vertexCachePool[renderName + aliasName] = vertexCache;
-                }
-            }
-
-            UnityEngine.Profiling.Profiler.EndSample();
-        }
-
-        private static void NewMethod(
-            Dictionary<int, VertexCache> vertexCachePool,
+        public static void CreateMaterialBlockAndVertexCache(
             Transform[] allBones, Matrix4x4[] bindPose,
-            AnimationTextureData textureData,
+            AnimationTextureData textureData, int bonePerVertex,
             Mesh mesh, Renderer render, int renderName, int aliasName,
-            Material[] materials, int identify, int bonePerVertex,
-            out MaterialBlock matBlock, out VertexCache vertexCache)
+            Material[] materials,
+            out VertexCache vertexCache, out MaterialBlock matBlock)
         {
+            int identify = GetIdentify(materials);
+
             if (vertexCachePool.TryGetValue(renderName + aliasName, out vertexCache))
             {
-                if (!vertexCache.instanceBlockList.TryGetValue(identify, out matBlock))
-                {
-                    matBlock = CreateMaterialBlock(textureData);
-
-                    AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 1);
-
-                    vertexCache.instanceBlockList.Add(identify, matBlock);
-                }
+                matBlock = GetOrCreateMaterialBlock(vertexCache, textureData, mesh, materials, identify);
             }
             else
             {
-                DoStuffs(allBones, bindPose, mesh, render, bonePerVertex,
-                    out Mesh me, out Vector4[] newBoneWeights, out Vector4[] newBoneIndices);
-
-                matBlock = CreateMaterialBlock(textureData);
-                AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 1);
-
-                vertexCache = CreateVertexCache(bindPose, me, renderName, aliasName,
-                    materials, new Dictionary<int, MaterialBlock>() { { identify, matBlock } },
-                    newBoneWeights, newBoneIndices);
-
-
-                AddBoneDataToMesh(vertexCache.mesh, vertexCache.weight, vertexCache.boneIndex);
-                AddToMaterialBlock(matBlock, textureData, materials, mesh.subMeshCount, 0);
+                vertexCache = CreateVertexCacheAndSetupStuffs(allBones, bindPose, textureData,
+                    mesh, render, materials, identify, bonePerVertex, out matBlock);
+                vertexCachePool[renderName + aliasName] = vertexCache;
             }
-
         }
 
-        private static void DoStuffs(Transform[] allBones, Matrix4x4[] bindPose, Mesh mesh, Renderer render, int bonePerVertex, out Mesh me, out Vector4[] newBoneWeights, out Vector4[] newBoneIndices)
+        private static MaterialBlock GetOrCreateMaterialBlock(VertexCache vertexCache, AnimationTextureData textureData, Mesh sharedMesh, Material[] materials, int identify)
+        {
+            if (!vertexCache.instanceBlockList.TryGetValue(identify, out MaterialBlock matBlock))
+            {
+                matBlock = CreateMaterialBlock(textureData);
+
+                AddToMaterialBlock(matBlock, textureData, materials, sharedMesh.subMeshCount, 1);
+
+                vertexCache.instanceBlockList.Add(identify, matBlock);
+            }
+
+            return matBlock;
+        }
+
+        private static VertexCache CreateVertexCacheAndSetupStuffs(
+            Transform[] allBones, Matrix4x4[] bindPose, AnimationTextureData textureData,
+            Mesh sharedMesh, Renderer render, Material[] materials,
+            int identify, int bonePerVertex, out MaterialBlock matBlock)
+        {
+            DoStuffsWithBones(allBones, bindPose, sharedMesh, render, bonePerVertex,
+                out Mesh mesh, out Vector4[] newBoneWeights, out Vector4[] newBoneIndices);
+
+            matBlock = CreateMaterialBlock(textureData);
+            AddToMaterialBlock(matBlock, textureData, materials, sharedMesh.subMeshCount, 1);
+
+            var vertexCache = CreateVertexCache(bindPose, mesh, materials,
+                new Dictionary<int, MaterialBlock>() { { identify, matBlock } },
+                newBoneWeights, newBoneIndices);
+
+            AddBoneDataToMesh(vertexCache.mesh, vertexCache.weight, vertexCache.boneIndex);
+            AddToMaterialBlock(matBlock, textureData, materials, sharedMesh.subMeshCount, 0);
+
+            return vertexCache;
+        }
+
+        private static void DoStuffsWithBones(Transform[] allBones, Matrix4x4[] bindPose, Mesh mesh, Renderer render, int bonePerVertex, out Mesh me, out Vector4[] newBoneWeights, out Vector4[] newBoneIndices)
         {
             if (render is SkinnedMeshRenderer smr)
             {
@@ -159,13 +117,12 @@ namespace AnimationInstancing_v2
 
         private static VertexCache CreateVertexCache(
             Matrix4x4[] bindPose, Mesh mesh,
-            int renderName, int aliasName,
-            Material[] materials, Dictionary<int, MaterialBlock> instanceBlockList, Vector4[] weight, Vector4[] boneIndex
-            )
+            Material[] materials,
+            Dictionary<int, MaterialBlock> instanceBlockList,
+            Vector4[] weight, Vector4[] boneIndex)
         {
             return new VertexCache
             {
-                nameCode = renderName + aliasName,
                 mesh = mesh,
                 weight = weight,
                 boneIndex = boneIndex,

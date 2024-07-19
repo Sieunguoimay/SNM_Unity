@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
-using static AnimationInstancing_v2.AnimationInstancingHelper;
 
 namespace AnimationInstancing_v2
 {
@@ -30,13 +29,13 @@ namespace AnimationInstancing_v2
 
             UpdateLodVertexCaches(_lodInfoList);
 
-            AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
+            // AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
         }
 
-        private void OnDestroy()
-        {
-            AnimationInstancingRendererManager.Instance?.UnregisterAnimationInstancingRenderer(this);
-        }
+        // private void OnDestroy()
+        // {
+        //     AnimationInstancingRendererManager.Instance?.UnregisterAnimationInstancingRenderer(this);
+        // }
 
         private void UpdateLodVertexCaches(LodInfo[] lodInfoList)
         {
@@ -63,14 +62,11 @@ namespace AnimationInstancing_v2
 
         private void InitializeAnimation(LodInfo[] lodInfoList, int bonePerVertex)
         {
-            var vertexCachePool = AnimationInstancingRendererManager.Instance.vertexCachePool;
-
             GetAllBones(lodInfoList, animationData.extraBoneInfo, gameObject,
                 out var bones,
                 out var bindPose);
 
-            AnimationInstancingHelper.AddToVertexCachePool(
-                    vertexCachePool,
+            AddToVertexCachePool(
                     lodInfoList,
                     bones?.ToArray(),
                     bindPose?.ToArray(),
@@ -78,6 +74,60 @@ namespace AnimationInstancing_v2
                     bonePerVertex,
                     null);
 
+        }
+
+        public static void AddToVertexCachePool(
+            LodInfo[] lodInfoList,
+            Transform[] allBones,
+            Matrix4x4[] bindPose,
+            AnimationTextureData textureData,
+            int bonePerVertex,
+            string alias)
+        {
+            UnityEngine.Profiling.Profiler.BeginSample("AddMeshVertex()");
+            for (int lodIndex = 0; lodIndex != lodInfoList.Length; ++lodIndex)
+            {
+                var lod = lodInfoList[lodIndex];
+                for (int smrIndex = 0; smrIndex != lod.skinnedMeshRenderer.Length; ++smrIndex)
+                {
+                    var mesh = lod.skinnedMeshRenderer[smrIndex].sharedMesh;
+                    if (mesh == null) continue;
+
+                    var render = lod.skinnedMeshRenderer[smrIndex];
+                    int renderName = lod.skinnedMeshRenderer[smrIndex].name.GetHashCode();
+                    int aliasName = 0;
+                    var materials = lod.skinnedMeshRenderer[smrIndex].sharedMaterials;
+                    var rendererIndex = smrIndex;
+
+                    AnimationInstancingPool.CreateMaterialBlockAndVertexCache(
+                        allBones, bindPose, textureData, bonePerVertex, mesh, render,
+                        renderName, aliasName, materials, out var vertexCache, out var matBlock);
+
+                    lod.materialBlockList[rendererIndex] = matBlock;
+                    lod.vertexCacheList[rendererIndex] = vertexCache;
+                }
+
+                for (int mrIndex = 0; mrIndex != lod.meshRenderer.Length; ++mrIndex)
+                {
+                    var mesh = lod.meshFilter[mrIndex].sharedMesh;
+                    if (mesh == null) continue;
+
+                    var render = lod.meshRenderer[mrIndex];
+                    int renderName = render.name.GetHashCode();
+                    int aliasName = alias != null ? alias.GetHashCode() : 0;
+                    var materials = render.sharedMaterials;
+                    var rendererIndex = lod.skinnedMeshRenderer.Length + mrIndex;
+
+                    AnimationInstancingPool.CreateMaterialBlockAndVertexCache(
+                        allBones, bindPose, textureData, bonePerVertex, mesh,
+                        render, renderName, aliasName, materials, out var vertexCache, out var matBlock);
+
+                    lod.materialBlockList[rendererIndex] = matBlock;
+                    lod.vertexCacheList[rendererIndex] = vertexCache;
+                }
+            }
+
+            UnityEngine.Profiling.Profiler.EndSample();
         }
 
         private void DisableDefaultRenderersAndAnimator(LodInfo[] lodInfoList)
@@ -224,7 +274,7 @@ namespace AnimationInstancing_v2
 
     public class VertexCache
     {
-        public int nameCode;
+        // public int nameCode;
         public Mesh mesh = null;
         public Dictionary<int, MaterialBlock> instanceBlockList;
         public Vector4[] weight;
