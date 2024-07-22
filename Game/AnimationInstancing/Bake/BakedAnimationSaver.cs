@@ -8,7 +8,7 @@ namespace AnimationInstancing_v2
     public class BakedAnimationSaver
     {
         public static void SaveAll(
-            InstanceAnimationData animationData,
+            AnimationData animationData,
             string savePath)
         {
             var asset = animationData;

@@ -11,7 +11,7 @@ namespace AnimationInstancing_v2
             GameObject prefab,
             List<string> selectedExtraBones,
             List<string> selectedAnims,
-            out InstanceAnimationData animationData)
+            out AnimationData animationData)
         {
             if (prefab == null)
             {
@@ -40,7 +40,7 @@ namespace AnimationInstancing_v2
             var animationTextureData = AnimationTextureBaker
                 .GenerateAnimationTextureData(animInfoList, animPoseDataList, boneList.Length);
 
-            animationData = ScriptableObject.CreateInstance<InstanceAnimationData>();
+            animationData = ScriptableObject.CreateInstance<AnimationData>();
             animationData.animInfoList = animInfoList;
             animationData.extraBoneInfo = extraBoneInfo;
             animationData.animationTextureData = animationTextureData;

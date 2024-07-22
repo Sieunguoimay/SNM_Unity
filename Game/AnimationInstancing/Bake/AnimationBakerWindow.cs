@@ -130,12 +130,12 @@ namespace AnimationInstancing_v2
                 else
                 {
                     var animator = prefab.GetComponentInChildren<Animator>();
-                    var smrs = prefab.GetComponentsInChildren<SkinnedMeshRenderer>();
+                    // var smrs = prefab.GetComponentsInChildren<SkinnedMeshRenderer>();
 
                     if (animator == null) status.Add("Missing Animator");
                     if (animator != null && animator.runtimeAnimatorController == null) status.Add("Missing AnimatorController");
-                    if (smrs.Length == 0) status.Add("Missing SkinnedMeshRenderer");
-                    if (smrs.Any(smr => smr.sharedMesh == null)) status.Add("Missing Mesh");
+                    // if (smrs.Length == 0) status.Add("Missing SkinnedMeshRenderer");
+                    // if (smrs.Any(smr => smr.sharedMesh == null)) status.Add("Missing Mesh");
                 }
 
                 SetStatusLabel(status.Count > 0 ? string.Join(", ", status) : "OK");

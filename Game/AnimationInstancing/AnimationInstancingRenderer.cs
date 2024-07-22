@@ -8,13 +8,18 @@ namespace AnimationInstancing_v2
 {
     public class AnimationInstancingRenderer : MonoBehaviour
     {
-        [SerializeField] private InstanceAnimationData animationData;
+        [SerializeField] private AnimationData animationData;
         [SerializeField] private int bonePerVertex = 2;
         [SerializeField] private ShadowCastingMode shadowCastingMode;
         [SerializeField] private bool receiveShadow;
+        [SerializeField] private AnimationInstancingAnimator instancingAnimator;
 
         private LodInfo[] _lodInfoList;
         public IReadOnlyList<LodInfo> LodInfoList => _lodInfoList;
+
+        private Transform _transform;
+        public Transform Transform => _transform ??= GetComponentInChildren<Animator>().transform;
+        public AnimationInstancingAnimator InstancingAnimator => instancingAnimator;
 
         private void Start()
         {
@@ -29,13 +34,15 @@ namespace AnimationInstancing_v2
 
             UpdateLodVertexCaches(_lodInfoList);
 
-            // AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
+            AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
+
+            instancingAnimator.SetAnimInfoList(animationData.animInfoList);
         }
 
-        // private void OnDestroy()
-        // {
-        //     AnimationInstancingRendererManager.Instance?.UnregisterAnimationInstancingRenderer(this);
-        // }
+        private void OnDestroy()
+        {
+            AnimationInstancingRendererManager.Instance?.UnregisterAnimationInstancingRenderer(this);
+        }
 
         private void UpdateLodVertexCaches(LodInfo[] lodInfoList)
         {
@@ -62,7 +69,7 @@ namespace AnimationInstancing_v2
 
         private void InitializeAnimation(LodInfo[] lodInfoList, int bonePerVertex)
         {
-            GetAllBones(lodInfoList, animationData.extraBoneInfo, gameObject,
+            GetAllBones(lodInfoList[0].skinnedMeshRenderer, animationData.extraBoneInfo, gameObject,
                 out var bones,
                 out var bindPose);
 
@@ -73,7 +80,6 @@ namespace AnimationInstancing_v2
                     animationData.animationTextureData,
                     bonePerVertex,
                     null);
-
         }
 
         public static void AddToVertexCachePool(
@@ -226,22 +232,27 @@ namespace AnimationInstancing_v2
             return radius;
         }
 
-
         public static void GetAllBones(
-            LodInfo[] lodInfoList,
+            SkinnedMeshRenderer[] skinnedMeshRenderers,
             ExtraBoneInfo extraBoneInfo,
             GameObject gameObject,
             out List<Transform> boneList,
             out List<Matrix4x4> bindPoseList)
         {
-            if (lodInfoList[0].skinnedMeshRenderer.Length == 0)
-            {
-                boneList = null;
-                bindPoseList = null;
-                return;
-            }
+            // if (skinnedMeshRenderers.Length == 0)
+            // {
+            //     boneList = null;
+            //     bindPoseList = null;
+            //     return;
+            // }
 
-            RuntimeHelper.MergeBone(lodInfoList[0].skinnedMeshRenderer, out boneList, out bindPoseList);
+            boneList = new List<Transform>();
+            bindPoseList = new List<Matrix4x4>();
+            
+            if (skinnedMeshRenderers.Length > 0)
+            {
+                RuntimeHelper.MergeBone(skinnedMeshRenderers, out boneList, out bindPoseList);
+            }
 
             if (extraBoneInfo != null)
             {
@@ -259,6 +270,55 @@ namespace AnimationInstancing_v2
                 }
             }
         }
+
+        [UnityEditor.CustomEditor(typeof(AnimationInstancingRenderer))]
+        private class _Editor : UnityEditor.Editor
+        {
+            public override void OnInspectorGUI()
+            {
+                DrawDefaultInspector();
+                var renderer = target as AnimationInstancingRenderer;
+                if (renderer.LodInfoList == null) return;
+                foreach (var lod in renderer.LodInfoList)
+                {
+                    UnityEditor.EditorGUILayout.LabelField($"VertexCacheList:");
+                    for (int i = 0; i < lod.vertexCacheList.Length; i++)
+                    {
+                        var vc = lod.vertexCacheList[i];
+                        UnityEditor.EditorGUILayout.LabelField($"VertexCache {i} [{vc.GetHashCode()}]:");
+                        UnityEditor.EditorGUILayout.ObjectField("->mesh", vc.mesh, typeof(Mesh), true);
+                        foreach (var m in vc.materials)
+                        {
+                            UnityEditor.EditorGUILayout.ObjectField("->material", m, typeof(Material), true);
+                        }
+                        for (int i1 = 0; i1 < vc.bonePose.Length; i1++)
+                        {
+                            var m = vc.bonePose[i1];
+                            UnityEditor.EditorGUILayout.ObjectField("->bonePose", m, typeof(Transform), true);
+                        }
+                        UnityEditor.EditorGUILayout.LabelField($"->bone weights ({vc.weight.Length}) {string.Join(",", vc.weight)}");
+                        UnityEditor.EditorGUILayout.LabelField($"->bone indices ({vc.boneIndex.Length}) {string.Join(",", vc.boneIndex)}");
+                        UnityEditor.EditorGUILayout.LabelField($"->instanceBlockList: {string.Join(",", vc.instanceBlockList.Select(b => $"({b.Key}={b.Value.GetHashCode()})"))}");
+                    }
+                    UnityEditor.EditorGUILayout.LabelField($"MaterialBlockList:");
+                    for (int i = 0; i < lod.materialBlockList.Length; i++)
+                    {
+                        var block = lod.materialBlockList[i];
+                        UnityEditor.EditorGUILayout.LabelField($"Block {i}-{block.GetHashCode()}:");
+                        UnityEditor.EditorGUILayout.LabelField($"->runtimePackageIndex: {string.Join(",", block.runtimePackageIndex)}");
+                        UnityEditor.EditorGUILayout.LabelField($"->packageLists: {block.packageLists.Length}");
+                        foreach (var pl in block.packageLists)
+                        {
+                            UnityEditor.EditorGUILayout.LabelField($"->->packageList: {pl.Count}");
+                            foreach (var p in pl)
+                            {
+                                UnityEditor.EditorGUILayout.LabelField($"->->->package: textureIndex={p.animationTextureIndex} instancingCount={p.instancingCount} subMeshCount={p.subMeshCount}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public class LodInfo
@@ -269,49 +329,5 @@ namespace AnimationInstancing_v2
         public MeshFilter[] meshFilter;
         public VertexCache[] vertexCacheList;
         public MaterialBlock[] materialBlockList;
-    }
-
-
-    public class VertexCache
-    {
-        // public int nameCode;
-        public Mesh mesh = null;
-        public Dictionary<int, MaterialBlock> instanceBlockList;
-        public Vector4[] weight;
-        public Vector4[] boneIndex;
-        public Material[] materials = null;
-        public Matrix4x4[] bindPose;
-        public Transform[] bonePose;
-        //public int boneTextureIndex = -1;
-
-        // these are temporary, should be moved to InstancingPackage
-        public ShadowCastingMode shadowcastingMode;
-        public bool receiveShadow;
-        public int layer;
-    }
-    public class MaterialBlock
-    {
-        public InstanceData instanceData;
-        public int[] runtimePackageIndex;
-        // array[index base on texture][package index]
-        public List<InstancingPackage>[] packageList;
-    }
-
-    public class InstanceData
-    {
-        public List<Matrix4x4[]>[] worldMatrix;
-        public List<float[]>[] frameIndex;
-        public List<float[]>[] preFrameIndex;
-        public List<float[]>[] transitionProgress;
-    }
-
-    public class InstancingPackage
-    {
-        public Material[] material;
-        public int animationTextureIndex = 0;
-        public int subMeshCount = 1;
-        public int instancingCount;
-        // public int size;
-        public MaterialPropertyBlock propertyBlock;
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace AnimationInstancing_v2
 {
     [PreferBinarySerialization]
-    public class InstanceAnimationData : ScriptableObject
+    public class AnimationData : ScriptableObject
     {
         public List<AnimationInfo> animInfoList;
         public ExtraBoneInfo extraBoneInfo;
