@@ -20,6 +20,7 @@ namespace AnimationInstancing_v2
             }
 
             var go = Object.Instantiate(prefab);
+            go.name = prefab.name;
             go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
 
             UnityEditor.Selection.activeGameObject = go;
@@ -42,7 +43,7 @@ namespace AnimationInstancing_v2
 
             animationData = ScriptableObject.CreateInstance<AnimationData>();
             animationData.animInfoList = animInfoList;
-            animationData.extraBoneInfo = extraBoneInfo;
+            animationData.boneData = extraBoneInfo;
             animationData.animationTextureData = animationTextureData;
 
             Object.DestroyImmediate(go);
@@ -51,23 +52,40 @@ namespace AnimationInstancing_v2
         private static void CreateBoneBakeInfos(
             GameObject prefab, GameObject go,
             List<string> selectedExtraBones,
-            out Transform[] boneList,
-            out Matrix4x4[] bindPoseList,
-            out ExtraBoneInfo extraBoneInfo)
+            out Transform[] allBones,
+            out Matrix4x4[] allBindPoses,
+            out BoneData extraBoneInfo)
         {
             var skinnedMeshRenderers = go.GetComponentsInChildren<SkinnedMeshRenderer>();
 
             RuntimeHelper.MergeBone(skinnedMeshRenderers, out var mainBones, out var mainBindPoses);
 
-            GetExtraBones(prefab, go, selectedExtraBones, out var extraBones, out var extraBindPoses);
+            GetExtraBones(go, prefab, selectedExtraBones, out var extraBones, out var extraBindPoses);
 
-            boneList = mainBones.Concat(extraBones).ToArray();
-            bindPoseList = mainBindPoses.Concat(extraBindPoses).ToArray();
-            extraBoneInfo = new ExtraBoneInfo
+            allBones = mainBones.Concat(extraBones).ToArray();
+            allBindPoses = mainBindPoses.Concat(extraBindPoses).ToArray();
+
+            extraBoneInfo = new BoneData
             {
-                extraBoneNames = extraBones.Select(b => b.name).ToArray(),
-                extraBindPoseMatrices = extraBindPoses.ToArray()
+                skinnedMeshBones = mainBones.Select(b => string.Join("/", GetExtraBonePathSegments(go.transform, b))).ToArray(),
+                extraBones = extraBones.Select(b => string.Join("/", GetExtraBonePathSegments(go.transform, b))).ToArray(),
+                extraBindPoses = extraBindPoses.ToArray()
             };
+        }
+
+        private static IEnumerable<string> GetExtraBonePathSegments(Transform root, Transform bone)
+        {
+            if (bone != null)
+            {
+                if (bone != root)
+                {
+                    foreach (var s in GetExtraBonePathSegments(root, bone.parent))
+                    {
+                        yield return s;
+                    }
+                }
+                yield return bone.name;
+            }
         }
 
         private static void CreateAnimationBakeInfos(GameObject go, List<string> selectedAnims,
@@ -114,10 +132,10 @@ namespace AnimationInstancing_v2
             GameObject generatedObject,
             GameObject prefab,
             List<string> selectedExtraBones,
-            out List<Transform> listTransform, out List<Matrix4x4> bindPose)
+            out List<Transform> extraBones, out List<Matrix4x4> extraBindPose)
         {
-            bindPose = new List<Matrix4x4>(150);
-            listTransform = new List<Transform>(150);
+            extraBindPose = new List<Matrix4x4>(150);
+            extraBones = new List<Transform>(150);
 
             var trans = prefab.GetComponentsInChildren<Transform>();
             var bakedTrans = generatedObject.GetComponentsInChildren<Transform>();
@@ -129,8 +147,8 @@ namespace AnimationInstancing_v2
                     var tran = trans[i];
                     if (tran.name == obj)
                     {
-                        bindPose.Add(tran.localToWorldMatrix);
-                        listTransform.Add(bakedTrans[i]);
+                        extraBindPose.Add(tran.localToWorldMatrix);
+                        extraBones.Add(bakedTrans[i]);
                     }
                 }
             }

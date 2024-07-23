@@ -7,60 +7,56 @@ namespace AnimationInstancing_v2
     public class AnimationInstancingPool
     {
         public static readonly int instancingPackageSize = 200;
-        public static readonly Dictionary<int, VertexCache> vertexCachePool = new();
+        public static readonly Dictionary<int, VertexCache> VertexCachePool = new();
 
-        public static void CreateMaterialBlockAndVertexCache(
+        public static VertexCache CreateMaterialBlockAndVertexCache(
             Transform[] allBones, Matrix4x4[] bindPose,
             AnimationTextureData textureData, int bonePerVertex,
-            Mesh sharedMesh, Renderer render, int renderName, int aliasName,
-            Material[] sharedMaterials,
-            out VertexCache vertexCache, out MaterialBlock matBlock)
+            Mesh sharedMesh, Renderer render, int key,
+            Material[] sharedMaterials)
         {
-            int identify = GetIdentify(sharedMaterials);
-            var textureCount = textureData != null ? textureData.bakedBoneTextures.Length : 1;
-
-            if (vertexCachePool.TryGetValue(renderName + aliasName, out vertexCache))
-            {
-                if (!vertexCache.instanceBlockList.TryGetValue(identify, out matBlock))
-                {
-                    matBlock = CreateMaterialBlock(textureCount);
-
-                    for (int texIndex = 0; texIndex != textureCount; ++texIndex)
-                    {
-                        ExtendMaterialBlock(matBlock, vertexCache, 1, texIndex);
-                    }
-
-                    vertexCache.instanceBlockList.Add(identify, matBlock);
-                }
-            }
-            else
+            if (!VertexCachePool.TryGetValue(key, out var vertexCache))
             {
                 DoStuffsWithBonesAndMesh(allBones, bindPose, sharedMesh, render, bonePerVertex,
-                    out Mesh mesh, out Vector4[] newBoneWeights, out Vector4[] newBoneIndices);
+                    out Mesh mesh, 
+                    out Vector4[] newBoneWeights, 
+                    out Vector4[] newBoneIndices);
+                
                 AddBoneWeightsAndIndicesToMesh(mesh, newBoneWeights, newBoneIndices);
-
-                matBlock = CreateMaterialBlock(textureCount);
 
                 vertexCache = new VertexCache
                 {
                     mesh = mesh,
                     weight = newBoneWeights,
                     boneIndex = newBoneIndices,
-                    instanceBlockList = new Dictionary<int, MaterialBlock>() { { identify, matBlock } },
+                    instanceBlockList = new Dictionary<int, MaterialBlock>(),
                     bindPose = bindPose,
                     bonePose = allBones,
                     materials = sharedMaterials,
                     textureData = textureData,
                 };
 
+                VertexCachePool[key] = vertexCache;
+            }
+
+            return vertexCache;
+        }
+
+        public static MaterialBlock GetOrCreateMaterialBlock(VertexCache vertexCache, int identify, int textureCount)
+        {
+            if (!vertexCache.instanceBlockList.TryGetValue(identify, out MaterialBlock matBlock))
+            {
+                matBlock = CreateMaterialBlock(textureCount);
+
                 for (int texIndex = 0; texIndex != textureCount; ++texIndex)
                 {
                     ExtendMaterialBlock(matBlock, vertexCache, 1, texIndex);
-                    // ExtendMaterialBlock(matBlock, vertexCache, 0, texIndex);
                 }
 
-                vertexCachePool[renderName + aliasName] = vertexCache;
+                vertexCache.instanceBlockList.Add(identify, matBlock);
             }
+
+            return matBlock;
         }
 
         private static void DoStuffsWithBonesAndMesh(
@@ -123,6 +119,24 @@ namespace AnimationInstancing_v2
             return boneIndex;
         }
 
+        private static Mesh DuplicateMeshAndTransformToBoneLocal(Mesh sharedMesh, Matrix4x4 boneMatrix)
+        {
+            var mesh = Object.Instantiate(sharedMesh);
+            var vertices = mesh.vertices;
+            var inversedMat = boneMatrix.inverse;
+
+            var offset = (Vector3)inversedMat.GetColumn(3);
+            var q = RuntimeHelper.QuaternionFromMatrix(inversedMat);
+
+            for (int k = 0; k != mesh.vertexCount; ++k)
+            {
+                vertices[k] = q * vertices[k];
+                vertices[k] = vertices[k] + offset;
+            }
+            mesh.vertices = vertices;
+            return mesh;
+        }
+
         private static MaterialBlock CreateMaterialBlock(int arraySize)
         {
             var packageList = new List<InstancingPackage>[arraySize];
@@ -145,23 +159,6 @@ namespace AnimationInstancing_v2
             };
         }
 
-        // private static void AddToMaterialBlock(
-        //     MaterialBlock block,
-        //     AnimationTextureData textureData,
-        //     Material[] materials,
-        //     int subMeshCount, int instancingCount)
-        // {
-        //     var textureCount = textureData != null ? textureData.bakedBoneTextures.Length : 1;
-        //     for (int textureIndex = 0; textureIndex != textureCount; ++textureIndex)
-        //     {
-        //         AddToMaterialBlock(block, textureData, materials, subMeshCount, instancingCount, textureIndex);
-        //     }
-        // }
-
-        // public static void ExtendMaterialBlock(
-        //     MaterialBlock block, VertexCache vertexCache,
-        //     AnimationTextureData textureData, Material[] materials,
-        //     int subMeshCount, int instancingCount, int textureIndex)
         public static void ExtendMaterialBlock(
             MaterialBlock block, VertexCache vertexCache,
             int instancingCount, int textureIndex)
@@ -171,8 +168,10 @@ namespace AnimationInstancing_v2
             block.instanceData.preFrameIndex[textureIndex] = new() { new float[instancingPackageSize] };
             block.instanceData.transitionProgress[textureIndex] = new() { new float[instancingPackageSize] };
 
-            var materials = DuplicateMaterials(vertexCache.materials,
-                vertexCache.mesh.subMeshCount, vertexCache.textureData, textureIndex);
+            var materials = DuplicateMaterials(
+                vertexCache.materials,
+                vertexCache.mesh.subMeshCount, 
+                vertexCache.textureData, textureIndex);
 
             block.packageLists[textureIndex].Add(
                 new InstancingPackage()
@@ -192,34 +191,34 @@ namespace AnimationInstancing_v2
         {
             var copyMaterials = new Material[count];
 
-            for (int subMeshIndex = 0; subMeshIndex != count; ++subMeshIndex)
+            for (int i = 0; i != count; ++i)
             {
-                copyMaterials[subMeshIndex] = new Material(materials[subMeshIndex]);
+                copyMaterials[i] = new Material(materials[i]);
 #if UNITY_5_6_OR_NEWER
-                copyMaterials[subMeshIndex].enableInstancing = true;
+                copyMaterials[i].enableInstancing = true;
 #endif
                 //if (useInstancing)
                 // copyMaterials[subMeshIndex].EnableKeyword("INSTANCING_ON");
                 //else
                 //copyMaterials[i].DisableKeyword("INSTANCING_ON");
 
-                copyMaterials[subMeshIndex].EnableKeyword("USE_CONSTANT_BUFFER");
-                copyMaterials[subMeshIndex].DisableKeyword("USE_COMPUTE_BUFFER");
+                copyMaterials[i].EnableKeyword("USE_CONSTANT_BUFFER");
+                copyMaterials[i].DisableKeyword("USE_COMPUTE_BUFFER");
 
                 if (textureData != null)
                 {
-                    copyMaterials[subMeshIndex].SetTexture("_boneTexture", textureData.bakedBoneTextures[textureIndex]);
-                    copyMaterials[subMeshIndex].SetInt("_boneTextureWidth", textureData.bakedBoneTextures[textureIndex].width);
-                    copyMaterials[subMeshIndex].SetInt("_boneTextureHeight", textureData.bakedBoneTextures[textureIndex].height);
-                    copyMaterials[subMeshIndex].SetInt("_boneTextureBlockWidth", textureData.textureBlockWidth);
-                    copyMaterials[subMeshIndex].SetInt("_boneTextureBlockHeight", textureData.textureBlockHeight);
+                    copyMaterials[i].SetTexture("_boneTexture", textureData.bakedBoneTextures[textureIndex]);
+                    copyMaterials[i].SetInt("_boneTextureWidth", textureData.bakedBoneTextures[textureIndex].width);
+                    copyMaterials[i].SetInt("_boneTextureHeight", textureData.bakedBoneTextures[textureIndex].height);
+                    copyMaterials[i].SetInt("_boneTextureBlockWidth", textureData.textureBlockWidth);
+                    copyMaterials[i].SetInt("_boneTextureBlockHeight", textureData.textureBlockHeight);
                 }
             }
 
             return copyMaterials;
         }
 
-        private static int GetIdentify(Material[] materials)
+        public static int GetIdentify(Material[] materials)
         {
             int hash = 0;
             for (int i = 0; i != materials.Length; ++i)
@@ -336,8 +335,8 @@ namespace AnimationInstancing_v2
 
         public static void AddBoneWeightsAndIndicesToMesh(Mesh mesh, Vector4[] boneWeights, Vector4[] boneIndices)
         {
-            var colors = new Color[boneWeights.Length];
-            for (int i = 0; i != colors.Length; ++i)
+            var colors = new Color[mesh.vertexCount];
+            for (int i = 0; i != mesh.vertexCount; ++i)
             {
                 colors[i].r = boneWeights[i].x;
                 colors[i].g = boneWeights[i].y;
@@ -349,23 +348,6 @@ namespace AnimationInstancing_v2
             mesh.UploadMeshData(false);
         }
 
-        private static Mesh DuplicateMeshAndTransformToBoneLocal(Mesh sharedMesh, Matrix4x4 boneMatrix)
-        {
-            var mesh = Object.Instantiate(sharedMesh);
-            var vertices = mesh.vertices;
-            var inversedMat = boneMatrix.inverse;
-
-            var offset = (Vector3)inversedMat.GetColumn(3);
-            var q = RuntimeHelper.QuaternionFromMatrix(inversedMat);
-
-            for (int k = 0; k != mesh.vertexCount; ++k)
-            {
-                vertices[k] = q * vertices[k];
-                vertices[k] = vertices[k] + offset;
-            }
-            mesh.vertices = vertices;
-            return mesh;
-        }
     }
 
     public class VertexCache

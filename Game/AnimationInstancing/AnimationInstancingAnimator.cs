@@ -22,6 +22,7 @@ namespace AnimationInstancing_v2
         public float PreFrameIndex => _preAniIndex >= 0 ? _animInfoList[_preAniIndex].animationIndex + _preAniFrame : -1f;
         public bool IsPlaying => _aniIndex >= 0;
         public float TransitionProgress => _transitionProgress;
+        public int AniTextureIndex => _aniTextureIndex;
 
         public void SetAnimInfoList(IReadOnlyList<AnimationInfo> animInfoList)
         {

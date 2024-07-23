@@ -7,7 +7,7 @@ namespace AnimationInstancing_v2
     public class AnimationData : ScriptableObject
     {
         public List<AnimationInfo> animInfoList;
-        public ExtraBoneInfo extraBoneInfo;
+        public BoneData boneData;
         public AnimationTextureData animationTextureData;
     }
 
@@ -20,10 +20,11 @@ namespace AnimationInstancing_v2
     }
 
     [System.Serializable]
-    public class ExtraBoneInfo
+    public class BoneData
     {
-        public string[] extraBoneNames;
-        public Matrix4x4[] extraBindPoseMatrices;
+        public string[] skinnedMeshBones; //skinned mesh already stores bindpose data
+        public string[] extraBones;
+        public Matrix4x4[] extraBindPoses;
     }
 
     [System.Serializable]

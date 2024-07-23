@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.Rendering;
 
 namespace AnimationInstancing_v2
@@ -15,7 +16,8 @@ namespace AnimationInstancing_v2
         [SerializeField] private AnimationInstancingAnimator instancingAnimator;
 
         private LodInfo[] _lodInfoList;
-        public IReadOnlyList<LodInfo> LodInfoList => _lodInfoList;
+        public IReadOnlyList<VertexCache> VertexCacheList => _lodInfoList[0].vertexCacheList;
+        public IReadOnlyList<MaterialBlock> MaterialBlockList => _lodInfoList[0].materialBlockList;
 
         private Transform _transform;
         public Transform Transform => _transform ??= GetComponentInChildren<Animator>().transform;
@@ -30,7 +32,18 @@ namespace AnimationInstancing_v2
             //Todo: CullingGroup
             var radius = CalcBoundingSphere(_lodInfoList[0]);
 
-            InitializeAnimation(_lodInfoList, GetBonePerVertex());
+
+            GetAllBones(animationData.boneData, Transform,
+                out var bones,
+                out var bindPose);
+
+            AddToVertexCachePool(
+                    _lodInfoList,
+                    bones?.ToArray(),
+                    bindPose?.ToArray(),
+                    animationData.animationTextureData,
+                    GetBonePerVertex(),
+                    null);
 
             UpdateLodVertexCaches(_lodInfoList);
 
@@ -67,22 +80,7 @@ namespace AnimationInstancing_v2
             };
         }
 
-        private void InitializeAnimation(LodInfo[] lodInfoList, int bonePerVertex)
-        {
-            GetAllBones(lodInfoList[0].skinnedMeshRenderer, animationData.extraBoneInfo, gameObject,
-                out var bones,
-                out var bindPose);
-
-            AddToVertexCachePool(
-                    lodInfoList,
-                    bones?.ToArray(),
-                    bindPose?.ToArray(),
-                    animationData.animationTextureData,
-                    bonePerVertex,
-                    null);
-        }
-
-        public static void AddToVertexCachePool(
+        private static void AddToVertexCachePool(
             LodInfo[] lodInfoList,
             Transform[] allBones,
             Matrix4x4[] bindPose,
@@ -90,43 +88,49 @@ namespace AnimationInstancing_v2
             int bonePerVertex,
             string alias)
         {
+            var textureCount = textureData != null ? textureData.bakedBoneTextures.Length : 1;
+
             UnityEngine.Profiling.Profiler.BeginSample("AddMeshVertex()");
             for (int lodIndex = 0; lodIndex != lodInfoList.Length; ++lodIndex)
             {
                 var lod = lodInfoList[lodIndex];
-                for (int smrIndex = 0; smrIndex != lod.skinnedMeshRenderer.Length; ++smrIndex)
+                for (int smrIndex = 0; smrIndex != lod.skinnedMeshRenderers.Length; ++smrIndex)
                 {
-                    var mesh = lod.skinnedMeshRenderer[smrIndex].sharedMesh;
+                    var mesh = lod.skinnedMeshRenderers[smrIndex].sharedMesh;
                     if (mesh == null) continue;
 
-                    var render = lod.skinnedMeshRenderer[smrIndex];
-                    int renderName = lod.skinnedMeshRenderer[smrIndex].name.GetHashCode();
+                    var render = lod.skinnedMeshRenderers[smrIndex];
+                    int renderName = lod.skinnedMeshRenderers[smrIndex].name.GetHashCode();
                     int aliasName = 0;
-                    var materials = lod.skinnedMeshRenderer[smrIndex].sharedMaterials;
+                    var materials = lod.skinnedMeshRenderers[smrIndex].sharedMaterials;
                     var rendererIndex = smrIndex;
 
-                    AnimationInstancingPool.CreateMaterialBlockAndVertexCache(
-                        allBones, bindPose, textureData, bonePerVertex, mesh, render,
-                        renderName, aliasName, materials, out var vertexCache, out var matBlock);
+                    var vertexCache = AnimationInstancingPool.CreateMaterialBlockAndVertexCache(
+                                allBones, bindPose, textureData, bonePerVertex, mesh,
+                                render, renderName + aliasName, materials);
+                    int identify = AnimationInstancingPool.GetIdentify(materials);
+                    var matBlock = AnimationInstancingPool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
 
                     lod.materialBlockList[rendererIndex] = matBlock;
                     lod.vertexCacheList[rendererIndex] = vertexCache;
                 }
 
-                for (int mrIndex = 0; mrIndex != lod.meshRenderer.Length; ++mrIndex)
+                for (int mrIndex = 0; mrIndex != lod.meshRenderers.Length; ++mrIndex)
                 {
-                    var mesh = lod.meshFilter[mrIndex].sharedMesh;
+                    var mesh = lod.meshFilters[mrIndex].sharedMesh;
                     if (mesh == null) continue;
 
-                    var render = lod.meshRenderer[mrIndex];
+                    var render = lod.meshRenderers[mrIndex];
                     int renderName = render.name.GetHashCode();
                     int aliasName = alias != null ? alias.GetHashCode() : 0;
                     var materials = render.sharedMaterials;
-                    var rendererIndex = lod.skinnedMeshRenderer.Length + mrIndex;
+                    var rendererIndex = lod.skinnedMeshRenderers.Length + mrIndex;
 
-                    AnimationInstancingPool.CreateMaterialBlockAndVertexCache(
+                    var vertexCache = AnimationInstancingPool.CreateMaterialBlockAndVertexCache(
                         allBones, bindPose, textureData, bonePerVertex, mesh,
-                        render, renderName, aliasName, materials, out var vertexCache, out var matBlock);
+                        render, renderName + aliasName, materials);
+                    int identify = AnimationInstancingPool.GetIdentify(materials);
+                    var matBlock = AnimationInstancingPool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
 
                     lod.materialBlockList[rendererIndex] = matBlock;
                     lod.vertexCacheList[rendererIndex] = vertexCache;
@@ -140,11 +144,11 @@ namespace AnimationInstancing_v2
         {
             foreach (var lod in lodInfoList)
             {
-                foreach (var v in lod.meshRenderer)
+                foreach (var v in lod.meshRenderers)
                 {
                     v.enabled = false;
                 }
-                foreach (var v1 in lod.skinnedMeshRenderer)
+                foreach (var v1 in lod.skinnedMeshRenderers)
                 {
                     v1.enabled = false;
                 }
@@ -164,13 +168,12 @@ namespace AnimationInstancing_v2
                 var lods = lod.GetLODs();
                 for (int i = 0; i != lods.Length; ++i)
                 {
-                    if (lods[i].renderers == null)
-                    {
-                        continue;
-                    }
+                    if (lods[i].renderers == null) continue;
+
                     var n = lods[i].renderers.Length;
                     var listSkinnedMeshRenderer = new List<SkinnedMeshRenderer>();
                     var listMeshRenderer = new List<MeshRenderer>();
+
                     foreach (var render in lods[i].renderers)
                     {
                         if (render is SkinnedMeshRenderer smr)
@@ -179,16 +182,15 @@ namespace AnimationInstancing_v2
                             listMeshRenderer.Add(mr);
                     }
 
-                    var info = new LodInfo
+                    lodInfo[i] = new LodInfo
                     {
                         lodLevel = i,
-                        skinnedMeshRenderer = listSkinnedMeshRenderer.ToArray(),
-                        meshRenderer = listMeshRenderer.ToArray(),
-                        meshFilter = listMeshRenderer.Select(mr => mr.GetComponent<MeshFilter>()).ToArray(),
+                        skinnedMeshRenderers = listSkinnedMeshRenderer.ToArray(),
+                        meshRenderers = listMeshRenderer.ToArray(),
+                        meshFilters = listMeshRenderer.Select(mr => mr.GetComponent<MeshFilter>()).ToArray(),
                         vertexCacheList = new VertexCache[n],
                         materialBlockList = new MaterialBlock[n],
                     };
-                    lodInfo[i] = info;
                 }
             }
             else
@@ -197,16 +199,16 @@ namespace AnimationInstancing_v2
                 var mrs = go.GetComponentsInChildren<MeshRenderer>();
                 var mfs = go.GetComponentsInChildren<MeshFilter>();
                 var n = smrs.Length + mrs.Length;
-                var info = new LodInfo
-                {
-                    lodLevel = 0,
-                    skinnedMeshRenderer = smrs,
-                    meshRenderer = mrs,
-                    meshFilter = mfs,
-                    vertexCacheList = new VertexCache[n],
-                    materialBlockList = new MaterialBlock[n]
+                lodInfo = new LodInfo[1] {
+                    new() {
+                        lodLevel = 0,
+                        skinnedMeshRenderers = smrs,
+                        meshRenderers = mrs,
+                        meshFilters = mfs,
+                        vertexCacheList = new VertexCache[n],
+                        materialBlockList = new MaterialBlock[n]
+                    }
                 };
-                lodInfo = new LodInfo[1] { info };
             }
             UnityEngine.Profiling.Profiler.EndSample();
             return lodInfo;
@@ -216,14 +218,14 @@ namespace AnimationInstancing_v2
         {
             UnityEngine.Profiling.Profiler.BeginSample("CalcBoundingSphere()");
             var bound = new Bounds(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            for (int i = 0; i != info.meshRenderer.Length; ++i)
+            for (int i = 0; i != info.meshRenderers.Length; ++i)
             {
-                var meshRenderer = info.meshRenderer[i];
+                var meshRenderer = info.meshRenderers[i];
                 bound.Encapsulate(meshRenderer.bounds);
             }
-            for (int i = 0; i != info.skinnedMeshRenderer.Length; ++i)
+            for (int i = 0; i != info.skinnedMeshRenderers.Length; ++i)
             {
-                var skinnedMeshRenderer = info.skinnedMeshRenderer[i];
+                var skinnedMeshRenderer = info.skinnedMeshRenderers[i];
                 bound.Encapsulate(skinnedMeshRenderer.bounds);
             }
             var radius = bound.size.x > bound.size.y ? bound.size.x : bound.size.y;
@@ -233,42 +235,52 @@ namespace AnimationInstancing_v2
         }
 
         public static void GetAllBones(
-            SkinnedMeshRenderer[] skinnedMeshRenderers,
-            ExtraBoneInfo extraBoneInfo,
-            GameObject gameObject,
+            BoneData extraBoneInfo,
+            Transform root,
             out List<Transform> boneList,
             out List<Matrix4x4> bindPoseList)
         {
-            // if (skinnedMeshRenderers.Length == 0)
-            // {
-            //     boneList = null;
-            //     bindPoseList = null;
-            //     return;
-            // }
-
             boneList = new List<Transform>();
             bindPoseList = new List<Matrix4x4>();
-            
-            if (skinnedMeshRenderers.Length > 0)
-            {
-                RuntimeHelper.MergeBone(skinnedMeshRenderers, out boneList, out bindPoseList);
-            }
 
             if (extraBoneInfo != null)
             {
-                var transforms = gameObject.GetComponentsInChildren<Transform>();
-                for (int i = 0; i != extraBoneInfo.extraBoneNames.Length; ++i)
+                foreach (string path in extraBoneInfo.extraBones)
                 {
-                    for (int j = 0; j != transforms.Length; ++j)
+                    var found = GetTransformAtPath(root, path.Split("/"));
+                    if (found != null)
                     {
-                        if (extraBoneInfo.extraBoneNames[i] == transforms[j].name)
-                        {
-                            boneList.Add(transforms[j]);
-                        }
+                        boneList.Add(found);
                     }
-                    bindPoseList.Add(extraBoneInfo.extraBindPoseMatrices[i]);
                 }
+
+                bindPoseList.AddRange(extraBoneInfo.extraBindPoses);
+
+                Debug.Assert(bindPoseList.Count == boneList.Count, $"GetAllBones: Bone data lists size error bindPoseList={bindPoseList.Count} boneList={boneList.Count}");
             }
+        }
+
+        private static Transform GetTransformAtPath(Transform root, string[] pathSegments)
+        {
+            if (pathSegments.Length == 0) return null;
+            if (root.name != pathSegments[0]) return null;
+
+            var current = root;
+            foreach (var s in pathSegments.Skip(1))
+            {
+                var found = false;
+                foreach (Transform c in current)
+                {
+                    if (c.name == s)
+                    {
+                        current = c;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) return null;
+            }
+            return current;
         }
 
         [UnityEditor.CustomEditor(typeof(AnimationInstancingRenderer))]
@@ -278,8 +290,8 @@ namespace AnimationInstancing_v2
             {
                 DrawDefaultInspector();
                 var renderer = target as AnimationInstancingRenderer;
-                if (renderer.LodInfoList == null) return;
-                foreach (var lod in renderer.LodInfoList)
+                if (renderer._lodInfoList == null) return;
+                foreach (var lod in renderer._lodInfoList)
                 {
                     UnityEditor.EditorGUILayout.LabelField($"VertexCacheList:");
                     for (int i = 0; i < lod.vertexCacheList.Length; i++)
@@ -319,15 +331,16 @@ namespace AnimationInstancing_v2
                 }
             }
         }
+
+        private class LodInfo
+        {
+            public int lodLevel;
+            public SkinnedMeshRenderer[] skinnedMeshRenderers;
+            public MeshRenderer[] meshRenderers;
+            public MeshFilter[] meshFilters;
+            public VertexCache[] vertexCacheList;
+            public MaterialBlock[] materialBlockList;
+        }
     }
 
-    public class LodInfo
-    {
-        public int lodLevel;
-        public SkinnedMeshRenderer[] skinnedMeshRenderer;
-        public MeshRenderer[] meshRenderer;
-        public MeshFilter[] meshFilter;
-        public VertexCache[] vertexCacheList;
-        public MaterialBlock[] materialBlockList;
-    }
 }

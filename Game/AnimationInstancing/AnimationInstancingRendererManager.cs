@@ -45,7 +45,7 @@ namespace AnimationInstancing_v2
             // Vector3 cameraPosition = cameraTransform.position;
             for (int i = 0; i != instancingRenderers.Count; ++i)
             {
-                var instance = instancingRenderers[i];
+                var instanceRenderer = instancingRenderers[i];
                 var instanceAnimator = instancingRenderers[i].InstancingAnimator;
 
                 if (!instanceAnimator.IsPlaying)// && instance.parentInstance == null)
@@ -65,17 +65,18 @@ namespace AnimationInstancing_v2
                 // instance.UpdateLod(cameraPosition);
 
                 // AnimationInstancing.LodInfo lod = instance.lodInfo[instance.lodLevel];
-                var lod = instance.LodInfoList[0];
+                var vertexCacheList = instanceRenderer.VertexCacheList;
+                var materialBlockList = instanceRenderer.MaterialBlockList;
+                int aniTextureIndex = instanceAnimator.AniTextureIndex;
 
-                int aniTextureIndex = 0;
                 // if (instance.parentInstance != null)
                 //     aniTextureIndex = instance.parentInstance.aniTextureIndex;
                 // else
                 // aniTextureIndex = instance.aniTextureIndex;
 
-                for (int j = 0; j != lod.vertexCacheList.Length; ++j)
+                for (int j = 0; j != vertexCacheList.Count; ++j)
                 {
-                    var block = lod.materialBlockList[j];
+                    var block = materialBlockList[j];
                     Debug.Assert(block != null);
 
                     var packageList = block.packageLists[aniTextureIndex];
@@ -93,8 +94,7 @@ namespace AnimationInstancing_v2
 
                         if (packageIndex >= packageList.Count)
                         {
-                            var cache = lod.vertexCacheList[j];
-                            AnimationInstancingPool.ExtendMaterialBlock(block, cache, 1, aniTextureIndex);
+                            AnimationInstancingPool.ExtendMaterialBlock(block, vertexCacheList[j], 1, aniTextureIndex);
                         }
                         else
                         {
@@ -133,7 +133,7 @@ namespace AnimationInstancing_v2
                         // }
 
                         instanceData.worldMatrix[aniTextureIndex][packageIndex][instanceIndex]
-                            = instance.Transform.localToWorldMatrix;
+                            = instanceRenderer.Transform.localToWorldMatrix;
                         instanceData.frameIndex[aniTextureIndex][packageIndex][instanceIndex]
                             = instanceAnimator.FrameIndex;
                         instanceData.preFrameIndex[aniTextureIndex][packageIndex][instanceIndex]
@@ -147,7 +147,7 @@ namespace AnimationInstancing_v2
 
         private void Render()
         {
-            foreach (var obj in AnimationInstancingPool.vertexCachePool)
+            foreach (var obj in AnimationInstancingPool.VertexCachePool)
             {
                 var vertexCache = obj.Value;
                 foreach (var block in vertexCache.instanceBlockList)
@@ -231,10 +231,10 @@ namespace AnimationInstancing_v2
             public override void OnInspectorGUI()
             {
                 DrawDefaultInspector();
-                
+
                 var mng = target as AnimationInstancingRendererManager;
 
-                foreach (var vc in AnimationInstancingPool.vertexCachePool)
+                foreach (var vc in AnimationInstancingPool.VertexCachePool)
                 {
                     UnityEditor.EditorGUILayout.LabelField($"VertexCache {vc.Key} [{vc.Value.GetHashCode()}]:");
                 }
