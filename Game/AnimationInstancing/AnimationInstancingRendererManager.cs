@@ -34,13 +34,24 @@ namespace AnimationInstancing_v2
             _destroyed = true;
         }
 
+
         private void Update()
         {
             ApplyBoneMatrix();
             Render();
         }
 
-        void ApplyBoneMatrix()
+        public void RegisterAnimationInstancingRenderer(AnimationInstancingRenderer renderer)
+        {
+            instancingRenderers.Add(renderer);
+        }
+
+        public void UnregisterAnimationInstancingRenderer(AnimationInstancingRenderer renderer)
+        {
+            instancingRenderers.Add(renderer);
+        }
+
+        private void ApplyBoneMatrix()
         {
             // Vector3 cameraPosition = cameraTransform.position;
             for (int i = 0; i != instancingRenderers.Count; ++i)
@@ -86,7 +97,7 @@ namespace AnimationInstancing_v2
 
                     var package = packageList[packageIndex];
 
-                    if (package.instancingCount >= AnimationInstancingPool.instancingPackageSize)
+                    if (package.instancingCount >= VertexCachePool.InstancingPackageSize)
                     {
                         packageIndex++;
 
@@ -94,7 +105,7 @@ namespace AnimationInstancing_v2
 
                         if (packageIndex >= packageList.Count)
                         {
-                            AnimationInstancingPool.ExtendMaterialBlock(block, vertexCacheList[j], 1, aniTextureIndex);
+                            VertexCachePool.ExtendMaterialBlock(block, vertexCacheList[j], 1, aniTextureIndex);
                         }
                         else
                         {
@@ -147,7 +158,7 @@ namespace AnimationInstancing_v2
 
         private void Render()
         {
-            foreach (var obj in AnimationInstancingPool.VertexCachePool)
+            foreach (var obj in VertexCachePool.VertexCacheDic)
             {
                 var vertexCache = obj.Value;
                 foreach (var block in vertexCache.instanceBlockList)
@@ -215,15 +226,6 @@ namespace AnimationInstancing_v2
             }
         }
 
-        public void RegisterAnimationInstancingRenderer(AnimationInstancingRenderer renderer)
-        {
-            instancingRenderers.Add(renderer);
-        }
-
-        public void UnregisterAnimationInstancingRenderer(AnimationInstancingRenderer renderer)
-        {
-            instancingRenderers.Add(renderer);
-        }
 
         [UnityEditor.CustomEditor(typeof(AnimationInstancingRendererManager))]
         private class _Editor : UnityEditor.Editor
@@ -234,7 +236,7 @@ namespace AnimationInstancing_v2
 
                 var mng = target as AnimationInstancingRendererManager;
 
-                foreach (var vc in AnimationInstancingPool.VertexCachePool)
+                foreach (var vc in VertexCachePool.VertexCacheDic)
                 {
                     UnityEditor.EditorGUILayout.LabelField($"VertexCache {vc.Key} [{vc.Value.GetHashCode()}]:");
                 }

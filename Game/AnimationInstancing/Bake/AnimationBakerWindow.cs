@@ -43,6 +43,9 @@ namespace AnimationInstancing_v2
             private VisualElement _clipTogglesHolder;
             private readonly List<Toggle> clipToggles = new();
 
+            private IntegerField _fps;
+            private Foldout _selectExtraBoneLabel;
+
             public AnimationBakerTool(AnimationBakerToolSerializedData serializedData)
             {
                 this.serializedData = serializedData;
@@ -67,12 +70,16 @@ namespace AnimationInstancing_v2
                 var refreshStatusButton = new Button() { text = "Refresh Status" };
                 refreshStatusButton.RegisterCallback<ClickEvent>(evt => UpdateAll());
 
+                _fps = new IntegerField("fps") { value = 30 };
+                _selectExtraBoneLabel = new Foldout() { text = "Select extra bones:" };
+
                 Add(prefab);
-                Add(new Label("Select extra bones:"));
-                Add(_extraBoneTogglesHolder);
+                Add(_selectExtraBoneLabel);
+                _selectExtraBoneLabel.Add(_extraBoneTogglesHolder);
                 Add(new Label("Select animation clips:"));
                 Add(_clipTogglesHolder);
                 Add(_statusLabel);
+                Add(_fps);
                 Add(refreshStatusButton);
                 Add(_bakeButton);
 
@@ -92,9 +99,18 @@ namespace AnimationInstancing_v2
 
                 if (ValidatePrefab(serializedData.prefab))
                 {
-                    var extraBones = GetExtraBones(serializedData.prefab);
-                    UpdateSerializedExtraBoneList(extraBones);
-                    UpdateExtraBoneToggleList(extraBones);
+                    var allBonePaths = serializedData.prefab
+                        .GetComponentsInChildren<Transform>(true)
+                        .Select(t => AnimationBaker.GetTransformPath(serializedData.prefab.transform, t))
+                        .ToArray();
+                    UpdateSelectedBones(allBonePaths);
+
+                    var skinnedMeshBones = serializedData.prefab
+                        .GetComponentsInChildren<SkinnedMeshRenderer>()
+                        .SelectMany(r => r.bones)
+                        .Distinct().ToArray();
+
+                    UpdateExtraBoneToggleList(serializedData.prefab.transform, skinnedMeshBones);
 
                     var clips = GetClips(serializedData.prefab.GetComponentInChildren<Animator>());
                     UpdateSerializedClipList(clips);
@@ -102,11 +118,13 @@ namespace AnimationInstancing_v2
                 }
                 else
                 {
-                    UpdateExtraBoneToggleList(Array.Empty<Transform>());
+                    extraBoneToggles.Clear();
                 }
 
                 foreach (var bt in extraBoneToggles) _extraBoneTogglesHolder.Add(bt);
                 foreach (var bt in clipToggles) _clipTogglesHolder.Add(bt);
+
+                _selectExtraBoneLabel.text = $"Select extra bones: ({serializedData.selectedExtraBones.Count})";
             }
 
             private void OnBakeButtonClicked(ClickEvent evt)
@@ -115,11 +133,25 @@ namespace AnimationInstancing_v2
                     serializedData.prefab,
                     serializedData.selectedExtraBones,
                     serializedData.selectedAnims,
+                    _fps.value,
                     out var animationData);
 
-                var savePath = AssetDatabase.GetAssetPath(serializedData.prefab).Replace(".prefab", ".asset");
+                var savePath = AssetDatabase.GetAssetPath(serializedData.prefab)
+                    .Replace(".prefab", ".asset");
 
-                BakedAnimationSaver.SaveAll(animationData, savePath);
+                SaveAll(animationData, savePath);
+            }
+
+            private static void SaveAll(
+                AnimationInstancingData animationData, string savePath)
+            {
+                var asset = animationData;
+                AssetDatabase.CreateAsset(asset, savePath);
+                foreach (var t in asset.animationTextureData.bakedBoneTextures)
+                {
+                    AssetDatabase.AddObjectToAsset(t, asset);
+                }
+                AssetDatabase.SaveAssets();
             }
 
             private bool ValidatePrefab(GameObject prefab)
@@ -131,11 +163,16 @@ namespace AnimationInstancing_v2
                 {
                     var animator = prefab.GetComponentInChildren<Animator>();
                     // var smrs = prefab.GetComponentsInChildren<SkinnedMeshRenderer>();
+                    var boneCounts = prefab.GetComponentsInChildren<Transform>(true)
+                        .GroupBy(t => AnimationBaker.GetTransformPath(prefab.transform, t))
+                        .Select(g => (g.Key, g.Count()))
+                        .ToArray();
 
                     if (animator == null) status.Add("Missing Animator");
                     if (animator != null && animator.runtimeAnimatorController == null) status.Add("Missing AnimatorController");
                     // if (smrs.Length == 0) status.Add("Missing SkinnedMeshRenderer");
                     // if (smrs.Any(smr => smr.sharedMesh == null)) status.Add("Missing Mesh");
+                    if (boneCounts.Any(i => i.Item2 > 1)) status.Add($"Found ambiguous bones: {string.Join(",", boneCounts.Where(i => i.Item2 > 1).Select(i => i.Item1))}");
                 }
 
                 SetStatusLabel(status.Count > 0 ? string.Join(", ", status) : "OK");
@@ -159,39 +196,50 @@ namespace AnimationInstancing_v2
                 _bakeButton.SetEnabled(_statusLabel.text.Contains("OK"));
             }
 
-            private Transform[] GetExtraBones(GameObject prefab)
-            {
-                if (prefab == null) return Array.Empty<Transform>();
-                var smrBones = prefab
-                    .GetComponentsInChildren<SkinnedMeshRenderer>()
-                    .SelectMany(s => s.bones)
-                    .ToArray();
-                var extraBones = prefab
-                    .GetComponentsInChildren<Transform>()
-                    .Where(t => !smrBones.Contains(t))
-                    .ToArray();
-                return extraBones;
-            }
-
-            private void UpdateExtraBoneToggleList(Transform[] extraBones)
+            private void UpdateExtraBoneToggleList(Transform root, Transform[] skinnedMeshBones)
             {
                 extraBoneToggles.Clear();
 
-                foreach (var b in extraBones)
+                foreach (var b in TraverseTransformTree(root, 0).Reverse())
                 {
-                    var t = new Toggle() { label = b.name, value = serializedData.selectedExtraBones.Any(sb => sb == b.name) };
+                    var name = b.transform.name;
+                    var isSkinnedMeshBone = skinnedMeshBones.Contains(b.transform);
+                    var path = AnimationBaker.GetTransformPath(root, b.transform);
+                    var t = new Toggle()
+                    {
+                        label = " " + string.Join("-- ", new int[b.depth].Select(i => "")) + b.transform.name,
+                        value = isSkinnedMeshBone || serializedData.selectedExtraBones.Any(sb => sb == path),
+                    };
+                    t.SetEnabled(!isSkinnedMeshBone);
                     t.RegisterCallback<ChangeEvent<bool>>(evt =>
                     {
-                        if (evt.newValue) serializedData.selectedExtraBones.Add(b.name);
-                        else serializedData.selectedExtraBones.Remove(b.name);
+                        if (evt.newValue) serializedData.selectedExtraBones.Add(path);
+                        else serializedData.selectedExtraBones.Remove(path);
+
+                        _selectExtraBoneLabel.text = $"Select extra bones: ({serializedData.selectedExtraBones.Count})";
                     });
                     extraBoneToggles.Add(t);
                 }
             }
 
-            private void UpdateSerializedExtraBoneList(Transform[] extraBones)
+            private static IEnumerable<(Transform transform, int depth)> TraverseTransformTree(Transform current, int height)
             {
-                serializedData.selectedExtraBones = serializedData.selectedExtraBones.Where(b => extraBones.Any(bb => bb.name == b)).ToList();
+                foreach (Transform c in current)
+                {
+                    foreach (var p in TraverseTransformTree(c, height + 1))
+                    {
+                        yield return p;
+                    }
+                }
+                yield return (current, height);
+            }
+
+            private void UpdateSelectedBones(IEnumerable<string> bonePaths)
+            {
+                serializedData.selectedExtraBones = serializedData.selectedExtraBones
+                    .Where(b => bonePaths.Any(bb => bb == b)).ToList();
+
+                _selectExtraBoneLabel.text = $"Select extra bones: ({serializedData.selectedExtraBones.Count})";
             }
 
             private List<AnimationClip> GetClips(Animator animator)

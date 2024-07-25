@@ -11,7 +11,8 @@ namespace AnimationInstancing_v2
             GameObject prefab,
             List<string> selectedExtraBones,
             List<string> selectedAnims,
-            out AnimationData animationData)
+            int fps,
+            out AnimationInstancingData animationData)
         {
             if (prefab == null)
             {
@@ -29,7 +30,7 @@ namespace AnimationInstancing_v2
                 out var boneList,
                 out var bindPoseList,
                 out var extraBoneInfo);
-            CreateAnimationBakeInfos(go, selectedAnims,
+            CreateAnimationBakeInfos(go, selectedAnims, fps,
                 out var animBakeInfoList,
                 out var cacheTransitions,
                 out var cacheAnimationEvents);
@@ -41,7 +42,7 @@ namespace AnimationInstancing_v2
             var animationTextureData = AnimationTextureBaker
                 .GenerateAnimationTextureData(animInfoList, animPoseDataList, boneList.Length);
 
-            animationData = ScriptableObject.CreateInstance<AnimationData>();
+            animationData = ScriptableObject.CreateInstance<AnimationInstancingData>();
             animationData.animInfoList = animInfoList;
             animationData.boneData = extraBoneInfo;
             animationData.animationTextureData = animationTextureData;
@@ -54,7 +55,7 @@ namespace AnimationInstancing_v2
             List<string> selectedExtraBones,
             out Transform[] allBones,
             out Matrix4x4[] allBindPoses,
-            out BoneData extraBoneInfo)
+            out ExtraBoneData extraBoneInfo)
         {
             var skinnedMeshRenderers = go.GetComponentsInChildren<SkinnedMeshRenderer>();
 
@@ -65,21 +66,23 @@ namespace AnimationInstancing_v2
             allBones = mainBones.Concat(extraBones).ToArray();
             allBindPoses = mainBindPoses.Concat(extraBindPoses).ToArray();
 
-            extraBoneInfo = new BoneData
+            extraBoneInfo = new ExtraBoneData
             {
-                skinnedMeshBones = mainBones.Select(b => string.Join("/", GetExtraBonePathSegments(go.transform, b))).ToArray(),
-                extraBones = extraBones.Select(b => string.Join("/", GetExtraBonePathSegments(go.transform, b))).ToArray(),
+                extraBones = selectedExtraBones.ToArray(),
                 extraBindPoses = extraBindPoses.ToArray()
             };
         }
 
-        private static IEnumerable<string> GetExtraBonePathSegments(Transform root, Transform bone)
+        public static string GetTransformPath(Transform root, Transform bone)
+            => string.Join("/", GetTransformPathSegments(root, bone));
+     
+        private static IEnumerable<string> GetTransformPathSegments(Transform root, Transform bone)
         {
             if (bone != null)
             {
                 if (bone != root)
                 {
-                    foreach (var s in GetExtraBonePathSegments(root, bone.parent))
+                    foreach (var s in GetTransformPathSegments(root, bone.parent))
                     {
                         yield return s;
                     }
@@ -88,7 +91,7 @@ namespace AnimationInstancing_v2
             }
         }
 
-        private static void CreateAnimationBakeInfos(GameObject go, List<string> selectedAnims,
+        private static void CreateAnimationBakeInfos(GameObject go, List<string> selectedAnims, int fps,
             out List<AnimationBakeInfo> bakeInfos,
             out Dictionary<UnityEditor.Animations.AnimatorState, UnityEditor.Animations.AnimatorStateTransition[]> cacheTransitions,
             out Dictionary<AnimationClip, UnityEngine.AnimationEvent[]> cacheAnimationEvents)
@@ -109,7 +112,7 @@ namespace AnimationInstancing_v2
 
             AnalyzeStateMachine(
                 layer.stateMachine, animator, skinnedMeshRenderers, selectedAnimsDic,
-                0, 15, 0,
+                0, fps, 0,
                 bakeInfos, cacheTransitions, cacheAnimationEvents);
 
         }
@@ -137,18 +140,19 @@ namespace AnimationInstancing_v2
             extraBindPose = new List<Matrix4x4>(150);
             extraBones = new List<Transform>(150);
 
-            var trans = prefab.GetComponentsInChildren<Transform>();
-            var bakedTrans = generatedObject.GetComponentsInChildren<Transform>();
-
-            foreach (var obj in selectedExtraBones)
+            var trans = prefab.GetComponentsInChildren<Transform>(true);
+            var bakedTrans = generatedObject.GetComponentsInChildren<Transform>(true);
+            var root = prefab.transform;
+            foreach (var path in selectedExtraBones)
             {
                 for (int i = 0; i != trans.Length; ++i)
                 {
                     var tran = trans[i];
-                    if (tran.name == obj)
+                    if (GetTransformPath(root, tran) == path)
                     {
                         extraBindPose.Add(tran.localToWorldMatrix);
                         extraBones.Add(bakedTrans[i]);
+                        break;
                     }
                 }
             }

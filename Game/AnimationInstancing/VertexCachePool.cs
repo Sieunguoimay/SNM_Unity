@@ -4,18 +4,18 @@ using UnityEngine;
 
 namespace AnimationInstancing_v2
 {
-    public class AnimationInstancingPool
+    public class VertexCachePool
     {
-        public static readonly int instancingPackageSize = 200;
-        public static readonly Dictionary<int, VertexCache> VertexCachePool = new();
+        public static readonly int InstancingPackageSize = 200;
+        public static readonly Dictionary<int, VertexCache> VertexCacheDic = new();
 
-        public static VertexCache CreateMaterialBlockAndVertexCache(
+        public static VertexCache GetOrCreateVertexCache(
             Transform[] allBones, Matrix4x4[] bindPose,
             AnimationTextureData textureData, int bonePerVertex,
             Mesh sharedMesh, Renderer render, int key,
             Material[] sharedMaterials)
         {
-            if (!VertexCachePool.TryGetValue(key, out var vertexCache))
+            if (!VertexCacheDic.TryGetValue(key, out var vertexCache))
             {
                 DoStuffsWithBonesAndMesh(allBones, bindPose, sharedMesh, render, bonePerVertex,
                     out Mesh mesh, 
@@ -36,7 +36,7 @@ namespace AnimationInstancing_v2
                     textureData = textureData,
                 };
 
-                VertexCachePool[key] = vertexCache;
+                VertexCacheDic[key] = vertexCache;
             }
 
             return vertexCache;
@@ -163,10 +163,10 @@ namespace AnimationInstancing_v2
             MaterialBlock block, VertexCache vertexCache,
             int instancingCount, int textureIndex)
         {
-            block.instanceData.worldMatrix[textureIndex] = new() { new Matrix4x4[instancingPackageSize] };
-            block.instanceData.frameIndex[textureIndex] = new() { new float[instancingPackageSize] };
-            block.instanceData.preFrameIndex[textureIndex] = new() { new float[instancingPackageSize] };
-            block.instanceData.transitionProgress[textureIndex] = new() { new float[instancingPackageSize] };
+            block.instanceData.worldMatrix[textureIndex] = new() { new Matrix4x4[InstancingPackageSize] };
+            block.instanceData.frameIndex[textureIndex] = new() { new float[InstancingPackageSize] };
+            block.instanceData.preFrameIndex[textureIndex] = new() { new float[InstancingPackageSize] };
+            block.instanceData.transitionProgress[textureIndex] = new() { new float[InstancingPackageSize] };
 
             var materials = DuplicateMaterials(
                 vertexCache.materials,
@@ -367,6 +367,7 @@ namespace AnimationInstancing_v2
         public bool receiveShadow;
         public int layer;
     }
+
     public class MaterialBlock
     {
         public InstanceData instanceData;

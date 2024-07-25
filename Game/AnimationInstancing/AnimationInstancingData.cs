@@ -4,10 +4,10 @@ using UnityEngine;
 namespace AnimationInstancing_v2
 {
     [PreferBinarySerialization]
-    public class AnimationData : ScriptableObject
+    public class AnimationInstancingData : ScriptableObject
     {
         public List<AnimationInfo> animInfoList;
-        public BoneData boneData;
+        public ExtraBoneData boneData;
         public AnimationTextureData animationTextureData;
     }
 
@@ -20,9 +20,8 @@ namespace AnimationInstancing_v2
     }
 
     [System.Serializable]
-    public class BoneData
+    public class ExtraBoneData
     {
-        public string[] skinnedMeshBones; //skinned mesh already stores bindpose data
         public string[] extraBones;
         public Matrix4x4[] extraBindPoses;
     }

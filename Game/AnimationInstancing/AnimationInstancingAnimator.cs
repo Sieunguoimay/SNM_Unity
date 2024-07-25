@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace AnimationInstancing_v2
 {
+    [RequireComponent(typeof(AnimationInstancingRenderer))]
     public class AnimationInstancingAnimator : MonoBehaviour
     {
         [SerializeField] private float playSpeed = 1.0f;
@@ -16,22 +17,19 @@ namespace AnimationInstancing_v2
         private int _aniTextureIndex = 0;
         private float _transitionProgress = 0.0f;
 
-        private IReadOnlyList<AnimationInfo> _animInfoList;
+        private AnimationInstancingRenderer _renderer;
+        private AnimationInstancingRenderer Renderer => _renderer ??= GetComponent<AnimationInstancingRenderer>();
+        private IReadOnlyList<AnimationInfo> AnimInfoList => Renderer.InstancingData.animInfoList;
 
-        public float FrameIndex => _aniIndex >= 0 ? _animInfoList[_aniIndex].animationIndex + _curFrame : 0;
-        public float PreFrameIndex => _preAniIndex >= 0 ? _animInfoList[_preAniIndex].animationIndex + _preAniFrame : -1f;
+        public float FrameIndex => _aniIndex >= 0 ? AnimInfoList[_aniIndex].animationIndex + _curFrame : 0;
+        public float PreFrameIndex => _preAniIndex >= 0 ? AnimInfoList[_preAniIndex].animationIndex + _preAniFrame : -1f;
         public bool IsPlaying => _aniIndex >= 0;
         public float TransitionProgress => _transitionProgress;
         public int AniTextureIndex => _aniTextureIndex;
 
-        public void SetAnimInfoList(IReadOnlyList<AnimationInfo> animInfoList)
-        {
-            _animInfoList = animInfoList;
-        }
-
         public void UpdateCurrentFrame()
         {
-            var aniInfo = _animInfoList[_aniIndex];
+            var aniInfo = AnimInfoList[_aniIndex];
             UpdateCurrentFrame(aniInfo.fps, aniInfo.totalFrame, aniInfo.wrapMode);
         }
 
@@ -81,7 +79,7 @@ namespace AnimationInstancing_v2
 
         private void TestPlayNext()
         {
-            _aniIndex = (_aniIndex + 1) % _animInfoList.Count;
+            _aniIndex = (_aniIndex + 1) % AnimInfoList.Count;
         }
     }
 

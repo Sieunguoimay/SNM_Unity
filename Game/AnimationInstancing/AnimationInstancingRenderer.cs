@@ -1,30 +1,30 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Assertions;
 using UnityEngine.Rendering;
 
 namespace AnimationInstancing_v2
 {
     public class AnimationInstancingRenderer : MonoBehaviour
     {
-        [SerializeField] private AnimationData animationData;
+        [SerializeField] private AnimationInstancingData instancingData;
         [SerializeField] private int bonePerVertex = 2;
         [SerializeField] private ShadowCastingMode shadowCastingMode;
         [SerializeField] private bool receiveShadow;
-        [SerializeField] private AnimationInstancingAnimator instancingAnimator;
 
         private LodInfo[] _lodInfoList;
+        private Transform _transform;
+        private AnimationInstancingAnimator _instancingAnimator;
+
         public IReadOnlyList<VertexCache> VertexCacheList => _lodInfoList[0].vertexCacheList;
         public IReadOnlyList<MaterialBlock> MaterialBlockList => _lodInfoList[0].materialBlockList;
-
-        private Transform _transform;
         public Transform Transform => _transform ??= GetComponentInChildren<Animator>().transform;
-        public AnimationInstancingAnimator InstancingAnimator => instancingAnimator;
+        public AnimationInstancingAnimator InstancingAnimator => _instancingAnimator;
+        public AnimationInstancingData InstancingData => instancingData;
 
         private void Start()
         {
+            _instancingAnimator = GetComponent<AnimationInstancingAnimator>();
             _lodInfoList = GetLodInfoList(gameObject);
 
             DisableDefaultRenderersAndAnimator(_lodInfoList);
@@ -32,8 +32,7 @@ namespace AnimationInstancing_v2
             //Todo: CullingGroup
             var radius = CalcBoundingSphere(_lodInfoList[0]);
 
-
-            GetAllBones(animationData.boneData, Transform,
+            GetAllBones(_lodInfoList[0].skinnedMeshRenderers, instancingData.boneData, Transform,
                 out var bones,
                 out var bindPose);
 
@@ -41,15 +40,13 @@ namespace AnimationInstancing_v2
                     _lodInfoList,
                     bones?.ToArray(),
                     bindPose?.ToArray(),
-                    animationData.animationTextureData,
+                    instancingData.animationTextureData,
                     GetBonePerVertex(),
                     null);
 
             UpdateLodVertexCaches(_lodInfoList);
 
             AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
-
-            instancingAnimator.SetAnimInfoList(animationData.animInfoList);
         }
 
         private void OnDestroy()
@@ -105,11 +102,11 @@ namespace AnimationInstancing_v2
                     var materials = lod.skinnedMeshRenderers[smrIndex].sharedMaterials;
                     var rendererIndex = smrIndex;
 
-                    var vertexCache = AnimationInstancingPool.CreateMaterialBlockAndVertexCache(
+                    var vertexCache = VertexCachePool.GetOrCreateVertexCache(
                                 allBones, bindPose, textureData, bonePerVertex, mesh,
                                 render, renderName + aliasName, materials);
-                    int identify = AnimationInstancingPool.GetIdentify(materials);
-                    var matBlock = AnimationInstancingPool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
+                    int identify = VertexCachePool.GetIdentify(materials);
+                    var matBlock = VertexCachePool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
 
                     lod.materialBlockList[rendererIndex] = matBlock;
                     lod.vertexCacheList[rendererIndex] = vertexCache;
@@ -126,11 +123,11 @@ namespace AnimationInstancing_v2
                     var materials = render.sharedMaterials;
                     var rendererIndex = lod.skinnedMeshRenderers.Length + mrIndex;
 
-                    var vertexCache = AnimationInstancingPool.CreateMaterialBlockAndVertexCache(
+                    var vertexCache = VertexCachePool.GetOrCreateVertexCache(
                         allBones, bindPose, textureData, bonePerVertex, mesh,
                         render, renderName + aliasName, materials);
-                    int identify = AnimationInstancingPool.GetIdentify(materials);
-                    var matBlock = AnimationInstancingPool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
+                    int identify = VertexCachePool.GetIdentify(materials);
+                    var matBlock = VertexCachePool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
 
                     lod.materialBlockList[rendererIndex] = matBlock;
                     lod.vertexCacheList[rendererIndex] = vertexCache;
@@ -235,13 +232,13 @@ namespace AnimationInstancing_v2
         }
 
         public static void GetAllBones(
-            BoneData extraBoneInfo,
+            SkinnedMeshRenderer[] skinnedMeshRenderers,
+            ExtraBoneData extraBoneInfo,
             Transform root,
             out List<Transform> boneList,
             out List<Matrix4x4> bindPoseList)
         {
-            boneList = new List<Transform>();
-            bindPoseList = new List<Matrix4x4>();
+            RuntimeHelper.MergeBone(skinnedMeshRenderers, out boneList, out bindPoseList);
 
             if (extraBoneInfo != null)
             {
