@@ -73,23 +73,6 @@ namespace AnimationInstancing_v2
             };
         }
 
-        public static string GetTransformPath(Transform root, Transform bone)
-            => string.Join("/", GetTransformPathSegments(root, bone));
-     
-        private static IEnumerable<string> GetTransformPathSegments(Transform root, Transform bone)
-        {
-            if (bone != null)
-            {
-                if (bone != root)
-                {
-                    foreach (var s in GetTransformPathSegments(root, bone.parent))
-                    {
-                        yield return s;
-                    }
-                }
-                yield return bone.name;
-            }
-        }
 
         private static void CreateAnimationBakeInfos(GameObject go, List<string> selectedAnims, int fps,
             out List<AnimationBakeInfo> bakeInfos,
@@ -148,7 +131,7 @@ namespace AnimationInstancing_v2
                 for (int i = 0; i != trans.Length; ++i)
                 {
                     var tran = trans[i];
-                    if (GetTransformPath(root, tran) == path)
+                    if (RuntimeHelper.GetTransformPath(root, tran) == path)
                     {
                         extraBindPose.Add(tran.localToWorldMatrix);
                         extraBones.Add(bakedTrans[i]);

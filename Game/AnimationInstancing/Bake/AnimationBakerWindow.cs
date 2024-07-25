@@ -101,7 +101,7 @@ namespace AnimationInstancing_v2
                 {
                     var allBonePaths = serializedData.prefab
                         .GetComponentsInChildren<Transform>(true)
-                        .Select(t => AnimationBaker.GetTransformPath(serializedData.prefab.transform, t))
+                        .Select(t => RuntimeHelper.GetTransformPath(serializedData.prefab.transform, t))
                         .ToArray();
                     UpdateSelectedBones(allBonePaths);
 
@@ -164,7 +164,7 @@ namespace AnimationInstancing_v2
                     var animator = prefab.GetComponentInChildren<Animator>();
                     // var smrs = prefab.GetComponentsInChildren<SkinnedMeshRenderer>();
                     var boneCounts = prefab.GetComponentsInChildren<Transform>(true)
-                        .GroupBy(t => AnimationBaker.GetTransformPath(prefab.transform, t))
+                        .GroupBy(t => RuntimeHelper.GetTransformPath(prefab.transform, t))
                         .Select(g => (g.Key, g.Count()))
                         .ToArray();
 
@@ -204,7 +204,7 @@ namespace AnimationInstancing_v2
                 {
                     var name = b.transform.name;
                     var isSkinnedMeshBone = skinnedMeshBones.Contains(b.transform);
-                    var path = AnimationBaker.GetTransformPath(root, b.transform);
+                    var path = RuntimeHelper.GetTransformPath(root, b.transform);
                     var t = new Toggle()
                     {
                         label = " " + string.Join("-- ", new int[b.depth].Select(i => "")) + b.transform.name,

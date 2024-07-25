@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -8,17 +10,17 @@ namespace AnimationInstancing_v2
     public class AnimationInstancingRenderer : MonoBehaviour
     {
         [SerializeField] private AnimationInstancingData instancingData;
+        [SerializeField] private Transform root;
         [SerializeField] private int bonePerVertex = 2;
         [SerializeField] private ShadowCastingMode shadowCastingMode;
         [SerializeField] private bool receiveShadow;
 
-        private LodInfo[] _lodInfoList;
-        private Transform _transform;
-        private AnimationInstancingAnimator _instancingAnimator;
+        [NonSerialized] private LodInfo[] _lodInfoList;
+        [NonSerialized] private AnimationInstancingAnimator _instancingAnimator;
 
         public IReadOnlyList<VertexCache> VertexCacheList => _lodInfoList[0].vertexCacheList;
         public IReadOnlyList<MaterialBlock> MaterialBlockList => _lodInfoList[0].materialBlockList;
-        public Transform Transform => _transform ??= GetComponentInChildren<Animator>().transform;
+        public Transform RootTransform => root;
         public AnimationInstancingAnimator InstancingAnimator => _instancingAnimator;
         public AnimationInstancingData InstancingData => instancingData;
 
@@ -32,7 +34,7 @@ namespace AnimationInstancing_v2
             //Todo: CullingGroup
             var radius = CalcBoundingSphere(_lodInfoList[0]);
 
-            GetAllBones(_lodInfoList[0].skinnedMeshRenderers, instancingData.boneData, Transform,
+            GetAllBones(_lodInfoList[0].skinnedMeshRenderers, instancingData.boneData, RootTransform,
                 out var bones,
                 out var bindPose);
 
@@ -244,7 +246,7 @@ namespace AnimationInstancing_v2
             {
                 foreach (string path in extraBoneInfo.extraBones)
                 {
-                    var found = GetTransformAtPath(root, path.Split("/"));
+                    var found = RuntimeHelper.GetTransformAtPath(root, path.Split("/"));
                     if (found != null)
                     {
                         boneList.Add(found);
@@ -257,38 +259,23 @@ namespace AnimationInstancing_v2
             }
         }
 
-        private static Transform GetTransformAtPath(Transform root, string[] pathSegments)
-        {
-            if (pathSegments.Length == 0) return null;
-            if (root.name != pathSegments[0]) return null;
 
-            var current = root;
-            foreach (var s in pathSegments.Skip(1))
-            {
-                var found = false;
-                foreach (Transform c in current)
-                {
-                    if (c.name == s)
-                    {
-                        current = c;
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) return null;
-            }
-            return current;
-        }
 
         [UnityEditor.CustomEditor(typeof(AnimationInstancingRenderer))]
         private class _Editor : UnityEditor.Editor
         {
+            private AnimationInstancingRenderer _renderer;
+            public Dictionary<string, Transform> _allBones;
+
+            private bool _allBonesFoldout;
+
             public override void OnInspectorGUI()
             {
                 DrawDefaultInspector();
-                var renderer = target as AnimationInstancingRenderer;
-                if (renderer._lodInfoList == null) return;
-                foreach (var lod in renderer._lodInfoList)
+                _renderer = target as AnimationInstancingRenderer;
+                DrawAllBones();
+                if (_renderer._lodInfoList == null) return;
+                foreach (var lod in _renderer._lodInfoList)
                 {
                     UnityEditor.EditorGUILayout.LabelField($"VertexCacheList:");
                     for (int i = 0; i < lod.vertexCacheList.Length; i++)
@@ -300,11 +287,7 @@ namespace AnimationInstancing_v2
                         {
                             UnityEditor.EditorGUILayout.ObjectField("->material", m, typeof(Material), true);
                         }
-                        for (int i1 = 0; i1 < vc.bonePose.Length; i1++)
-                        {
-                            var m = vc.bonePose[i1];
-                            UnityEditor.EditorGUILayout.ObjectField("->bonePose", m, typeof(Transform), true);
-                        }
+
                         UnityEditor.EditorGUILayout.LabelField($"->bone weights ({vc.weight.Length}) {string.Join(",", vc.weight)}");
                         UnityEditor.EditorGUILayout.LabelField($"->bone indices ({vc.boneIndex.Length}) {string.Join(",", vc.boneIndex)}");
                         UnityEditor.EditorGUILayout.LabelField($"->instanceBlockList: {string.Join(",", vc.instanceBlockList.Select(b => $"({b.Key}={b.Value.GetHashCode()})"))}");
@@ -324,6 +307,46 @@ namespace AnimationInstancing_v2
                                 UnityEditor.EditorGUILayout.LabelField($"->->->package: textureIndex={p.animationTextureIndex} instancingCount={p.instancingCount} subMeshCount={p.subMeshCount}");
                             }
                         }
+                    }
+                }
+            }
+
+            private void DrawAllBones()
+            {
+                if (_renderer.RootTransform == null || _renderer.InstancingData == null) return;
+                if (_allBones == null)
+                {
+                    _allBones = new Dictionary<string, Transform>();
+
+                    foreach (var smr in _renderer.GetComponentsInChildren<SkinnedMeshRenderer>())
+                    {
+                        foreach (var b in smr.bones)
+                        {
+                            var path = RuntimeHelper.GetTransformPath(_renderer.RootTransform, b);
+                            _allBones.Add($"[{smr.name}]" + path, b);
+                        }
+                    }
+
+                    var extraBoneInfo = _renderer.InstancingData.boneData;
+
+                    foreach (string path in extraBoneInfo.extraBones)
+                    {
+                        var found = RuntimeHelper.GetTransformAtPath(_renderer.RootTransform, path.Split("/"));
+                        if (found != null)
+                        {
+                            _allBones.Add("[Extra]" + path, found);
+                        }
+                    }
+                }
+
+                _allBonesFoldout = UnityEditor.EditorGUILayout.Foldout(_allBonesFoldout, "All bones:", true);
+
+                if (_allBonesFoldout)
+                {
+                    var i = 0;
+                    foreach (var bone in _allBones)
+                    {
+                        UnityEditor.EditorGUILayout.ObjectField($"{i++} {bone.Key}", bone.Value, typeof(Transform), true);
                     }
                 }
             }

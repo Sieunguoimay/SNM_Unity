@@ -7,6 +7,7 @@ namespace AnimationInstancing_v2
     public class AnimationInstancingAnimator : MonoBehaviour
     {
         [SerializeField] private float playSpeed = 1.0f;
+        [SerializeField] private int startAnimation = 0;
 
         private float _speedParameter = 1.0f;
         private float _cacheParameter = 1.0f;
@@ -21,14 +22,20 @@ namespace AnimationInstancing_v2
         private AnimationInstancingRenderer Renderer => _renderer ??= GetComponent<AnimationInstancingRenderer>();
         private IReadOnlyList<AnimationInfo> AnimInfoList => Renderer.InstancingData.animInfoList;
 
-        public float FrameIndex => _aniIndex >= 0 ? AnimInfoList[_aniIndex].animationIndex + _curFrame : 0;
+        public float FrameIndex => _aniIndex >= 0 ? AnimInfoList[_aniIndex].animationIndex + _curFrame : -1f;
         public float PreFrameIndex => _preAniIndex >= 0 ? AnimInfoList[_preAniIndex].animationIndex + _preAniFrame : -1f;
         public bool IsPlaying => _aniIndex >= 0;
         public float TransitionProgress => _transitionProgress;
         public int AniTextureIndex => _aniTextureIndex;
 
+        private void Start()
+        {
+            // _aniIndex = startAnimation;
+        }
+
         public void UpdateCurrentFrame()
         {
+            return;
             var aniInfo = AnimInfoList[_aniIndex];
             UpdateCurrentFrame(aniInfo.fps, aniInfo.totalFrame, aniInfo.wrapMode);
         }

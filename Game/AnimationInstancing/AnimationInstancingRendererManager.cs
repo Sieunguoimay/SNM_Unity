@@ -34,7 +34,6 @@ namespace AnimationInstancing_v2
             _destroyed = true;
         }
 
-
         private void Update()
         {
             ApplyBoneMatrix();
@@ -59,8 +58,8 @@ namespace AnimationInstancing_v2
                 var instanceRenderer = instancingRenderers[i];
                 var instanceAnimator = instancingRenderers[i].InstancingAnimator;
 
-                if (!instanceAnimator.IsPlaying)// && instance.parentInstance == null)
-                    continue;
+                // if (!instanceAnimator.IsPlaying)// && instance.parentInstance == null)
+                //     continue;
 
                 // if (instance.applyRootMotion)
                 //     ApplyRootMotion(instance);
@@ -144,7 +143,7 @@ namespace AnimationInstancing_v2
                         // }
 
                         instanceData.worldMatrix[aniTextureIndex][packageIndex][instanceIndex]
-                            = instanceRenderer.Transform.localToWorldMatrix;
+                            = instanceRenderer.RootTransform.localToWorldMatrix;
                         instanceData.frameIndex[aniTextureIndex][packageIndex][instanceIndex]
                             = instanceAnimator.FrameIndex;
                         instanceData.preFrameIndex[aniTextureIndex][packageIndex][instanceIndex]

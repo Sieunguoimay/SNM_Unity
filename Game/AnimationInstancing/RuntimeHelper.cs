@@ -1,10 +1,51 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace AnimationInstancing_v2
 {
     public class RuntimeHelper
     {
+        public static string GetTransformPath(Transform root, Transform bone)
+            => string.Join("/", GetTransformPathSegments(root, bone));
+
+        private static IEnumerable<string> GetTransformPathSegments(Transform root, Transform bone)
+        {
+            if (bone != null)
+            {
+                if (bone != root)
+                {
+                    foreach (var s in GetTransformPathSegments(root, bone.parent))
+                    {
+                        yield return s;
+                    }
+                }
+                yield return bone.name;
+            }
+        }
+
+        public static Transform GetTransformAtPath(Transform root, string[] pathSegments)
+        {
+            if (pathSegments.Length == 0) return null;
+            if (root.name != pathSegments[0]) return null;
+
+            var current = root;
+            foreach (var s in pathSegments.Skip(1))
+            {
+                var found = false;
+                foreach (Transform c in current)
+                {
+                    if (c.name == s)
+                    {
+                        current = c;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) return null;
+            }
+            return current;
+        }
         public static void MergeBone(SkinnedMeshRenderer[] skinnedMeshRenderers,
             out List<Transform> boneList,
             out List<Matrix4x4> bindPoseList)
