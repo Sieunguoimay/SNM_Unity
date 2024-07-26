@@ -30,12 +30,11 @@ namespace AnimationInstancing_v2
 
         private void Start()
         {
-            // _aniIndex = startAnimation;
+            _aniIndex = startAnimation;
         }
 
         public void UpdateCurrentFrame()
         {
-            return;
             var aniInfo = AnimInfoList[_aniIndex];
             UpdateCurrentFrame(aniInfo.fps, aniInfo.totalFrame, aniInfo.wrapMode);
         }

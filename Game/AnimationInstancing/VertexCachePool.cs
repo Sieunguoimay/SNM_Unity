@@ -50,7 +50,7 @@ namespace AnimationInstancing_v2
 
                 for (int texIndex = 0; texIndex != textureCount; ++texIndex)
                 {
-                    ExtendMaterialBlock(matBlock, vertexCache, 1, texIndex);
+                    ExtendMaterialBlockInstanceData(matBlock, vertexCache, 1, texIndex);
                 }
 
                 vertexCache.instanceBlockList.Add(identify, matBlock);
@@ -159,7 +159,7 @@ namespace AnimationInstancing_v2
             };
         }
 
-        public static void ExtendMaterialBlock(
+        public static void ExtendMaterialBlockInstanceData(
             MaterialBlock block, VertexCache vertexCache,
             int instancingCount, int textureIndex)
         {
@@ -387,7 +387,7 @@ namespace AnimationInstancing_v2
     public class InstancingPackage
     {
         public Material[] material;
-        public int animationTextureIndex = 0;
+        // public int animationTextureIndex = 0;
         public int subMeshCount = 1;
         public int instancingCount;
         // public int size;

@@ -84,7 +84,7 @@ namespace AnimationInstancing_v2
                 // else
                 // aniTextureIndex = instance.aniTextureIndex;
 
-                for (int j = 0; j != vertexCacheList.Count; ++j)
+                for (int j = 0; j != materialBlockList.Count; ++j)
                 {
                     var block = materialBlockList[j];
                     Debug.Assert(block != null);
@@ -104,7 +104,7 @@ namespace AnimationInstancing_v2
 
                         if (packageIndex >= packageList.Count)
                         {
-                            VertexCachePool.ExtendMaterialBlock(block, vertexCacheList[j], 1, aniTextureIndex);
+                            VertexCachePool.ExtendMaterialBlockInstanceData(block, vertexCacheList[j], 1, aniTextureIndex);
                         }
                         else
                         {
@@ -118,39 +118,39 @@ namespace AnimationInstancing_v2
 
                     package = packageList[packageIndex];
 
-                    if (package.instancingCount > 0)
-                    {
-                        var instanceData = block.instanceData;
-                        var instanceIndex = package.instancingCount - 1;
+                    // if (package.instancingCount > 0) -> always true
+                    // {
+                    var instanceData = block.instanceData;
+                    var instanceIndex = package.instancingCount - 1;
 
-                        // if (instance.parentInstance != null)
-                        // {
-                        //     frameIndex = instance.parentInstance.aniInfo[instance.parentInstance.aniIndex].animationIndex + instance.parentInstance.curFrame;
-                        //     if (instance.parentInstance.preAniIndex >= 0)
-                        //         preFrameIndex = instance.parentInstance.aniInfo[instance.parentInstance.preAniIndex].animationIndex + instance.parentInstance.preAniFrame;
-                        //     transition = instance.parentInstance.transitionProgress;
-                        // }
-                        // else
-                        // {
+                    // if (instance.parentInstance != null)
+                    // {
+                    //     frameIndex = instance.parentInstance.aniInfo[instance.parentInstance.aniIndex].animationIndex + instance.parentInstance.curFrame;
+                    //     if (instance.parentInstance.preAniIndex >= 0)
+                    //         preFrameIndex = instance.parentInstance.aniInfo[instance.parentInstance.preAniIndex].animationIndex + instance.parentInstance.preAniFrame;
+                    //     transition = instance.parentInstance.transitionProgress;
+                    // }
+                    // else
+                    // {
 
-                        // var preFrameIndex = -1f;
-                        // var frameIndex = instance.AnimationData.animInfoList[instanceAnimator.aniIndex].animationIndex
-                        //     + instanceAnimator.curFrame;
-                        // if (instanceAnimator.preAniIndex >= 0)
-                        //     preFrameIndex = instance.AnimationData.animInfoList[instanceAnimator.preAniIndex].animationIndex
-                        //     + instanceAnimator.preAniFrame;
-                        // var transition = instanceAnimator.transitionProgress;
-                        // }
+                    // var preFrameIndex = -1f;
+                    // var frameIndex = instance.AnimationData.animInfoList[instanceAnimator.aniIndex].animationIndex
+                    //     + instanceAnimator.curFrame;
+                    // if (instanceAnimator.preAniIndex >= 0)
+                    //     preFrameIndex = instance.AnimationData.animInfoList[instanceAnimator.preAniIndex].animationIndex
+                    //     + instanceAnimator.preAniFrame;
+                    // var transition = instanceAnimator.transitionProgress;
+                    // }
 
-                        instanceData.worldMatrix[aniTextureIndex][packageIndex][instanceIndex]
-                            = instanceRenderer.RootTransform.localToWorldMatrix;
-                        instanceData.frameIndex[aniTextureIndex][packageIndex][instanceIndex]
-                            = instanceAnimator.FrameIndex;
-                        instanceData.preFrameIndex[aniTextureIndex][packageIndex][instanceIndex]
-                            = instanceAnimator.PreFrameIndex;
-                        instanceData.transitionProgress[aniTextureIndex][packageIndex][instanceIndex]
-                            = instanceAnimator.TransitionProgress;
-                    }
+                    instanceData.worldMatrix[aniTextureIndex][packageIndex][instanceIndex]
+                        = instanceRenderer.RootTransform.localToWorldMatrix;
+                    instanceData.frameIndex[aniTextureIndex][packageIndex][instanceIndex]
+                        = instanceAnimator.FrameIndex;
+                    instanceData.preFrameIndex[aniTextureIndex][packageIndex][instanceIndex]
+                        = instanceAnimator.PreFrameIndex;
+                    instanceData.transitionProgress[aniTextureIndex][packageIndex][instanceIndex]
+                        = instanceAnimator.TransitionProgress;
+                    // }
                 }
             }
         }
@@ -164,25 +164,27 @@ namespace AnimationInstancing_v2
                 {
                     var packageLists = block.Value.packageLists;
 
-                    for (int k = 0; k != packageLists.Length; ++k)
+                    for (int packageListIndex = 0; packageListIndex != packageLists.Length; ++packageListIndex)
                     {
-                        for (int i = 0; i != packageLists[k].Count; ++i)
+                        var packageList = packageLists[packageListIndex];
+
+                        for (int packageIndex = 0; packageIndex != packageList.Count; ++packageIndex)
                         {
-                            var package = packageLists[k][i];
+                            var package = packageList[packageIndex];
 
                             if (package.instancingCount == 0) continue;
 
                             for (int subMeshIndex = 0; subMeshIndex != package.subMeshCount; ++subMeshIndex)
                             {
 #if UNITY_EDITOR
-                                PreparePackageMaterial(package, vertexCache, k);
+                                PreparePackageMaterial(package, vertexCache, packageListIndex);
 #endif
                                 var data = block.Value.instanceData;
-                                DrawMeshInstanced(vertexCache, package, data, k, i, subMeshIndex);
+                                DrawMeshInstanced(vertexCache, package, data, packageListIndex, packageIndex, subMeshIndex);
                             }
                             package.instancingCount = 0;
                         }
-                        block.Value.runtimePackageIndex[k] = 0;
+                        block.Value.runtimePackageIndex[packageListIndex] = 0;
                     }
                 }
             }

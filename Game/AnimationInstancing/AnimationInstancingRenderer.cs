@@ -304,7 +304,7 @@ namespace AnimationInstancing_v2
                             UnityEditor.EditorGUILayout.LabelField($"->->packageList: {pl.Count}");
                             foreach (var p in pl)
                             {
-                                UnityEditor.EditorGUILayout.LabelField($"->->->package: textureIndex={p.animationTextureIndex} instancingCount={p.instancingCount} subMeshCount={p.subMeshCount}");
+                                UnityEditor.EditorGUILayout.LabelField($"->->->package: instancingCount={p.instancingCount} subMeshCount={p.subMeshCount}");
                             }
                         }
                     }
