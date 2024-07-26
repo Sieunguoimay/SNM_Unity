@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace AnimationInstancing_v2
@@ -13,15 +12,15 @@ namespace AnimationInstancing_v2
             Transform[] allBones, Matrix4x4[] bindPose,
             AnimationTextureData textureData, int bonePerVertex,
             Mesh sharedMesh, Renderer render, int key,
-            Material[] sharedMaterials)
+            Material[] sharedMaterials, RenderingConfig renderingConfig)
         {
             if (!VertexCacheDic.TryGetValue(key, out var vertexCache))
             {
                 DoStuffsWithBonesAndMesh(allBones, bindPose, sharedMesh, render, bonePerVertex,
-                    out Mesh mesh, 
-                    out Vector4[] newBoneWeights, 
+                    out Mesh mesh,
+                    out Vector4[] newBoneWeights,
                     out Vector4[] newBoneIndices);
-                
+
                 AddBoneWeightsAndIndicesToMesh(mesh, newBoneWeights, newBoneIndices);
 
                 vertexCache = new VertexCache
@@ -29,11 +28,12 @@ namespace AnimationInstancing_v2
                     mesh = mesh,
                     weight = newBoneWeights,
                     boneIndex = newBoneIndices,
-                    instanceBlockList = new Dictionary<int, MaterialBlock>(),
+                    instanceBlockDic = new Dictionary<int, MaterialBlock>(),
                     bindPose = bindPose,
                     bonePose = allBones,
                     materials = sharedMaterials,
                     textureData = textureData,
+                    renderingConfig = renderingConfig,
                 };
 
                 VertexCacheDic[key] = vertexCache;
@@ -44,16 +44,16 @@ namespace AnimationInstancing_v2
 
         public static MaterialBlock GetOrCreateMaterialBlock(VertexCache vertexCache, int identify, int textureCount)
         {
-            if (!vertexCache.instanceBlockList.TryGetValue(identify, out MaterialBlock matBlock))
+            if (!vertexCache.instanceBlockDic.TryGetValue(identify, out MaterialBlock matBlock))
             {
-                matBlock = CreateMaterialBlock(textureCount);
+                matBlock = CreateMaterialBlock(vertexCache, textureCount);
 
                 for (int texIndex = 0; texIndex != textureCount; ++texIndex)
                 {
-                    ExtendMaterialBlockInstanceData(matBlock, vertexCache, 1, texIndex);
+                    matBlock.materialBlockUnits[texIndex].packageStack.Add(CreateInstancingPackage(1));
                 }
 
-                vertexCache.instanceBlockList.Add(identify, matBlock);
+                vertexCache.instanceBlockDic.Add(identify, matBlock);
             }
 
             return matBlock;
@@ -137,52 +137,45 @@ namespace AnimationInstancing_v2
             return mesh;
         }
 
-        private static MaterialBlock CreateMaterialBlock(int arraySize)
+        private static MaterialBlock CreateMaterialBlock(VertexCache vertexCache, int textureCount)
         {
-            var packageList = new List<InstancingPackage>[arraySize];
-            for (int i = 0; i != arraySize; ++i)
+            var materialBlockUnits = new MaterialBlockUnit[textureCount];
+
+            for (int i = 0; i != textureCount; ++i)
             {
-                packageList[i] = new List<InstancingPackage>();
+                var clonedMaterials = DuplicateMaterials(
+                    vertexCache.materials,
+                    vertexCache.mesh.subMeshCount,
+                    vertexCache.textureData, i);
+
+                materialBlockUnits[i] = new MaterialBlockUnit()
+                {
+                    clonedMaterials = clonedMaterials,
+                    packageStack = new List<InstancingPackage>(),
+                    instanceCountPerPackage = InstancingPackageSize
+                };
             }
 
             return new MaterialBlock
             {
-                instanceData = new InstanceData
-                {
-                    worldMatrix = new List<Matrix4x4[]>[arraySize],
-                    frameIndex = new List<float[]>[arraySize],
-                    preFrameIndex = new List<float[]>[arraySize],
-                    transitionProgress = new List<float[]>[arraySize],
-                },
-                packageLists = packageList,
-                runtimePackageIndex = new int[arraySize]
+                materialBlockUnits = materialBlockUnits,
             };
         }
 
-        public static void ExtendMaterialBlockInstanceData(
-            MaterialBlock block, VertexCache vertexCache,
-            int instancingCount, int textureIndex)
+        public static InstancingPackage CreateInstancingPackage(int instancingCount)
         {
-            block.instanceData.worldMatrix[textureIndex] = new() { new Matrix4x4[InstancingPackageSize] };
-            block.instanceData.frameIndex[textureIndex] = new() { new float[InstancingPackageSize] };
-            block.instanceData.preFrameIndex[textureIndex] = new() { new float[InstancingPackageSize] };
-            block.instanceData.transitionProgress[textureIndex] = new() { new float[InstancingPackageSize] };
-
-            var materials = DuplicateMaterials(
-                vertexCache.materials,
-                vertexCache.mesh.subMeshCount, 
-                vertexCache.textureData, textureIndex);
-
-            block.packageLists[textureIndex].Add(
-                new InstancingPackage()
-                {
-                    material = materials,
-                    subMeshCount = vertexCache.mesh.subMeshCount,
-                    // size = 1,
-                    instancingCount = instancingCount,
-                    propertyBlock = new MaterialPropertyBlock()
-                }
-            );
+            return new InstancingPackage()
+            {
+                // material = materials,
+                // subMeshCount = vertexCache.mesh.subMeshCount,
+                // size = 1,
+                instancingCount = instancingCount,
+                propertyBlock = new MaterialPropertyBlock(),
+                worldMatrixArray = new Matrix4x4[InstancingPackageSize],
+                frameIndexArray = new float[InstancingPackageSize],
+                preFrameIndexArray = new float[InstancingPackageSize],
+                transitionProgressArray = new float[InstancingPackageSize],
+            };
         }
 
         private static Material[] DuplicateMaterials(
@@ -354,7 +347,7 @@ namespace AnimationInstancing_v2
     {
         // public int nameCode;
         public Mesh mesh = null;
-        public Dictionary<int, MaterialBlock> instanceBlockList;
+        public Dictionary<int, MaterialBlock> instanceBlockDic;
         public Vector4[] weight;
         public Vector4[] boneIndex;
         public Material[] materials = null;
@@ -363,6 +356,11 @@ namespace AnimationInstancing_v2
         public AnimationTextureData textureData;
 
         // these are temporary, should be moved to InstancingPackage
+        public RenderingConfig renderingConfig;
+    }
+
+    public class RenderingConfig
+    {
         public UnityEngine.Rendering.ShadowCastingMode shadowcastingMode;
         public bool receiveShadow;
         public int layer;
@@ -370,27 +368,62 @@ namespace AnimationInstancing_v2
 
     public class MaterialBlock
     {
-        public InstanceData instanceData;
-        public int[] runtimePackageIndex;
-        // array[index base on texture][package index]
-        public List<InstancingPackage>[] packageLists;
+        public MaterialBlockUnit[] materialBlockUnits;
     }
 
-    public class InstanceData
+    public class MaterialBlockUnit
     {
-        public List<Matrix4x4[]>[] worldMatrix;
-        public List<float[]>[] frameIndex;
-        public List<float[]>[] preFrameIndex;
-        public List<float[]>[] transitionProgress;
+        public int instanceCountPerPackage;
+        public Material[] clonedMaterials;
+        public List<InstancingPackage> packageStack;
+
+        private int _topPackageIndex = 0;
+        public InstancingPackage TopPackage => packageStack[_topPackageIndex];
+
+        public int NextInstanceIndex()
+        {
+            Debug.Assert(_topPackageIndex < packageStack.Count);
+
+            if (TopPackage.instancingCount >= instanceCountPerPackage)
+            {
+                _topPackageIndex++;
+
+                if (_topPackageIndex >= packageStack.Count)
+                {
+                    packageStack.Add(VertexCachePool.CreateInstancingPackage(1));
+                }
+                else
+                {
+                    TopPackage.instancingCount = 1;
+                }
+            }
+            else
+            {
+                TopPackage.instancingCount++;
+            }
+
+            return TopPackage.instancingCount - 1;
+        }
+
+        public void ResetStack()
+        {
+            _topPackageIndex = 0;
+        }
+
     }
 
     public class InstancingPackage
     {
-        public Material[] material;
+        // public Material[] material;
         // public int animationTextureIndex = 0;
-        public int subMeshCount = 1;
+        // public int subMeshCount = 1;
         public int instancingCount;
         // public int size;
         public MaterialPropertyBlock propertyBlock;
+
+        public Matrix4x4[] worldMatrixArray;
+        public float[] frameIndexArray;
+        public float[] preFrameIndexArray;
+        public float[] transitionProgressArray;
     }
 }

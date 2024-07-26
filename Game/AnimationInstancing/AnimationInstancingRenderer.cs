@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace AnimationInstancing_v2
 {
-    public class AnimationInstancingRenderer : MonoBehaviour
+    public partial class AnimationInstancingRenderer : MonoBehaviour
     {
         [SerializeField] private AnimationInstancingData instancingData;
         [SerializeField] private Transform root;
@@ -18,7 +17,7 @@ namespace AnimationInstancing_v2
         [NonSerialized] private LodInfo[] _lodInfoList;
         [NonSerialized] private AnimationInstancingAnimator _instancingAnimator;
 
-        public IReadOnlyList<VertexCache> VertexCacheList => _lodInfoList[0].vertexCacheList;
+        // public IReadOnlyList<VertexCache> VertexCacheList => _lodInfoList[0].vertexCacheList;
         public IReadOnlyList<MaterialBlock> MaterialBlockList => _lodInfoList[0].materialBlockList;
         public Transform RootTransform => root;
         public AnimationInstancingAnimator InstancingAnimator => _instancingAnimator;
@@ -46,7 +45,7 @@ namespace AnimationInstancing_v2
                     GetBonePerVertex(),
                     null);
 
-            UpdateLodVertexCaches(_lodInfoList);
+            // UpdateLodVertexCaches(_lodInfoList);
 
             AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
         }
@@ -56,18 +55,18 @@ namespace AnimationInstancing_v2
             AnimationInstancingRendererManager.Instance?.UnregisterAnimationInstancingRenderer(this);
         }
 
-        private void UpdateLodVertexCaches(LodInfo[] lodInfoList)
-        {
-            foreach (var lod in lodInfoList)
-            {
-                foreach (var cache in lod.vertexCacheList)
-                {
-                    cache.shadowcastingMode = shadowCastingMode;
-                    cache.receiveShadow = receiveShadow;
-                    cache.layer = gameObject.layer;
-                }
-            }
-        }
+        // private void UpdateLodVertexCaches(LodInfo[] lodInfoList)
+        // {
+        //     foreach (var lod in lodInfoList)
+        //     {
+        //         foreach (var cache in lod.vertexCacheList)
+        //         {
+        //             cache.shadowcastingMode = shadowCastingMode;
+        //             cache.receiveShadow = receiveShadow;
+        //             cache.layer = gameObject.layer;
+        //         }
+        //     }
+        // }
 
         private int GetBonePerVertex()
         {
@@ -79,7 +78,7 @@ namespace AnimationInstancing_v2
             };
         }
 
-        private static void AddToVertexCachePool(
+        private void AddToVertexCachePool(
             LodInfo[] lodInfoList,
             Transform[] allBones,
             Matrix4x4[] bindPose,
@@ -88,7 +87,12 @@ namespace AnimationInstancing_v2
             string alias)
         {
             var textureCount = textureData != null ? textureData.bakedBoneTextures.Length : 1;
-
+            var renderingConfig = new RenderingConfig
+            {
+                shadowcastingMode = shadowCastingMode,
+                receiveShadow = receiveShadow,
+                layer = gameObject.layer,
+            };
             UnityEngine.Profiling.Profiler.BeginSample("AddMeshVertex()");
             for (int lodIndex = 0; lodIndex != lodInfoList.Length; ++lodIndex)
             {
@@ -106,12 +110,12 @@ namespace AnimationInstancing_v2
 
                     var vertexCache = VertexCachePool.GetOrCreateVertexCache(
                                 allBones, bindPose, textureData, bonePerVertex, mesh,
-                                render, renderName + aliasName, materials);
+                                render, renderName + aliasName, materials, renderingConfig);
                     int identify = VertexCachePool.GetIdentify(materials);
                     var matBlock = VertexCachePool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
 
                     lod.materialBlockList[rendererIndex] = matBlock;
-                    lod.vertexCacheList[rendererIndex] = vertexCache;
+                    // lod.vertexCacheList[rendererIndex] = vertexCache;
                 }
 
                 for (int mrIndex = 0; mrIndex != lod.meshRenderers.Length; ++mrIndex)
@@ -127,12 +131,12 @@ namespace AnimationInstancing_v2
 
                     var vertexCache = VertexCachePool.GetOrCreateVertexCache(
                         allBones, bindPose, textureData, bonePerVertex, mesh,
-                        render, renderName + aliasName, materials);
+                        render, renderName + aliasName, materials, renderingConfig);
                     int identify = VertexCachePool.GetIdentify(materials);
                     var matBlock = VertexCachePool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
 
                     lod.materialBlockList[rendererIndex] = matBlock;
-                    lod.vertexCacheList[rendererIndex] = vertexCache;
+                    // lod.vertexCacheList[rendererIndex] = vertexCache;
                 }
             }
 
@@ -187,7 +191,7 @@ namespace AnimationInstancing_v2
                         skinnedMeshRenderers = listSkinnedMeshRenderer.ToArray(),
                         meshRenderers = listMeshRenderer.ToArray(),
                         meshFilters = listMeshRenderer.Select(mr => mr.GetComponent<MeshFilter>()).ToArray(),
-                        vertexCacheList = new VertexCache[n],
+                        // vertexCacheList = new VertexCache[n],
                         materialBlockList = new MaterialBlock[n],
                     };
                 }
@@ -204,7 +208,7 @@ namespace AnimationInstancing_v2
                         skinnedMeshRenderers = smrs,
                         meshRenderers = mrs,
                         meshFilters = mfs,
-                        vertexCacheList = new VertexCache[n],
+                        // vertexCacheList = new VertexCache[n],
                         materialBlockList = new MaterialBlock[n]
                     }
                 };
@@ -259,108 +263,14 @@ namespace AnimationInstancing_v2
             }
         }
 
-
-
-        [UnityEditor.CustomEditor(typeof(AnimationInstancingRenderer))]
-        private class _Editor : UnityEditor.Editor
-        {
-            private AnimationInstancingRenderer _renderer;
-            public Dictionary<string, Transform> _allBones;
-
-            private bool _allBonesFoldout;
-
-            public override void OnInspectorGUI()
-            {
-                DrawDefaultInspector();
-                _renderer = target as AnimationInstancingRenderer;
-                DrawAllBones();
-                if (_renderer._lodInfoList == null) return;
-                foreach (var lod in _renderer._lodInfoList)
-                {
-                    UnityEditor.EditorGUILayout.LabelField($"VertexCacheList:");
-                    for (int i = 0; i < lod.vertexCacheList.Length; i++)
-                    {
-                        var vc = lod.vertexCacheList[i];
-                        UnityEditor.EditorGUILayout.LabelField($"VertexCache {i} [{vc.GetHashCode()}]:");
-                        UnityEditor.EditorGUILayout.ObjectField("->mesh", vc.mesh, typeof(Mesh), true);
-                        foreach (var m in vc.materials)
-                        {
-                            UnityEditor.EditorGUILayout.ObjectField("->material", m, typeof(Material), true);
-                        }
-
-                        UnityEditor.EditorGUILayout.LabelField($"->bone weights ({vc.weight.Length}) {string.Join(",", vc.weight)}");
-                        UnityEditor.EditorGUILayout.LabelField($"->bone indices ({vc.boneIndex.Length}) {string.Join(",", vc.boneIndex)}");
-                        UnityEditor.EditorGUILayout.LabelField($"->instanceBlockList: {string.Join(",", vc.instanceBlockList.Select(b => $"({b.Key}={b.Value.GetHashCode()})"))}");
-                    }
-                    UnityEditor.EditorGUILayout.LabelField($"MaterialBlockList:");
-                    for (int i = 0; i < lod.materialBlockList.Length; i++)
-                    {
-                        var block = lod.materialBlockList[i];
-                        UnityEditor.EditorGUILayout.LabelField($"Block {i}-{block.GetHashCode()}:");
-                        UnityEditor.EditorGUILayout.LabelField($"->runtimePackageIndex: {string.Join(",", block.runtimePackageIndex)}");
-                        UnityEditor.EditorGUILayout.LabelField($"->packageLists: {block.packageLists.Length}");
-                        foreach (var pl in block.packageLists)
-                        {
-                            UnityEditor.EditorGUILayout.LabelField($"->->packageList: {pl.Count}");
-                            foreach (var p in pl)
-                            {
-                                UnityEditor.EditorGUILayout.LabelField($"->->->package: instancingCount={p.instancingCount} subMeshCount={p.subMeshCount}");
-                            }
-                        }
-                    }
-                }
-            }
-
-            private void DrawAllBones()
-            {
-                if (_renderer.RootTransform == null || _renderer.InstancingData == null) return;
-                if (_allBones == null)
-                {
-                    _allBones = new Dictionary<string, Transform>();
-
-                    foreach (var smr in _renderer.GetComponentsInChildren<SkinnedMeshRenderer>())
-                    {
-                        foreach (var b in smr.bones)
-                        {
-                            var path = RuntimeHelper.GetTransformPath(_renderer.RootTransform, b);
-                            _allBones.Add($"[{smr.name}]" + path, b);
-                        }
-                    }
-
-                    var extraBoneInfo = _renderer.InstancingData.boneData;
-
-                    foreach (string path in extraBoneInfo.extraBones)
-                    {
-                        var found = RuntimeHelper.GetTransformAtPath(_renderer.RootTransform, path.Split("/"));
-                        if (found != null)
-                        {
-                            _allBones.Add("[Extra]" + path, found);
-                        }
-                    }
-                }
-
-                _allBonesFoldout = UnityEditor.EditorGUILayout.Foldout(_allBonesFoldout, "All bones:", true);
-
-                if (_allBonesFoldout)
-                {
-                    var i = 0;
-                    foreach (var bone in _allBones)
-                    {
-                        UnityEditor.EditorGUILayout.ObjectField($"{i++} {bone.Key}", bone.Value, typeof(Transform), true);
-                    }
-                }
-            }
-        }
-
         private class LodInfo
         {
             public int lodLevel;
             public SkinnedMeshRenderer[] skinnedMeshRenderers;
             public MeshRenderer[] meshRenderers;
             public MeshFilter[] meshFilters;
-            public VertexCache[] vertexCacheList;
+            // public VertexCache[] vertexCacheList;
             public MaterialBlock[] materialBlockList;
         }
     }
-
 }
