@@ -46,6 +46,7 @@ namespace AnimationInstancing_v2
             }
             return current;
         }
+
         public static void MergeBone(SkinnedMeshRenderer[] skinnedMeshRenderers,
             out List<Transform> boneList,
             out List<Matrix4x4> bindPoseList)
@@ -93,6 +94,16 @@ namespace AnimationInstancing_v2
             upwards.z = mat.m21;
 
             return Quaternion.LookRotation(forward, upwards);
+        }
+
+        public static int GetIdentify(Material[] materials)
+        {
+            int hash = 0;
+            for (int i = 0; i != materials.Length; ++i)
+            {
+                hash += materials[i].name.GetHashCode();
+            }
+            return hash;
         }
     }
 }

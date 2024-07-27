@@ -23,6 +23,7 @@ namespace AnimationInstancing_v2
 
         private static bool _destroyed = false;
         private readonly List<AnimationInstancingRenderer> instancingRenderers = new();
+        public static readonly Dictionary<int, VertexCache> VertexCacheDic = new();
         // private Transform cameraTransform;
 
         // private void OnEnable()
@@ -87,7 +88,7 @@ namespace AnimationInstancing_v2
                     var block = materialBlockList[j];
                     Debug.Assert(block != null);
 
-                    var blockUnit = block.materialBlockUnits[aniTextureIndex];
+                    var blockUnit = block.clonedMaterialBlocks[aniTextureIndex];
 
                     var instanceIndex = blockUnit.NextInstanceIndex();
 
@@ -126,24 +127,24 @@ namespace AnimationInstancing_v2
 
         private void Render()
         {
-            foreach (var obj in VertexCachePool.VertexCacheDic)
+            foreach (var obj in VertexCacheDic)
             {
                 var vertexCache = obj.Value;
-                foreach (var blockItem in vertexCache.instanceBlockDic)
+                foreach (var blockItem in vertexCache.InstanceBlockDic)
                 {
                     var block = blockItem.Value;
-                    for (var blockUnitIndex = 0; blockUnitIndex < block.materialBlockUnits.Length; blockUnitIndex++)
+                    for (var i = 0; i < block.clonedMaterialBlocks.Length; i++)
                     {
-                        var blockUnit = block.materialBlockUnits[blockUnitIndex];
-                        var packageStack = blockUnit.packageStack;
+                        var blockUnit = block.clonedMaterialBlocks[i];
 
-                        for (var packageIndex = 0; packageIndex < packageStack.Count; packageIndex++)
+                        for (var j = 0; j < blockUnit.PackageStack.Count; j++)
                         {
-                            var package = packageStack[packageIndex];
+                            var package = blockUnit.PackageStack[j];
 
                             if (package.instancingCount > 0)
                             {
-                                DrawMeshInstanced(vertexCache, package, blockUnit.clonedMaterials, blockUnitIndex);
+                                DrawMeshInstanced(vertexCache, package, 
+                                    blockUnit.clonedMaterials, i);
 
                                 package.instancingCount = 0;
                             }
@@ -158,7 +159,7 @@ namespace AnimationInstancing_v2
         private static void DrawMeshInstanced(VertexCache vertexCache,
             InstancingPackage package, Material[] materials, int textureIndex)
         {
-            for (int i = 0; i != vertexCache.mesh.subMeshCount; ++i)
+            for (int i = 0; i != vertexCache.BoneAndMesh.mesh.subMeshCount; ++i)
             {
 #if UNITY_EDITOR
                 PreparePackageMaterial(materials[i], vertexCache.textureData, textureIndex);
@@ -177,7 +178,7 @@ namespace AnimationInstancing_v2
             package.propertyBlock.SetFloatArray("preFrameIndex", package.preFrameIndexArray);
             package.propertyBlock.SetFloatArray("transitionProgress", package.transitionProgressArray);
 
-            Graphics.DrawMeshInstanced(vertexCache.mesh,
+            Graphics.DrawMeshInstanced(vertexCache.BoneAndMesh.mesh,
                 subMeshIndex,
                 material,
                 package.worldMatrixArray,
@@ -210,7 +211,7 @@ namespace AnimationInstancing_v2
 
                 var mng = target as AnimationInstancingRendererManager;
 
-                foreach (var vc in VertexCachePool.VertexCacheDic)
+                foreach (var vc in VertexCacheDic)
                 {
                     UnityEditor.EditorGUILayout.LabelField($"VertexCache {vc.Key} [{vc.Value.GetHashCode()}]:");
                 }

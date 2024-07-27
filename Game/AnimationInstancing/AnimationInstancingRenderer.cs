@@ -45,8 +45,6 @@ namespace AnimationInstancing_v2
                     GetBonePerVertex(),
                     null);
 
-            // UpdateLodVertexCaches(_lodInfoList);
-
             AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
         }
 
@@ -54,19 +52,6 @@ namespace AnimationInstancing_v2
         {
             AnimationInstancingRendererManager.Instance?.UnregisterAnimationInstancingRenderer(this);
         }
-
-        // private void UpdateLodVertexCaches(LodInfo[] lodInfoList)
-        // {
-        //     foreach (var lod in lodInfoList)
-        //     {
-        //         foreach (var cache in lod.vertexCacheList)
-        //         {
-        //             cache.shadowcastingMode = shadowCastingMode;
-        //             cache.receiveShadow = receiveShadow;
-        //             cache.layer = gameObject.layer;
-        //         }
-        //     }
-        // }
 
         private int GetBonePerVertex()
         {
@@ -86,7 +71,6 @@ namespace AnimationInstancing_v2
             int bonePerVertex,
             string alias)
         {
-            var textureCount = textureData != null ? textureData.bakedBoneTextures.Length : 1;
             var renderingConfig = new RenderingConfig
             {
                 shadowcastingMode = shadowCastingMode,
@@ -99,48 +83,75 @@ namespace AnimationInstancing_v2
                 var lod = lodInfoList[lodIndex];
                 for (int smrIndex = 0; smrIndex != lod.skinnedMeshRenderers.Length; ++smrIndex)
                 {
-                    var mesh = lod.skinnedMeshRenderers[smrIndex].sharedMesh;
-                    if (mesh == null) continue;
+                    var sharedMesh = lod.skinnedMeshRenderers[smrIndex].sharedMesh;
+                    if (sharedMesh == null) continue;
 
                     var render = lod.skinnedMeshRenderers[smrIndex];
                     int renderName = lod.skinnedMeshRenderers[smrIndex].name.GetHashCode();
                     int aliasName = 0;
-                    var materials = lod.skinnedMeshRenderers[smrIndex].sharedMaterials;
+                    var sharedMaterials = lod.skinnedMeshRenderers[smrIndex].sharedMaterials;
                     var rendererIndex = smrIndex;
+                    int identify = RuntimeHelper.GetIdentify(sharedMaterials);
 
-                    var vertexCache = VertexCachePool.GetOrCreateVertexCache(
-                                allBones, bindPose, textureData, bonePerVertex, mesh,
-                                render, renderName + aliasName, materials, renderingConfig);
-                    int identify = VertexCachePool.GetIdentify(materials);
-                    var matBlock = VertexCachePool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
+                    var key = renderName + aliasName;
 
-                    lod.materialBlockList[rendererIndex] = matBlock;
+                    AddToVertexCachePool(lod, rendererIndex, allBones, bindPose,
+                        textureData, renderingConfig, sharedMesh,
+                        render, sharedMaterials, identify, key);
+
                     // lod.vertexCacheList[rendererIndex] = vertexCache;
                 }
 
                 for (int mrIndex = 0; mrIndex != lod.meshRenderers.Length; ++mrIndex)
                 {
-                    var mesh = lod.meshFilters[mrIndex].sharedMesh;
-                    if (mesh == null) continue;
+                    var sharedMesh = lod.meshFilters[mrIndex].sharedMesh;
+                    if (sharedMesh == null) continue;
 
                     var render = lod.meshRenderers[mrIndex];
                     int renderName = render.name.GetHashCode();
                     int aliasName = alias != null ? alias.GetHashCode() : 0;
-                    var materials = render.sharedMaterials;
+                    var sharedMaterials = render.sharedMaterials;
                     var rendererIndex = lod.skinnedMeshRenderers.Length + mrIndex;
+                    int identify = RuntimeHelper.GetIdentify(sharedMaterials);
 
-                    var vertexCache = VertexCachePool.GetOrCreateVertexCache(
-                        allBones, bindPose, textureData, bonePerVertex, mesh,
-                        render, renderName + aliasName, materials, renderingConfig);
-                    int identify = VertexCachePool.GetIdentify(materials);
-                    var matBlock = VertexCachePool.GetOrCreateMaterialBlock(vertexCache, identify, textureCount);
+                    var key = renderName + aliasName;
 
-                    lod.materialBlockList[rendererIndex] = matBlock;
+                    AddToVertexCachePool(lod, rendererIndex, allBones, bindPose,
+                        textureData, renderingConfig, sharedMesh,
+                        render, sharedMaterials, identify, key);
                     // lod.vertexCacheList[rendererIndex] = vertexCache;
                 }
             }
 
             UnityEngine.Profiling.Profiler.EndSample();
+        }
+
+        private void AddToVertexCachePool(
+            LodInfo lod, int index,
+            Transform[] allBones,
+            Matrix4x4[] bindPose,
+            AnimationTextureData textureData,
+            RenderingConfig renderingConfig,
+            Mesh sharedMesh,
+            Renderer render,
+            Material[] sharedMaterials,
+            int identify, int key)
+        {
+            if (!AnimationInstancingRendererManager.VertexCacheDic.TryGetValue(key, out var vertexCache))
+            {
+                var boneAndMesh = new BoneAndMesh(sharedMesh, allBones, bindPose, render, bonePerVertex);
+                
+                vertexCache = new VertexCache(boneAndMesh, textureData, sharedMaterials, renderingConfig);
+
+                AnimationInstancingRendererManager.VertexCacheDic[key] = vertexCache;
+            }
+
+            if (!vertexCache.InstanceBlockDic.TryGetValue(identify, out MaterialBlock matBlock))
+            {
+                vertexCache.InstanceBlockDic.Add(identify, 
+                    new MaterialBlock(sharedMaterials, sharedMesh.subMeshCount, textureData));
+            }
+            lod.materialBlockList[index] = matBlock;
         }
 
         private void DisableDefaultRenderersAndAnimator(LodInfo[] lodInfoList)
