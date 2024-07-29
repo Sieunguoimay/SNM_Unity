@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace AnimationInstancing_v2
 {
@@ -9,6 +8,7 @@ namespace AnimationInstancing_v2
     {
         [SerializeField] private float playSpeed = 1.0f;
         [SerializeField] private int startAnimation = 0;
+        [SerializeField] private bool applyRootMotion = false;
 
         private float _speedParameter = 1.0f;
         private float _cacheParameter = 1.0f;
@@ -20,10 +20,7 @@ namespace AnimationInstancing_v2
         private int _preAniIndex = -1;
 
         private int _eventIndex = -1;
-
         private int _aniTextureIndex = 0;
-        private int _preAniTextureIndex = 0;
-
         private WrapMode _wrapMode = WrapMode.Default;
 
         //Transition
@@ -37,10 +34,10 @@ namespace AnimationInstancing_v2
 
         private AnimationInstancingRenderer _renderer;
         private AnimationInstancingRenderer Renderer => _renderer ??= GetComponent<AnimationInstancingRenderer>();
-        private List<AnimationInfo> AnimInfoList => Renderer.InstancingData.animInfoList;
+        private List<AnimationInfo> AnimInfoList => Renderer.InstancingData?.animInfoList;
 
-        public float FrameIndex => _aniIndex >= 0 ? AnimInfoList[_aniIndex].animationIndex + _curFrame : -1f;
-        public float PreFrameIndex => _preAniIndex >= 0 ? AnimInfoList[_preAniIndex].animationIndex + _preAniFrame : -1f;
+        public float FrameIndex => _aniIndex >= 0 ? AnimInfoList[_aniIndex].startFrameIndex + _curFrame : -1f;
+        public float PreFrameIndex => _preAniIndex >= 0 ? AnimInfoList[_preAniIndex].startFrameIndex + _preAniFrame : -1f;
         public float TransitionProgress => _transitionProgress;
         public int AniTextureIndex => _aniTextureIndex;
 
@@ -49,9 +46,11 @@ namespace AnimationInstancing_v2
         public bool IsPause => _speedParameter == 0.0f;
         public bool IsLoop => _wrapMode == WrapMode.Loop;
 
+        public event System.Action<AnimationInstancingAnimator, AnimationEvent> AnimationEventTriggered;
+
         private void Start()
         {
-            _aniIndex = startAnimation;
+            PlayAnimation(startAnimation);
             _animationInfoComparer = new();
         }
 
@@ -94,7 +93,6 @@ namespace AnimationInstancing_v2
                 _preAniFrame = (int)(_curFrame + 0.5f);
                 _curFrame = 0.0f;
                 _eventIndex = -1;
-                _preAniTextureIndex = _aniTextureIndex;
                 _aniTextureIndex = AnimInfoList[_aniIndex].textureIndex;
                 _wrapMode = AnimInfoList[_aniIndex].wrapMode;
                 _speedParameter = 1.0f;
@@ -108,8 +106,8 @@ namespace AnimationInstancing_v2
 
         public void CrossFade(string animationName, float duration)
         {
-            int hash = animationName.GetHashCode();
-            int index = FindAnimationInfo(hash);
+            var hash = animationName.GetHashCode();
+            var index = FindAnimationInfo(hash);
             CrossFade(index, duration);
         }
 
@@ -168,11 +166,15 @@ namespace AnimationInstancing_v2
 
         public void UpdateAnimation()
         {
-            if (AnimInfoList == null || IsPause)
+            if (_aniIndex < 0 || AnimInfoList == null || IsPause)
                 return;
+
+            if (applyRootMotion)
+                ApplyRootMotion();
 
             UpdateTransition();
             UpdateCurrentFrame();
+            UpdateAnimationEvent();
         }
 
         private void UpdateTransition()
@@ -194,8 +196,8 @@ namespace AnimationInstancing_v2
         private void UpdateCurrentFrame()
         {
             var aniInfo = AnimInfoList[_aniIndex];
-            int fps = aniInfo.fps;
-            int totalFrame = aniInfo.totalFrame;
+            var fps = aniInfo.fps;
+            var totalFrame = aniInfo.totalFrame;
 
             var speed = playSpeed * _speedParameter;
 
@@ -237,8 +239,7 @@ namespace AnimationInstancing_v2
             }
 
             _curFrame = Mathf.Clamp(_curFrame, 0f, totalFrame - 1);
-            
-            UpdateAnimationEvent();
+
         }
 
         private void UpdateAnimationEvent()
@@ -268,53 +269,140 @@ namespace AnimationInstancing_v2
                 var time = _curFrame / info.fps;
                 if (_aniEvent.time <= time)
                 {
-                    gameObject.SendMessage(_aniEvent.function, _aniEvent);// use handler to handle this
+                    SendEvent();
                     _aniEvent = null;
                 }
             }
         }
 
-        [ContextMenu("Play Next")]
+        private void SendEvent()
+        {
+            var dispatcher = Renderer.RootTransform.GetComponent<AnimationEventDispatcher>();
+            if (dispatcher != null && _aniEvent.function == "DispatchStringEvent")
+            {
+                dispatcher?.DispatchStringEvent(_aniEvent.stringParameter);
+            }
+            AnimationEventTriggered?.Invoke(this, _aniEvent);
+        }
 
+        private void ApplyRootMotion()
+        {
+            var info = GetCurrentAnimationInfo();
+            if (info == null || !info.rootMotion)
+                return;
+
+            int preSampleFrame = (int)_curFrame;
+            int nextSampleFrame = (int)(_curFrame + 1.0f);
+            if (nextSampleFrame >= info.totalFrame)
+                return;
+
+            var preVelocity = info.velocity[preSampleFrame];
+            var nextVelocity = info.velocity[nextSampleFrame];
+            var velocity = Vector3.Lerp(preVelocity, nextVelocity, _curFrame - preSampleFrame);
+            var angularVelocity = Vector3.Lerp(
+                info.angularVelocity[preSampleFrame],
+                info.angularVelocity[nextSampleFrame],
+                _curFrame - preSampleFrame);
+
+            var localQuaternion = Renderer.RootTransform.localRotation;
+            var delta = Quaternion.Euler(angularVelocity * Time.deltaTime);
+            localQuaternion *= delta;
+
+            var offset = velocity * Time.deltaTime;
+            offset = localQuaternion * offset;
+            //offset.y = 0.0f;
+            var localPosition = Renderer.RootTransform.localPosition;
+            localPosition += offset;
+#if UNITY_5_6_OR_NEWER
+            Renderer.RootTransform.SetPositionAndRotation(localPosition, localQuaternion);
+#else
+            Renderer.RootTransform.localPosition = localPosition;
+            Renderer.RootTransform.localRotation = localQuaternion;
+#endif
+
+        }
+
+
+#if UNITY_EDITOR
+        [ContextMenu("Play Next")]
         private void TestPlayNext()
         {
-            _aniIndex = (_aniIndex + 1) % AnimInfoList.Count;
+            PlayAnimation((_aniIndex + 1) % AnimInfoList.Count);
         }
+
+        [ContextMenu("CrossFadeNext1s")]
+        private void TestCrossFadeNext1s()
+        {
+            CrossFade((_aniIndex + 1) % AnimInfoList.Count, 1);
+        }
+
+        [UnityEditor.CustomEditor(typeof(AnimationInstancingAnimator))]
+        private class _Editor : UnityEditor.Editor
+        {
+            private bool _foldout = true;
+            private AnimationInstancingAnimator _target;
+
+            public override void OnInspectorGUI()
+            {
+                DrawDefaultInspector();
+
+                _target = target as AnimationInstancingAnimator;
+
+                if (_foldout = UnityEditor.EditorGUILayout.Foldout(_foldout, "Animations"))
+                {
+                    DrawAllAnimations();
+                }
+                DrawControlButtons();
+                Repaint();
+            }
+
+            private void DrawAllAnimations()
+            {
+                if (_target.AnimInfoList != null)
+                {
+                    for (int i = 0; i < _target.AnimInfoList.Count; i++)
+                    {
+                        var a = _target.AnimInfoList[i];
+                        var frames = _target._curFrame - a.startFrameIndex;
+                        var factor = frames / a.totalFrame;
+                        var currentAnimCursor = _target._aniIndex == i ? $"<- ({Mathf.FloorToInt(frames)} ~ {factor})" : "";
+                        UnityEditor.EditorGUILayout.LabelField($"{i}. {a.animationName} (hash={a.animationNameHash}, tex={a.textureIndex}) {currentAnimCursor}");
+                    }
+                }
+            }
+
+            private void DrawControlButtons()
+            {
+                using (new UnityEditor.EditorGUILayout.HorizontalScope())
+                {
+                    UnityEditor.EditorGUILayout.LabelField($"IsPlaying = {_target.IsPlaying}");
+                    UnityEditor.EditorGUILayout.LabelField($"Paused = {_target.IsPause}");
+                }
+
+                if (!_target.IsPause)
+                {
+                    if (GUILayout.Button("Pause"))
+                    {
+                        _target.Pause();
+                    }
+                }
+                else
+                {
+                    if (GUILayout.Button("Resume"))
+                    {
+                        _target.Resume();
+                    }
+                }
+
+                if (_target.IsPlaying)
+                {
+                    if (GUILayout.Button("Stop"))
+                    {
+                        _target.Stop();
+                    }
+                }
+            }
+        }
+#endif
     }
-
-
-    // public void UpdateAnimation()
-    // {
-    //     if (animationData.animInfoList == null)// || IsPause())
-    //         return;
-
-    // if (isInTransition)
-    // {
-    //     transitionTimer += Time.deltaTime;
-    //     float weight = transitionTimer / transitionDuration;
-    //     transitionProgress = Mathf.Min(weight, 1.0f);
-    //     if (transitionProgress >= 1.0f)
-    //     {
-    //         isInTransition = false;
-    //         preAniIndex = -1;
-    //         preAniFrame = -1;
-    //     }
-    // }
-
-
-    // UpdateCurrentFrame(playSpeed,
-    //     animationData.animInfoList[aniIndex].fps,
-    //     animationData.animInfoList[aniIndex].totalFrame,
-    //     animationData.animInfoList[aniIndex].wrapMode);
-
-
-    // for (int i = 0; i != listAttachment.Count; ++i)
-    // {
-    //     var attachment = listAttachment[i];
-    //     attachment.transform.position = transform.position;
-    //     attachment.transform.rotation = transform.rotation;
-    // }
-    // UpdateAnimationEvent();
-    // }
-
 }

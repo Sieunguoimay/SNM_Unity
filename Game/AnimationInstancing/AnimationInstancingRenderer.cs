@@ -280,7 +280,7 @@ namespace AnimationInstancing_v2
             public SkinnedMeshRenderer[] skinnedMeshRenderers;
             public MeshRenderer[] meshRenderers;
             public MeshFilter[] meshFilters;
-            // public VertexCache[] vertexCacheList;
+
             public MaterialBlock[] materialBlockList;
         }
     }

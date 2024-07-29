@@ -12,6 +12,7 @@ namespace AnimationInstancing_v2
     public class AnimationBakerWindow : EditorWindow
     {
         [SerializeField] private AnimationBakerToolSerializedData bakerToolSerializedData = new();
+        private AnimationBakerTool _tool;
 
         [MenuItem("Tools/AnimInstancing/AnimationBaker")]
         public static void OpenWindow()
@@ -19,17 +20,44 @@ namespace AnimationInstancing_v2
             GetWindow<AnimationBakerWindow>().Show();
         }
 
+        public static void OpenWindow(IAnimationBakeData data)
+        {
+            var window = GetWindow<AnimationBakerWindow>();
+            window.bakerToolSerializedData.Copy(data);
+            window.Show();
+            window._tool.Refresh();
+        }
+
         private void CreateGUI()
         {
-            rootVisualElement.Add(new AnimationBakerTool(bakerToolSerializedData));
+            rootVisualElement.Add(_tool = new AnimationBakerTool(bakerToolSerializedData));
         }
 
         [Serializable]
-        private class AnimationBakerToolSerializedData
+        private class AnimationBakerToolSerializedData : IAnimationBakeData
         {
             public GameObject prefab;
             public List<string> selectedExtraBones = new();
             public List<string> selectedAnims = new();
+            public int fps = 30;
+
+            public AnimationInstancingData asset;
+
+            AnimationInstancingData IAnimationBakeData.Asset => asset;
+
+            int IAnimationBakeData.Fps => fps;
+            GameObject IAnimationBakeData.Prefab => prefab;
+            List<string> IAnimationBakeData.SelectedExtraBones => selectedExtraBones;
+            List<string> IAnimationBakeData.SelectedAnims => selectedAnims;
+
+            public void Copy(IAnimationBakeData data)
+            {
+                prefab = data.Prefab;
+                selectedExtraBones = data.SelectedExtraBones;
+                selectedAnims = data.SelectedAnims;
+                fps = data.Fps;
+                asset = data.Asset;
+            }
         }
 
         private class AnimationBakerTool : VisualElement
@@ -45,6 +73,8 @@ namespace AnimationInstancing_v2
 
             private IntegerField _fps;
             private Foldout _selectExtraBoneLabel;
+            private UnityEditor.UIElements.ObjectField _prefab;
+            private UnityEditor.UIElements.ObjectField _asset;
 
             public AnimationBakerTool(AnimationBakerToolSerializedData serializedData)
             {
@@ -54,13 +84,23 @@ namespace AnimationInstancing_v2
 
             private void SetupGUI()
             {
-                var prefab = new ObjectField()
+                _prefab = new UnityEditor.UIElements.ObjectField
                 {
                     label = "Prefab",
                     value = serializedData.prefab,
                     objectType = typeof(GameObject),
+                    allowSceneObjects = true
                 };
-                prefab.RegisterValueChangedCallback(OnPrefabChanged);
+                _prefab.RegisterValueChangedCallback(OnPrefabChanged);
+
+                _asset = new UnityEditor.UIElements.ObjectField
+                {
+                    label = "Output Asset",
+                    value = serializedData.asset,
+                    objectType = typeof(AnimationInstancingData),
+                    allowSceneObjects = true
+                };
+                _asset.RegisterValueChangedCallback(OnAssetChanged);
 
                 _statusLabel = new Label() { text = "Status" };
                 _bakeButton = new Button() { text = "Bake" };
@@ -70,10 +110,12 @@ namespace AnimationInstancing_v2
                 var refreshStatusButton = new Button() { text = "Refresh Status" };
                 refreshStatusButton.RegisterCallback<ClickEvent>(evt => UpdateAll());
 
-                _fps = new IntegerField("fps") { value = 30 };
+                (_fps = new IntegerField("fps") { value = serializedData.fps })
+                    .RegisterCallback<ChangeEvent<int>>(evt => serializedData.fps = evt.newValue);
                 _selectExtraBoneLabel = new Foldout() { text = "Select extra bones:" };
 
-                Add(prefab);
+                Add(_prefab);
+                Add(_asset);
                 Add(_selectExtraBoneLabel);
                 _selectExtraBoneLabel.Add(_extraBoneTogglesHolder);
                 Add(new Label("Select animation clips:"));
@@ -86,13 +128,25 @@ namespace AnimationInstancing_v2
                 UpdateAll();
             }
 
+            private void OnAssetChanged(ChangeEvent<UnityEngine.Object> evt)
+            {
+                serializedData.asset = evt.newValue as AnimationInstancingData;
+            }
+
             private void OnPrefabChanged(ChangeEvent<UnityEngine.Object> evt)
             {
                 serializedData.prefab = evt.newValue as GameObject;
                 UpdateAll();
             }
 
-            private void UpdateAll()
+            public void Refresh()
+            {
+                _prefab.value = serializedData.prefab;
+                _asset.value = serializedData.asset;
+                UpdateAll();
+            }
+
+            public void UpdateAll()
             {
                 foreach (var bt in extraBoneToggles) _extraBoneTogglesHolder.Remove(bt);
                 foreach (var bt in clipToggles) _clipTogglesHolder.Remove(bt);
@@ -129,20 +183,25 @@ namespace AnimationInstancing_v2
 
             private void OnBakeButtonClicked(ClickEvent evt)
             {
-                AnimationBaker.BakeWithAnimator(
-                    serializedData.prefab,
-                    serializedData.selectedExtraBones,
-                    serializedData.selectedAnims,
-                    _fps.value,
-                    out var animationData);
+                var animationData = AnimationBaker.BakeWithAnimator(serializedData);
 
-                var savePath = AssetDatabase.GetAssetPath(serializedData.prefab)
-                    .Replace(".prefab", ".asset");
+                var asset = (serializedData as IAnimationBakeData).Asset;
+                if (asset != null)
+                {
+                    SaveToExistingAsset(animationData, asset);
+                }
+                else
+                {
+                    var savePath = UnityEditor.AssetDatabase.GetAssetPath(serializedData.prefab)
+                        .Replace(".prefab", ".asset");
 
-                SaveAll(animationData, savePath);
+                    SaveToPath(animationData, savePath);
+
+                    _asset.value = animationData;
+                }
             }
 
-            private static void SaveAll(
+            private static void SaveToPath(
                 AnimationInstancingData animationData, string savePath)
             {
                 var asset = animationData;
@@ -200,7 +259,7 @@ namespace AnimationInstancing_v2
             {
                 extraBoneToggles.Clear();
 
-                foreach (var b in TraverseTransformTree(root, 0).Reverse())
+                foreach (var b in TraverseTransformTree(root, 0))
                 {
                     var name = b.transform.name;
                     var isSkinnedMeshBone = skinnedMeshBones.Contains(b.transform);
@@ -224,6 +283,8 @@ namespace AnimationInstancing_v2
 
             private static IEnumerable<(Transform transform, int depth)> TraverseTransformTree(Transform current, int height)
             {
+                yield return (current, height);
+
                 foreach (Transform c in current)
                 {
                     foreach (var p in TraverseTransformTree(c, height + 1))
@@ -231,7 +292,6 @@ namespace AnimationInstancing_v2
                         yield return p;
                     }
                 }
-                yield return (current, height);
             }
 
             private void UpdateSelectedBones(IEnumerable<string> bonePaths)
@@ -301,6 +361,30 @@ namespace AnimationInstancing_v2
             }
 
         }
+
+        public static void SaveToExistingAsset(AnimationInstancingData output, AnimationInstancingData asset)
+        {
+            foreach (var t in asset.animationTextureData.bakedBoneTextures)
+            {
+                UnityEditor.AssetDatabase.RemoveObjectFromAsset(t);
+                DestroyImmediate(t);
+            }
+
+            asset.animInfoList = output.animInfoList;
+            asset.boneData = output.boneData;
+            asset.animationTextureData = output.animationTextureData;
+
+            foreach (var t in asset.animationTextureData.bakedBoneTextures)
+            {
+                UnityEditor.AssetDatabase.AddObjectToAsset(t, asset);
+            }
+
+            UnityEditor.EditorUtility.SetDirty(asset);
+            UnityEditor.AssetDatabase.SaveAssets();
+
+            Debug.Log($"Baked to {UnityEditor.AssetDatabase.GetAssetPath(asset)}", asset);
+        }
+
     }
 }
 #endif

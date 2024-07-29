@@ -5,25 +5,38 @@ using UnityEngine;
 
 namespace AnimationInstancing_v2
 {
+    public interface IAnimationBakeData
+    {
+        GameObject Prefab { get; }
+        List<string> SelectedExtraBones { get; }
+        List<string> SelectedAnims { get; }
+        int Fps { get; }
+        AnimationInstancingData Asset { get; }
+    }
+
     public class AnimationBaker
     {
-        public static void BakeWithAnimator(
+        public static AnimationInstancingData BakeWithAnimator(IAnimationBakeData data)
+        {
+            return BakeWithAnimator(data.Prefab, data.SelectedExtraBones, data.SelectedAnims, data.Fps);
+        }
+
+        public static AnimationInstancingData BakeWithAnimator(
             GameObject prefab,
             List<string> selectedExtraBones,
             List<string> selectedAnims,
-            int fps,
-            out AnimationInstancingData animationData)
+            int fps)
         {
             if (prefab == null)
             {
-                animationData = null;
-                return;
+                return null;
             }
 
             var go = Object.Instantiate(prefab);
             go.name = prefab.name;
             go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
 
+            var preGo = UnityEditor.Selection.activeGameObject;
             UnityEditor.Selection.activeGameObject = go;
 
             CreateBoneBakeInfos(prefab, go, selectedExtraBones,
@@ -42,12 +55,15 @@ namespace AnimationInstancing_v2
             var animationTextureData = AnimationTextureBaker
                 .GenerateAnimationTextureData(animInfoList, animPoseDataList, boneList.Length);
 
-            animationData = ScriptableObject.CreateInstance<AnimationInstancingData>();
+            var animationData = ScriptableObject.CreateInstance<AnimationInstancingData>();
             animationData.animInfoList = animInfoList;
             animationData.boneData = extraBoneInfo;
             animationData.animationTextureData = animationTextureData;
 
             Object.DestroyImmediate(go);
+            UnityEditor.Selection.activeGameObject = preGo;
+
+            return animationData;
         }
 
         private static void CreateBoneBakeInfos(
@@ -188,7 +204,7 @@ namespace AnimationInstancing_v2
                 {
                     animationName = clip.name,
                     animationNameHash = state.state.nameHash,
-                    animationIndex = animationIndex,
+                    startFrameIndex = animationIndex,
                     totalFrame = Mathf.Clamp(tf, 1, tf),
                     fps = bakeFPS,
                     rootMotion = true,

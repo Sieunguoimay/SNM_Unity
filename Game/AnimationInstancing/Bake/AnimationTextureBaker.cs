@@ -205,7 +205,7 @@ namespace AnimationInstancing_v2
                     {
                         if (info.animationNameHash == matrixData.stateName)
                         {
-                            info.animationIndex = pixelx / textureBlockWidth + pixely / textureBlockHeight * bakedBoneTexture[bakedTextureIndex].width / textureBlockWidth;
+                            info.startFrameIndex = pixelx / textureBlockWidth + pixely / textureBlockHeight * bakedBoneTexture[bakedTextureIndex].width / textureBlockWidth;
                             info.textureIndex = bakedTextureIndex;
                         }
                     }

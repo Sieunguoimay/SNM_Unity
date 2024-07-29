@@ -29,7 +29,7 @@ namespace AnimationInstancing_v2
                     copyMaterials[i].enableInstancing = true;
 #endif
                     //if (useInstancing)
-                    // copyMaterials[subMeshIndex].EnableKeyword("INSTANCING_ON");
+                    copyMaterials[i].EnableKeyword("SKINNED_INSTANCING_ON");
                     //else
                     //copyMaterials[i].DisableKeyword("INSTANCING_ON");
 

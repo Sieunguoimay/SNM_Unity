@@ -31,9 +31,9 @@ namespace AnimationInstancing_v2
     {
         public string animationName;
         public int animationNameHash;
+        public int startFrameIndex;
         public int totalFrame;
         public int fps;
-        public int animationIndex;
         public int textureIndex;
         public bool rootMotion;
         public WrapMode wrapMode;

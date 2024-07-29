@@ -1,0 +1,19 @@
+using System;
+using UnityEngine;
+using UnityEngine.Events;
+
+public class AnimationEventDispatcher: MonoBehaviour
+{
+    [SerializeField] private UnityEventString onStringEvent;
+
+    public event Action<AnimationEventDispatcher, string> StringEventDispatched;
+
+    public void DispatchStringEvent(string str)
+    {
+        onStringEvent?.Invoke(str);
+        StringEventDispatched?.Invoke(this, str);
+        Debug.Log(str);
+    }
+
+    [Serializable] private class UnityEventString : UnityEvent<string> { }
+}
