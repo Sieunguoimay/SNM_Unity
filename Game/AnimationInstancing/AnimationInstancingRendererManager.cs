@@ -65,7 +65,7 @@ namespace AnimationInstancing_v2
                 // if (instance.applyRootMotion)
                 //     ApplyRootMotion(instance);
 
-                instanceAnimator.UpdateCurrentFrame();
+                instanceAnimator.UpdateAnimation();
 
                 // instance.UpdateAnimation();
                 // instance.boundingSpere.position = instance.transform.position;

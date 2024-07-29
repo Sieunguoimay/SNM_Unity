@@ -140,7 +140,7 @@ namespace AnimationInstancing_v2
             if (!AnimationInstancingRendererManager.VertexCacheDic.TryGetValue(key, out var vertexCache))
             {
                 var boneAndMesh = new BoneAndMesh(sharedMesh, allBones, bindPose, render, bonePerVertex);
-                
+
                 vertexCache = new VertexCache(boneAndMesh, textureData, sharedMaterials, renderingConfig);
 
                 AnimationInstancingRendererManager.VertexCacheDic[key] = vertexCache;
@@ -148,8 +148,8 @@ namespace AnimationInstancing_v2
 
             if (!vertexCache.InstanceBlockDic.TryGetValue(identify, out MaterialBlock matBlock))
             {
-                vertexCache.InstanceBlockDic.Add(identify, 
-                    new MaterialBlock(sharedMaterials, sharedMesh.subMeshCount, textureData));
+                matBlock = new MaterialBlock(sharedMaterials, sharedMesh.subMeshCount, textureData);
+                vertexCache.InstanceBlockDic.Add(identify, matBlock);
             }
             lod.materialBlockList[index] = matBlock;
         }

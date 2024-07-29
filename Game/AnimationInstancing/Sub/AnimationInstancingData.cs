@@ -40,6 +40,18 @@ namespace AnimationInstancing_v2
         public Vector3[] velocity;
         public Vector3[] angularVelocity;
         public List<AnimationEvent> eventList;
+
+        public class ComparerHash : IComparer<AnimationInfo>
+        {
+            private readonly AnimationInfo compareTarget = new();
+
+            public AnimationInfo CompareTarget => compareTarget;
+
+            public int Compare(AnimationInfo x, AnimationInfo y)
+            {
+                return x.animationNameHash.CompareTo(y.animationNameHash);
+            }
+        }
     }
 
     [System.Serializable]

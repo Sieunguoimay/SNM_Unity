@@ -5,26 +5,20 @@ namespace AnimationInstancing_v2
 {
     public class ClonedMaterialBlock
     {
-        public int instanceCountPerPackage;
         public Material[] clonedMaterials;
-        private List<InstancingPackage> packageStack;
+
+        public int instanceCountPerPackage;
+        private readonly List<InstancingPackage> packageStack;
 
         private int _topPackageIndex = 0;
         public IReadOnlyList<InstancingPackage> PackageStack => packageStack;
         public InstancingPackage TopPackage => packageStack[_topPackageIndex];
 
-        public static ClonedMaterialBlock Create(Material[] clonedMaterials)
+        public ClonedMaterialBlock(Material[] clonedMaterials)
         {
-            var b = new ClonedMaterialBlock()
-            {
-                clonedMaterials = clonedMaterials,
-                packageStack = new List<InstancingPackage>(),
-                instanceCountPerPackage = InstancingPackage.InstancingPackageSize
-            };
-
-            b.packageStack
-                .Add(InstancingPackage.CreateInstancingPackage(1));
-            return b;
+            this.clonedMaterials = clonedMaterials;
+            packageStack = new List<InstancingPackage>() { InstancingPackage.CreateInstancingPackage(1) };
+            instanceCountPerPackage = InstancingPackage.InstancingPackageSize;
         }
 
         public int NextInstanceIndex()

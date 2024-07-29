@@ -1,10 +1,21 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace AnimationInstancing_v2
 {
-    public class MaterialBlockCloner
+    public class MaterialBlock
     {
+        public ClonedMaterialBlock[] clonedMaterialBlocks;
+
+        public MaterialBlock(Material[] sharedMaterials, int count, AnimationTextureData textureData)
+        {
+            clonedMaterialBlocks = 
+                CloneMaterialsWithTextures(sharedMaterials, count, textureData)
+                .Select(m => new ClonedMaterialBlock(m))
+                .ToArray();
+        }
+
         public static IEnumerable<Material[]> CloneMaterialsWithTextures(Material[] materials, int count, AnimationTextureData textureData)
         {
             for (var textureIndex = 0; textureIndex < count; textureIndex++)
