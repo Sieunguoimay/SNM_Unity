@@ -42,7 +42,6 @@ namespace AnimationInstancing_v2
                     bones?.ToArray(),
                     bindPose?.ToArray(),
                     instancingData.animationTextureData,
-                    GetBonePerVertex(),
                     null);
 
             AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
@@ -68,7 +67,6 @@ namespace AnimationInstancing_v2
             Transform[] allBones,
             Matrix4x4[] bindPose,
             AnimationTextureData textureData,
-            int bonePerVertex,
             string alias)
         {
             var renderingConfig = new RenderingConfig
@@ -139,7 +137,7 @@ namespace AnimationInstancing_v2
         {
             if (!AnimationInstancingRendererManager.VertexCacheDic.TryGetValue(key, out var vertexCache))
             {
-                var boneAndMesh = new BoneAndMesh(sharedMesh, allBones, bindPose, render, bonePerVertex);
+                var boneAndMesh = new BoneAndMesh(sharedMesh, allBones, bindPose, render, GetBonePerVertex());
 
                 vertexCache = new VertexCache(boneAndMesh, textureData, sharedMaterials, renderingConfig);
 

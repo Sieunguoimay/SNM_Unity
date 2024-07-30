@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AnimationInstancing_v2
@@ -52,7 +53,11 @@ namespace AnimationInstancing_v2
                 int boneIndex = GetBoneToAttach(allBones, render as MeshRenderer);
                 if (boneIndex >= 0)
                 {
-                    mesh = DuplicateMeshAndTransformToBoneLocal(sharedMesh, bindPose[boneIndex]);
+                    var worldToBindPose = bindPose[boneIndex].inverse;
+                    var worldToRootBone = render.GetComponentInParent<AnimationInstancingRenderer>().RootTransform.worldToLocalMatrix;
+                    var meshToWorld = render.transform.localToWorldMatrix;
+                    var worldToParentLocal = render.transform.parent.worldToLocalMatrix;
+                    mesh = DuplicateMeshAndTransformToBoneLocal(sharedMesh, worldToBindPose);
 
                     for (int j = 0; j != sharedMesh.vertexCount; ++j)
                     {
@@ -68,35 +73,34 @@ namespace AnimationInstancing_v2
 
         private static int GetBoneToAttach(Transform[] allBones, MeshRenderer render)
         {
-            int boneIndex = -1;
             if (allBones != null)
             {
-                for (int k = 0; k != allBones.Length; ++k)
+                for (var i = 0; i < allBones.Length; i++)
                 {
-                    if (render.transform.parent.name.GetHashCode() == allBones[k].name.GetHashCode())
+                    if (render.transform.parent == allBones[i])
                     {
-                        boneIndex = k;
-                        break;
+                        return i;
                     }
                 }
             }
 
-            return boneIndex;
+            return -1;
         }
 
         private static Mesh DuplicateMeshAndTransformToBoneLocal(Mesh sharedMesh, Matrix4x4 boneMatrix)
         {
             var mesh = Object.Instantiate(sharedMesh);
             var vertices = mesh.vertices;
-            var inversedMat = boneMatrix.inverse;
+            var worldToLocal = boneMatrix;
 
-            var offset = (Vector3)inversedMat.GetColumn(3);
-            var q = RuntimeHelper.QuaternionFromMatrix(inversedMat);
+            var offset = (Vector3)worldToLocal.GetColumn(3);
+            var q = RuntimeHelper.QuaternionFromMatrix(worldToLocal);
 
-            for (int k = 0; k != mesh.vertexCount; ++k)
+            for (int i = 0; i != mesh.vertexCount; ++i)
             {
-                vertices[k] = q * vertices[k];
-                vertices[k] = vertices[k] + offset;
+                // vertices[i] = q * vertices[i];
+                // vertices[i] = vertices[i] + offset;
+                vertices[i] = worldToLocal.MultiplyPoint(vertices[i]);
             }
             mesh.vertices = vertices;
             return mesh;
@@ -218,6 +222,11 @@ namespace AnimationInstancing_v2
                 colors[i].a = boneWeights[i].w;
             }
             mesh.colors = colors;
+            //             var uv2 = new List<Vector4>(boneIndices.Length);
+            // for (int i = 0; i != boneIndices.Length; ++i)
+            // {
+            //     uv2.Add(boneIndices[i]);
+            // }
             mesh.SetUVs(2, boneIndices);
             mesh.UploadMeshData(false);
         }
