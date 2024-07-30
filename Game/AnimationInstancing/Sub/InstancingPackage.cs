@@ -14,17 +14,14 @@ namespace AnimationInstancing_v2
 
         public static readonly int InstancingPackageSize = 200;
 
-        public static InstancingPackage CreateInstancingPackage(int instancingCount)
+        public InstancingPackage(int instancingCount)
         {
-            return new InstancingPackage()
-            {
-                instancingCount = instancingCount,
-                propertyBlock = new MaterialPropertyBlock(),
-                worldMatrixArray = new Matrix4x4[InstancingPackageSize],
-                frameIndexArray = new float[InstancingPackageSize],
-                preFrameIndexArray = new float[InstancingPackageSize],
-                transitionProgressArray = new float[InstancingPackageSize],
-            };
+            this.instancingCount = instancingCount;
+            propertyBlock = new MaterialPropertyBlock();
+            worldMatrixArray = new Matrix4x4[InstancingPackageSize];
+            frameIndexArray = new float[InstancingPackageSize];
+            preFrameIndexArray = new float[InstancingPackageSize];
+            transitionProgressArray = new float[InstancingPackageSize];
         }
     }
 }

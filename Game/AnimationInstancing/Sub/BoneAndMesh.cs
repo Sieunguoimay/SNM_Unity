@@ -1,34 +1,11 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace AnimationInstancing_v2
 {
     public class BoneAndMesh
     {
-        public Mesh mesh;
-        public Vector4[] boneWeights;
-        public Vector4[] boneIndices;
-
-        public Mesh sharedMesh;
-        public Transform[] allBones;
-        public Matrix4x4[] bindPose;
-        public Renderer render;
-        public int bonePerVertex;
-
-        public BoneAndMesh(Mesh sharedMesh, Transform[] allBones,
-            Matrix4x4[] bindPose, Renderer render, int bonePerVertex)
-        {
-            this.sharedMesh = sharedMesh;
-            this.allBones = allBones;
-            this.bindPose = bindPose;
-            this.render = render;
-            this.bonePerVertex = bonePerVertex;
-
-            ExtractBonesAndMesh();
-            AddBoneWeightsAndIndicesToMesh();
-        }
-
-        private void ExtractBonesAndMesh()
+        public static Mesh PrepareMeshVertexData(Mesh sharedMesh,
+            Transform[] allBones, Renderer render, Transform root, int bonePerVertex)
         {
             if (render is SkinnedMeshRenderer smr)
             {
@@ -39,25 +16,23 @@ namespace AnimationInstancing_v2
                     smr.sharedMesh.boneWeights,
                     smr.sharedMesh.vertexCount,
                     bonePerVertex, boneIndicesMap,
-                    out boneWeights,
-                    out boneIndices);
+                    out var boneWeights,
+                    out var boneIndices);
                 UnityEngine.Profiling.Profiler.EndSample();
-                mesh = sharedMesh;
+                AddBoneWeightsAndIndicesToMesh(sharedMesh, boneWeights, boneIndices);
+                return sharedMesh;
             }
             else
             {
-                mesh = sharedMesh;
-                boneWeights = new Vector4[sharedMesh.vertexCount];
-                boneIndices = new Vector4[sharedMesh.vertexCount];
-
-                int boneIndex = GetBoneToAttach(allBones, render as MeshRenderer);
+                int boneIndex = GetBoneToAttach(allBones, render.transform);
                 if (boneIndex >= 0)
                 {
-                    var worldToBindPose = bindPose[boneIndex].inverse;
-                    var worldToRootBone = render.GetComponentInParent<AnimationInstancingRenderer>().RootTransform.worldToLocalMatrix;
                     var meshToWorld = render.transform.localToWorldMatrix;
-                    var worldToParentLocal = render.transform.parent.worldToLocalMatrix;
-                    mesh = DuplicateMeshAndTransformToBoneLocal(sharedMesh, worldToBindPose);
+                    var mesh = DuplicateMeshAndTransformToRootLocal(sharedMesh,
+                        root.worldToLocalMatrix * meshToWorld);
+
+                    var boneWeights = new Vector4[sharedMesh.vertexCount];
+                    var boneIndices = new Vector4[sharedMesh.vertexCount];
 
                     for (int j = 0; j != sharedMesh.vertexCount; ++j)
                     {
@@ -67,40 +42,44 @@ namespace AnimationInstancing_v2
                         boneWeights[j].w = -0.1f;
                         boneIndices[j].x = boneIndex;
                     }
+                    AddBoneWeightsAndIndicesToMesh(mesh, boneWeights, boneIndices);
+                    return mesh;
+                }
+                else
+                {
+                    // AddBoneWeightsAndIndicesToMesh(sharedMesh, new Vector4[sharedMesh.vertexCount], new Vector4[sharedMesh.vertexCount]);
+                    return null;
                 }
             }
         }
 
-        private static int GetBoneToAttach(Transform[] allBones, MeshRenderer render)
+        private static int GetBoneToAttach(Transform[] allBones, Transform transform)
         {
             if (allBones != null)
             {
                 for (var i = 0; i < allBones.Length; i++)
                 {
-                    if (render.transform.parent == allBones[i])
+                    if (transform == allBones[i])
                     {
                         return i;
                     }
                 }
+                if (transform.parent != null)
+                {
+                    return GetBoneToAttach(allBones, transform.parent);
+                }
             }
-
             return -1;
         }
 
-        private static Mesh DuplicateMeshAndTransformToBoneLocal(Mesh sharedMesh, Matrix4x4 boneMatrix)
+        private static Mesh DuplicateMeshAndTransformToRootLocal(Mesh sharedMesh, Matrix4x4 objectToRootLocal)
         {
             var mesh = Object.Instantiate(sharedMesh);
             var vertices = mesh.vertices;
-            var worldToLocal = boneMatrix;
-
-            var offset = (Vector3)worldToLocal.GetColumn(3);
-            var q = RuntimeHelper.QuaternionFromMatrix(worldToLocal);
 
             for (int i = 0; i != mesh.vertexCount; ++i)
             {
-                // vertices[i] = q * vertices[i];
-                // vertices[i] = vertices[i] + offset;
-                vertices[i] = worldToLocal.MultiplyPoint(vertices[i]);
+                vertices[i] = objectToRootLocal.MultiplyPoint(vertices[i]);
             }
             mesh.vertices = vertices;
             return mesh;
@@ -211,7 +190,7 @@ namespace AnimationInstancing_v2
             }
         }
 
-        private void AddBoneWeightsAndIndicesToMesh()
+        private static void AddBoneWeightsAndIndicesToMesh(Mesh mesh, Vector4[] boneWeights, Vector4[] boneIndices)
         {
             var colors = new Color[mesh.vertexCount];
             for (int i = 0; i != mesh.vertexCount; ++i)
@@ -222,11 +201,6 @@ namespace AnimationInstancing_v2
                 colors[i].a = boneWeights[i].w;
             }
             mesh.colors = colors;
-            //             var uv2 = new List<Vector4>(boneIndices.Length);
-            // for (int i = 0; i != boneIndices.Length; ++i)
-            // {
-            //     uv2.Add(boneIndices[i]);
-            // }
             mesh.SetUVs(2, boneIndices);
             mesh.UploadMeshData(false);
         }

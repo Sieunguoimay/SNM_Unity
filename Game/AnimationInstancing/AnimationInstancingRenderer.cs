@@ -16,8 +16,6 @@ namespace AnimationInstancing_v2
 
         [NonSerialized] private LodInfo[] _lodInfoList;
         [NonSerialized] private AnimationInstancingAnimator _instancingAnimator;
-
-        // public IReadOnlyList<VertexCache> VertexCacheList => _lodInfoList[0].vertexCacheList;
         public IReadOnlyList<MaterialBlock> MaterialBlockList => _lodInfoList[0].materialBlockList;
         public Transform RootTransform => root;
         public AnimationInstancingAnimator InstancingAnimator => _instancingAnimator;
@@ -26,23 +24,20 @@ namespace AnimationInstancing_v2
         private void Start()
         {
             _instancingAnimator = GetComponent<AnimationInstancingAnimator>();
-            _lodInfoList = GetLodInfoList(gameObject);
+            _lodInfoList = GetLodInfoList(RootTransform.gameObject);
 
-            DisableDefaultRenderersAndAnimator(_lodInfoList);
+            RootTransform.GetComponentInChildren<Animator>().enabled = false;
 
             //Todo: CullingGroup
             var radius = CalcBoundingSphere(_lodInfoList[0]);
-
             GetAllBones(_lodInfoList[0].skinnedMeshRenderers, instancingData.boneData, RootTransform,
                 out var bones,
-                out var bindPose);
+                out _);
 
-            AddToVertexCachePool(
+            AddAllRenderersToVertexCachePool(
                     _lodInfoList,
                     bones?.ToArray(),
-                    bindPose?.ToArray(),
-                    instancingData.animationTextureData,
-                    null);
+                    instancingData.animationTextureData);
 
             AnimationInstancingRendererManager.Instance.RegisterAnimationInstancingRenderer(this);
         }
@@ -50,6 +45,96 @@ namespace AnimationInstancing_v2
         private void OnDestroy()
         {
             AnimationInstancingRendererManager.Instance?.UnregisterAnimationInstancingRenderer(this);
+        }
+
+        private void AddAllRenderersToVertexCachePool(
+            LodInfo[] lodInfoList,
+            Transform[] allBones,
+            AnimationTextureData textureData)
+        {
+            var renderingConfig = new RenderingConfig
+            {
+                shadowcastingMode = shadowCastingMode,
+                receiveShadow = receiveShadow,
+                layer = gameObject.layer,
+            };
+
+            UnityEngine.Profiling.Profiler.BeginSample("AddMeshVertex()");
+            for (int lodIndex = 0; lodIndex != lodInfoList.Length; ++lodIndex)
+            {
+                var lod = lodInfoList[lodIndex];
+                var materialBlocks = new List<MaterialBlock>();
+                var vertexCaches = new List<VertexCache>();
+                for (int smrIndex = 0; smrIndex != lod.skinnedMeshRenderers.Length; ++smrIndex)
+                {
+                    var sharedMesh = lod.skinnedMeshRenderers[smrIndex].sharedMesh;
+                    if (sharedMesh == null) continue;
+                    var renderer = lod.skinnedMeshRenderers[smrIndex];
+
+                    renderer.enabled = !AddToVertexCachePool(materialBlocks, vertexCaches, allBones,
+                        textureData, renderingConfig, sharedMesh, renderer);
+                }
+
+                for (int mrIndex = 0; mrIndex != lod.meshRenderers.Length; ++mrIndex)
+                {
+                    var sharedMesh = lod.meshFilters[mrIndex].sharedMesh;
+                    if (sharedMesh == null) continue;
+
+                    var renderer = lod.meshRenderers[mrIndex];
+
+                    renderer.enabled = !AddToVertexCachePool(materialBlocks, vertexCaches, allBones,
+                        textureData, renderingConfig, sharedMesh, renderer);
+                }
+                lod.materialBlockList = materialBlocks.ToArray();
+#if UNITY_EDITOR
+                lod.vertexCacheList = vertexCaches.ToArray();
+#endif
+            }
+
+            UnityEngine.Profiling.Profiler.EndSample();
+        }
+
+        private bool AddToVertexCachePool(
+            List<MaterialBlock> materialBlocks,
+            List<VertexCache> vertexCaches,
+            Transform[] allBones,
+            AnimationTextureData textureData,
+            RenderingConfig renderingConfig,
+            Mesh sharedMesh,
+            Renderer renderer)
+        {
+            var renderName = RuntimeHelper.GetTransformPath(RootTransform, renderer.transform);
+            var key = renderName.GetHashCode();
+
+            if (!AnimationInstancingRendererManager.VertexCacheDic.TryGetValue(key, out var vertexCache))
+            {
+                var mesh = BoneAndMesh.PrepareMeshVertexData(sharedMesh, allBones, renderer,
+                    RootTransform, GetBonePerVertex());
+
+                if (mesh == null) return false;//don't add this renderer to vertexcache
+
+                vertexCache = new VertexCache(renderName, mesh, textureData, renderingConfig);
+
+                AnimationInstancingRendererManager.VertexCacheDic[key] = vertexCache;
+            }
+
+            var sharedMaterials = renderer.sharedMaterials;
+            var identify = RuntimeHelper.GetIdentify(sharedMaterials);
+
+            if (!vertexCache.InstanceBlockDic.TryGetValue(identify, out MaterialBlock matBlock))
+            {
+                var clonedMaterials = MaterialBlock.CloneMaterialsWithTextures(
+                    sharedMaterials, sharedMesh.subMeshCount, textureData);
+
+                matBlock = new MaterialBlock(clonedMaterials, sharedMaterials);
+                vertexCache.InstanceBlockDic.Add(identify, matBlock);
+            }
+
+            vertexCaches.Add(vertexCache);
+#if UNITY_EDITOR
+            materialBlocks.Add(matBlock);
+#endif
+            return true;
         }
 
         private int GetBonePerVertex()
@@ -60,114 +145,6 @@ namespace AnimationInstancing_v2
                 SkinWeights.OneBone => 1,
                 _ => 1,
             };
-        }
-
-        private void AddToVertexCachePool(
-            LodInfo[] lodInfoList,
-            Transform[] allBones,
-            Matrix4x4[] bindPose,
-            AnimationTextureData textureData,
-            string alias)
-        {
-            var renderingConfig = new RenderingConfig
-            {
-                shadowcastingMode = shadowCastingMode,
-                receiveShadow = receiveShadow,
-                layer = gameObject.layer,
-            };
-            UnityEngine.Profiling.Profiler.BeginSample("AddMeshVertex()");
-            for (int lodIndex = 0; lodIndex != lodInfoList.Length; ++lodIndex)
-            {
-                var lod = lodInfoList[lodIndex];
-                for (int smrIndex = 0; smrIndex != lod.skinnedMeshRenderers.Length; ++smrIndex)
-                {
-                    var sharedMesh = lod.skinnedMeshRenderers[smrIndex].sharedMesh;
-                    if (sharedMesh == null) continue;
-
-                    var render = lod.skinnedMeshRenderers[smrIndex];
-                    int renderName = lod.skinnedMeshRenderers[smrIndex].name.GetHashCode();
-                    int aliasName = 0;
-                    var sharedMaterials = lod.skinnedMeshRenderers[smrIndex].sharedMaterials;
-                    var rendererIndex = smrIndex;
-                    int identify = RuntimeHelper.GetIdentify(sharedMaterials);
-
-                    var key = renderName + aliasName;
-
-                    AddToVertexCachePool(lod, rendererIndex, allBones, bindPose,
-                        textureData, renderingConfig, sharedMesh,
-                        render, sharedMaterials, identify, key);
-
-                    // lod.vertexCacheList[rendererIndex] = vertexCache;
-                }
-
-                for (int mrIndex = 0; mrIndex != lod.meshRenderers.Length; ++mrIndex)
-                {
-                    var sharedMesh = lod.meshFilters[mrIndex].sharedMesh;
-                    if (sharedMesh == null) continue;
-
-                    var render = lod.meshRenderers[mrIndex];
-                    int renderName = render.name.GetHashCode();
-                    int aliasName = alias != null ? alias.GetHashCode() : 0;
-                    var sharedMaterials = render.sharedMaterials;
-                    var rendererIndex = lod.skinnedMeshRenderers.Length + mrIndex;
-                    int identify = RuntimeHelper.GetIdentify(sharedMaterials);
-
-                    var key = renderName + aliasName;
-
-                    AddToVertexCachePool(lod, rendererIndex, allBones, bindPose,
-                        textureData, renderingConfig, sharedMesh,
-                        render, sharedMaterials, identify, key);
-                    // lod.vertexCacheList[rendererIndex] = vertexCache;
-                }
-            }
-
-            UnityEngine.Profiling.Profiler.EndSample();
-        }
-
-        private void AddToVertexCachePool(
-            LodInfo lod, int index,
-            Transform[] allBones,
-            Matrix4x4[] bindPose,
-            AnimationTextureData textureData,
-            RenderingConfig renderingConfig,
-            Mesh sharedMesh,
-            Renderer render,
-            Material[] sharedMaterials,
-            int identify, int key)
-        {
-            if (!AnimationInstancingRendererManager.VertexCacheDic.TryGetValue(key, out var vertexCache))
-            {
-                var boneAndMesh = new BoneAndMesh(sharedMesh, allBones, bindPose, render, GetBonePerVertex());
-
-                vertexCache = new VertexCache(boneAndMesh, textureData, sharedMaterials, renderingConfig);
-
-                AnimationInstancingRendererManager.VertexCacheDic[key] = vertexCache;
-            }
-
-            if (!vertexCache.InstanceBlockDic.TryGetValue(identify, out MaterialBlock matBlock))
-            {
-                matBlock = new MaterialBlock(sharedMaterials, sharedMesh.subMeshCount, textureData);
-                vertexCache.InstanceBlockDic.Add(identify, matBlock);
-            }
-            lod.materialBlockList[index] = matBlock;
-        }
-
-        private void DisableDefaultRenderersAndAnimator(LodInfo[] lodInfoList)
-        {
-            foreach (var lod in lodInfoList)
-            {
-                foreach (var v in lod.meshRenderers)
-                {
-                    v.enabled = false;
-                }
-                foreach (var v1 in lod.skinnedMeshRenderers)
-                {
-                    v1.enabled = false;
-                }
-            }
-
-            var animator = GetComponentInChildren<Animator>();
-            animator.enabled = false;
         }
 
         private static LodInfo[] GetLodInfoList(GameObject go)
@@ -278,8 +255,10 @@ namespace AnimationInstancing_v2
             public SkinnedMeshRenderer[] skinnedMeshRenderers;
             public MeshRenderer[] meshRenderers;
             public MeshFilter[] meshFilters;
-
             public MaterialBlock[] materialBlockList;
+#if UNITY_EDITOR
+            public VertexCache[] vertexCacheList;
+#endif
         }
     }
 }

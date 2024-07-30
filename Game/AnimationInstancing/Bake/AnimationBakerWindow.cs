@@ -73,6 +73,7 @@ namespace AnimationInstancing_v2
 
             private IntegerField _fps;
             private Foldout _selectExtraBoneLabel;
+            private Foldout _selectionAnimationClips;
             private UnityEditor.UIElements.ObjectField _prefab;
             private UnityEditor.UIElements.ObjectField _asset;
 
@@ -112,14 +113,14 @@ namespace AnimationInstancing_v2
 
                 (_fps = new IntegerField("fps") { value = serializedData.fps })
                     .RegisterCallback<ChangeEvent<int>>(evt => serializedData.fps = evt.newValue);
-                _selectExtraBoneLabel = new Foldout() { text = "Select extra bones:" };
-
+                _selectExtraBoneLabel = new Foldout() { text = "Select bones:" };
+                _selectionAnimationClips = new Foldout() { text = "Select animation clips:" };
                 Add(_prefab);
                 Add(_asset);
                 Add(_selectExtraBoneLabel);
                 _selectExtraBoneLabel.Add(_extraBoneTogglesHolder);
-                Add(new Label("Select animation clips:"));
-                Add(_clipTogglesHolder);
+                Add(_selectionAnimationClips);
+                _selectionAnimationClips.Add(_clipTogglesHolder);
                 Add(_statusLabel);
                 Add(_fps);
                 Add(refreshStatusButton);
@@ -169,6 +170,7 @@ namespace AnimationInstancing_v2
                     var clips = GetClips(serializedData.prefab.GetComponentInChildren<Animator>());
                     UpdateSerializedClipList(clips);
                     UpdateClipToggleList(clips);
+                    _selectExtraBoneLabel.text = $"Select bones: ({serializedData.selectedExtraBones.Count + skinnedMeshBones.Length})";
                 }
                 else
                 {
@@ -177,8 +179,6 @@ namespace AnimationInstancing_v2
 
                 foreach (var bt in extraBoneToggles) _extraBoneTogglesHolder.Add(bt);
                 foreach (var bt in clipToggles) _clipTogglesHolder.Add(bt);
-
-                _selectExtraBoneLabel.text = $"Select extra bones: ({serializedData.selectedExtraBones.Count})";
             }
 
             private void OnBakeButtonClicked(ClickEvent evt)
@@ -266,7 +266,7 @@ namespace AnimationInstancing_v2
                     var path = RuntimeHelper.GetTransformPath(root, b.transform);
                     var t = new Toggle()
                     {
-                        label = " " + string.Join("-- ", new int[b.depth].Select(i => "")) + b.transform.name,
+                        label = " " + string.Join("", new int[b.depth].Select(i => "-- ")) + b.transform.name,
                         value = isSkinnedMeshBone || serializedData.selectedExtraBones.Any(sb => sb == path),
                     };
                     t.SetEnabled(!isSkinnedMeshBone);
@@ -275,7 +275,7 @@ namespace AnimationInstancing_v2
                         if (evt.newValue) serializedData.selectedExtraBones.Add(path);
                         else serializedData.selectedExtraBones.Remove(path);
 
-                        _selectExtraBoneLabel.text = $"Select extra bones: ({serializedData.selectedExtraBones.Count})";
+                        _selectExtraBoneLabel.text = $"Select bones: ({serializedData.selectedExtraBones.Count + skinnedMeshBones.Length})";
                     });
                     extraBoneToggles.Add(t);
                 }
@@ -348,7 +348,7 @@ namespace AnimationInstancing_v2
                 {
                     var t = new Toggle()
                     {
-                        label = c.name,
+                        label = c.name + $" ({c.length})",
                         value = serializedData.selectedAnims.Any(a => a == c.name)
                     };
                     t.RegisterCallback<ChangeEvent<bool>>(evt =>

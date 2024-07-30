@@ -7,16 +7,22 @@ namespace AnimationInstancing_v2
     public class MaterialBlock
     {
         public ClonedMaterialBlock[] clonedMaterialBlocks;
+#if UNITY_EDITOR
+        public Material[] sharedMaterials;
+#endif
 
-        public MaterialBlock(Material[] sharedMaterials, int count, AnimationTextureData textureData)
+        public MaterialBlock(IEnumerable<Material[]> clonedMaterials, Material[] sharedMaterials)
         {
-            clonedMaterialBlocks = 
-                CloneMaterialsWithTextures(sharedMaterials, count, textureData)
+            clonedMaterialBlocks = clonedMaterials
                 .Select(m => new ClonedMaterialBlock(m))
                 .ToArray();
+#if UNITY_EDITOR
+            this.sharedMaterials = sharedMaterials;
+#endif
         }
 
-        public static IEnumerable<Material[]> CloneMaterialsWithTextures(Material[] materials, int count, AnimationTextureData textureData)
+        public static IEnumerable<Material[]> CloneMaterialsWithTextures(
+            Material[] materials, int count, AnimationTextureData textureData)
         {
             for (var textureIndex = 0; textureIndex < count; textureIndex++)
             {
@@ -28,10 +34,10 @@ namespace AnimationInstancing_v2
 #if UNITY_5_6_OR_NEWER
                     copyMaterials[i].enableInstancing = true;
 #endif
-                    //if (useInstancing)
+                    // if (useInstancing)
                     copyMaterials[i].EnableKeyword("SKINNED_INSTANCING_ON");
-                    //else
-                    //copyMaterials[i].DisableKeyword("INSTANCING_ON");
+                    // else
+                    //     copyMaterials[i].DisableKeyword("SKINNED_INSTANCING_ON");
 
                     copyMaterials[i].EnableKeyword("USE_CONSTANT_BUFFER");
                     copyMaterials[i].DisableKeyword("USE_COMPUTE_BUFFER");

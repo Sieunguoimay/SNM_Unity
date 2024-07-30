@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace AnimationInstancing_v2
 {
@@ -9,18 +11,25 @@ namespace AnimationInstancing_v2
 #if UNITY_EDITOR
 
         [UnityEditor.CustomEditor(typeof(AnimationInstancingRenderer))]
-        private class _Editor : UnityEditor.Editor
+        public class _Editor : UnityEditor.Editor
         {
             private AnimationInstancingRenderer _renderer;
-            public List<BoneInfo> _allBones;
+            private List<BoneInfo> _allBones;
             private bool _allBonesFoldout;
+
+            public override VisualElement CreateInspectorGUI()
+            {
+                var ve = new VisualElement();
+                ve.Add(new IMGUIContainer(OnInspectorGUI));
+                ve.Add(new InstancingDrawer(target as AnimationInstancingRenderer));
+                return ve;
+            }
 
             public override void OnInspectorGUI()
             {
                 DrawDefaultInspector();
                 _renderer ??= target as AnimationInstancingRenderer;
                 DrawAllBones();
-                DrawLodInfoList();
                 DrawBaker();
             }
 
@@ -33,54 +42,17 @@ namespace AnimationInstancing_v2
                     {
                         if (GUILayout.Button("Rebake"))
                         {
-                            var output = AnimationBaker.BakeWithAnimator(new AnimationBakerData(_renderer.InstancingData, _renderer.RootTransform.gameObject));
+                            var output = AnimationBaker.BakeWithAnimator(
+                                new AnimationBakerData(_renderer.InstancingData, _renderer.RootTransform.gameObject));
                             AnimationBakerWindow.SaveToExistingAsset(output, _renderer.InstancingData);
                         }
 
                         if (GUILayout.Button("BakerWindow"))
                         {
-                            AnimationBakerWindow.OpenWindow(new AnimationBakerData(_renderer.InstancingData, _renderer.RootTransform.gameObject));
+                            AnimationBakerWindow.OpenWindow(
+                                new AnimationBakerData(_renderer.InstancingData, _renderer.RootTransform.gameObject));
                         }
                     }
-                }
-            }
-
-            private void DrawLodInfoList()
-            {
-                if (_renderer._lodInfoList == null) return;
-                foreach (var lod in _renderer._lodInfoList)
-                {
-                    UnityEditor.EditorGUILayout.LabelField($"VertexCacheList:");
-                    // for (int i = 0; i < lod.vertexCacheList.Length; i++)
-                    // {
-                    //     var vc = lod.vertexCacheList[i];
-                    //     UnityEditor.EditorGUILayout.LabelField($"VertexCache {i} [{vc.GetHashCode()}]:");
-                    //     UnityEditor.EditorGUILayout.ObjectField("->mesh", vc.mesh, typeof(Mesh), true);
-                    //     foreach (var m in vc.materials)
-                    //     {
-                    //         UnityEditor.EditorGUILayout.ObjectField("->material", m, typeof(Material), true);
-                    //     }
-
-                    //     UnityEditor.EditorGUILayout.LabelField($"->bone weights ({vc.weight.Length}) {string.Join(",", vc.weight)}");
-                    //     UnityEditor.EditorGUILayout.LabelField($"->bone indices ({vc.boneIndex.Length}) {string.Join(",", vc.boneIndex)}");
-                    //     UnityEditor.EditorGUILayout.LabelField($"->instanceBlockList: {string.Join(",", vc.instanceBlockDic.Select(b => $"({b.Key}={b.Value.GetHashCode()})"))}");
-                    // }
-                    // UnityEditor.EditorGUILayout.LabelField($"MaterialBlockList:");
-                    // for (int i = 0; i < lod.materialBlockList.Length; i++)
-                    // {
-                    //     var block = lod.materialBlockList[i];
-                    //     UnityEditor.EditorGUILayout.LabelField($"Block {i}-{block.GetHashCode()}:");
-                    //     UnityEditor.EditorGUILayout.LabelField($"->runtimePackageIndex: {string.Join(",", block.runtimePackageCursors)}");
-                    //     UnityEditor.EditorGUILayout.LabelField($"->packageLists: {block.packageLists.Length}");
-                    //     foreach (var pl in block.packageLists)
-                    //     {
-                    //         UnityEditor.EditorGUILayout.LabelField($"->->packageList: {pl.Count}");
-                    //         foreach (var p in pl)
-                    //         {
-                    //             UnityEditor.EditorGUILayout.LabelField($"->->->package: instancingCount={p.instancingCount} subMeshCount={p.subMeshCount}");
-                    //         }
-                    //     }
-                    // }
                 }
             }
 
@@ -174,6 +146,91 @@ namespace AnimationInstancing_v2
             public int Fps { get; }
             public AnimationInstancingData Asset => instancingData;
         }
-    }
+
+        public class InstancingDrawer : VisualElement
+        {
+            private readonly AnimationInstancingRenderer renderer;
+
+            public InstancingDrawer(AnimationInstancingRenderer renderer)
+            {
+                this.renderer = renderer;
+                CreateVE();
+            }
+
+            public void CreateVE()
+            {
+                if (renderer._lodInfoList == null) return;
+                foreach (var lod in renderer._lodInfoList)
+                {
+                    Add(new VertexCacheListVE(lod.vertexCacheList, renderer.RootTransform));
+                    Add(new MaterialBlockListVE(lod.materialBlockList));
+                }
+            }
+        }
+
+        public class VertexCacheListVE : Foldout
+        {
+            public VertexCacheListVE(IEnumerable<VertexCache> vertexCacheList, Transform root)
+            {
+                text = "Vertex Caches";
+                var i = 0;
+                foreach (var vc in vertexCacheList)
+                {
+                    Add(new VertexCacheVE(vc, root) { text = $"VertexCache {i++} {vc.name}", value = false });
+                }
+            }
+        }
+
+        public class VertexCacheVE : Foldout
+        {
+            private readonly Transform root;
+
+            public VertexCacheVE(VertexCache vc, Transform root)
+            {
+                var line = new VisualElement();
+                line.style.flexDirection = FlexDirection.Row;
+                line.Add(new Label($"{vc.name} ({vc.nameHash})"));
+                var btn = new Button() { text = "Ping" };
+                btn.RegisterCallback<ClickEvent>(evt => Ping(vc));
+                line.Add(btn);
+                Add(line);
+                Add(new UnityEditor.UIElements.ObjectField()
+                {
+                    value = vc.mesh,
+                    label = $"Mesh"
+                });
+                Add(new MaterialBlockListVE(vc.InstanceBlockDic.Values)
+                { text = "MaterialBlocks", value = false });
+                this.root = root;
+            }
+
+            private void Ping(VertexCache vc)
+            {
+                if (root != null)
+                {
+                    UnityEditor.EditorGUIUtility.PingObject(RuntimeHelper.GetTransformAtPath(root, vc.name.Split("/")));
+                }
+            }
+        }
+
+        private class MaterialBlockListVE : Foldout
+        {
+            public MaterialBlockListVE(IEnumerable<MaterialBlock> materialBlockList)
+            {
+                text = "Material Blocks";
+
+                foreach (var mb in materialBlockList)
+                {
+                    Add(new Label($"sharedMaterials ({mb.sharedMaterials.Length}). clonedMaterialBlocks ({mb.clonedMaterialBlocks.Length})"));
+                    for (int i = 0; i < mb.clonedMaterialBlocks.Length; i++)
+                    {
+                        var cmb = mb.clonedMaterialBlocks[i];
+                        Add(new Label($"- ClonedBlock {i} instance Count: {cmb.totalInstancingCount}"));
+                    }
+                }
+            }
+        }
+
 #endif
+    }
 }

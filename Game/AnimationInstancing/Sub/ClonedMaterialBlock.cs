@@ -6,7 +6,9 @@ namespace AnimationInstancing_v2
     public class ClonedMaterialBlock
     {
         public Material[] clonedMaterials;
-
+#if UNITY_EDITOR
+        public int totalInstancingCount;
+#endif
         public int instanceCountPerPackage;
         private readonly List<InstancingPackage> packageStack;
 
@@ -17,7 +19,7 @@ namespace AnimationInstancing_v2
         public ClonedMaterialBlock(Material[] clonedMaterials)
         {
             this.clonedMaterials = clonedMaterials;
-            packageStack = new List<InstancingPackage>() { InstancingPackage.CreateInstancingPackage(1) };
+            packageStack = new List<InstancingPackage>() { new(1) };
             instanceCountPerPackage = InstancingPackage.InstancingPackageSize;
         }
 
@@ -31,7 +33,7 @@ namespace AnimationInstancing_v2
 
                 if (_topPackageIndex >= packageStack.Count)
                 {
-                    packageStack.Add(InstancingPackage.CreateInstancingPackage(1));
+                    packageStack.Add(new InstancingPackage(1));
                 }
                 else
                 {

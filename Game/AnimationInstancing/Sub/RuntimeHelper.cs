@@ -7,9 +7,9 @@ namespace AnimationInstancing_v2
     public class RuntimeHelper
     {
         public static string GetTransformPath(Transform root, Transform bone)
-            => string.Join("/", GetTransformPathSegments(root, bone));
+            => string.Join("/", GetTransformPathSegments(root, bone).Select(x => x.name));
 
-        private static IEnumerable<string> GetTransformPathSegments(Transform root, Transform bone)
+        public static IEnumerable<Transform> GetTransformPathSegments(Transform root, Transform bone)
         {
             if (bone != null)
             {
@@ -20,7 +20,7 @@ namespace AnimationInstancing_v2
                         yield return s;
                     }
                 }
-                yield return bone.name;
+                yield return bone;
             }
         }
 

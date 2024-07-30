@@ -1,6 +1,6 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace AnimationInstancing_v2
 {
@@ -24,12 +24,7 @@ namespace AnimationInstancing_v2
         private static bool _destroyed = false;
         private readonly List<AnimationInstancingRenderer> instancingRenderers = new();
         public static readonly Dictionary<int, VertexCache> VertexCacheDic = new();
-        // private Transform cameraTransform;
 
-        // private void OnEnable()
-        // {
-        //     cameraTransform = Camera.main.transform;
-        // }
         private void OnDestroy()
         {
             _destroyed = true;
@@ -53,35 +48,15 @@ namespace AnimationInstancing_v2
 
         private void ApplyBoneMatrix()
         {
-            // Vector3 cameraPosition = cameraTransform.position;
             for (int i = 0; i != instancingRenderers.Count; ++i)
             {
                 var instanceRenderer = instancingRenderers[i];
                 var instanceAnimator = instancingRenderers[i].InstancingAnimator;
 
-                // if (!instanceAnimator.IsPlaying)// && instance.parentInstance == null)
-                //     continue;
-
-                // if (instance.applyRootMotion)
-                //     ApplyRootMotion(instance);
-
                 instanceAnimator.UpdateAnimation();
 
-                // instance.UpdateAnimation();
-                // instance.boundingSpere.position = instance.transform.position;
-                // boundingSphere[i] = instance.boundingSpere;
-
-                // if (!instance.visible)
-                //     continue;
-                // instance.UpdateLod(cameraPosition);
-
-                // AnimationInstancing.LodInfo lod = instance.lodInfo[instance.lodLevel];
                 var materialBlockList = instanceRenderer.MaterialBlockList;
                 int aniTextureIndex = instanceAnimator.AniTextureIndex;
-                // if (instance.parentInstance != null)
-                //     aniTextureIndex = instance.parentInstance.aniTextureIndex;
-                // else
-                // aniTextureIndex = instance.aniTextureIndex;
 
                 for (int j = 0; j != materialBlockList.Count; ++j)
                 {
@@ -92,34 +67,10 @@ namespace AnimationInstancing_v2
 
                     var instanceIndex = blockUnit.NextInstanceIndex();
 
-                    // if (package.instancingCount > 0) -> always true
-                    // {
-                    // var instanceIndex = topPackage.instancingCount - 1;
-
-                    // if (instance.parentInstance != null)
-                    // {
-                    //     frameIndex = instance.parentInstance.aniInfo[instance.parentInstance.aniIndex].animationIndex + instance.parentInstance.curFrame;
-                    //     if (instance.parentInstance.preAniIndex >= 0)
-                    //         preFrameIndex = instance.parentInstance.aniInfo[instance.parentInstance.preAniIndex].animationIndex + instance.parentInstance.preAniFrame;
-                    //     transition = instance.parentInstance.transitionProgress;
-                    // }
-                    // else
-                    // {
-
-                    // var preFrameIndex = -1f;
-                    // var frameIndex = instance.AnimationData.animInfoList[instanceAnimator.aniIndex].animationIndex
-                    //     + instanceAnimator.curFrame;
-                    // if (instanceAnimator.preAniIndex >= 0)
-                    //     preFrameIndex = instance.AnimationData.animInfoList[instanceAnimator.preAniIndex].animationIndex
-                    //     + instanceAnimator.preAniFrame;
-                    // var transition = instanceAnimator.transitionProgress;
-                    // }
-
                     blockUnit.TopPackage.worldMatrixArray[instanceIndex] = instanceRenderer.RootTransform.localToWorldMatrix;
                     blockUnit.TopPackage.frameIndexArray[instanceIndex] = instanceAnimator.FrameIndex;
                     blockUnit.TopPackage.preFrameIndexArray[instanceIndex] = instanceAnimator.PreFrameIndex;
                     blockUnit.TopPackage.transitionProgressArray[instanceIndex] = instanceAnimator.TransitionProgress;
-                    // }
                 }
             }
         }
@@ -141,9 +92,11 @@ namespace AnimationInstancing_v2
                         {
                             var package = blockUnit.PackageStack[j];
 
+                            blockUnit.totalInstancingCount = package.instancingCount;
+
                             if (package.instancingCount > 0)
                             {
-                                DrawMeshInstanced(vertexCache, package, 
+                                DrawMeshInstanced(vertexCache, package,
                                     blockUnit.clonedMaterials, i);
 
                                 package.instancingCount = 0;
@@ -159,7 +112,7 @@ namespace AnimationInstancing_v2
         private static void DrawMeshInstanced(VertexCache vertexCache,
             InstancingPackage package, Material[] materials, int textureIndex)
         {
-            for (int i = 0; i != vertexCache.BoneAndMesh.mesh.subMeshCount; ++i)
+            for (int i = 0; i != vertexCache.mesh.subMeshCount; ++i)
             {
 #if UNITY_EDITOR
                 PreparePackageMaterial(materials[i], vertexCache.textureData, textureIndex);
@@ -178,7 +131,7 @@ namespace AnimationInstancing_v2
             package.propertyBlock.SetFloatArray("preFrameIndex", package.preFrameIndexArray);
             package.propertyBlock.SetFloatArray("transitionProgress", package.transitionProgressArray);
 
-            Graphics.DrawMeshInstanced(vertexCache.BoneAndMesh.mesh,
+            Graphics.DrawMeshInstanced(vertexCache.mesh,
                 subMeshIndex,
                 material,
                 package.worldMatrixArray,
@@ -205,16 +158,13 @@ namespace AnimationInstancing_v2
         [UnityEditor.CustomEditor(typeof(AnimationInstancingRendererManager))]
         private class _Editor : UnityEditor.Editor
         {
-            public override void OnInspectorGUI()
+            public override VisualElement CreateInspectorGUI()
             {
-                DrawDefaultInspector();
-
-                var mng = target as AnimationInstancingRendererManager;
-
-                foreach (var vc in VertexCacheDic)
-                {
-                    UnityEditor.EditorGUILayout.LabelField($"VertexCache {vc.Key} [{vc.Value.GetHashCode()}]:");
-                }
+                // return base.CreateInspectorGUI();
+                var ve = new VisualElement();
+                ve.Add(new IMGUIContainer(OnInspectorGUI));
+                ve.Add(new AnimationInstancingRenderer.VertexCacheListVE(VertexCacheDic.Values, null));
+                return ve;
             }
         }
 #endif
