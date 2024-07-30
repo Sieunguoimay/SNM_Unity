@@ -34,12 +34,12 @@ namespace AnimationInstancing_v2
 
             var go = Object.Instantiate(prefab);
             go.name = prefab.name;
-            go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            go.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 
             var preGo = UnityEditor.Selection.activeGameObject;
             UnityEditor.Selection.activeGameObject = go;
 
-            CreateBoneBakeInfos(prefab, go, selectedExtraBones,
+            CreateBoneBakeInfos(go, selectedExtraBones,
                 out var boneList,
                 out var bindPoseList,
                 out var extraBoneInfo);
@@ -67,7 +67,7 @@ namespace AnimationInstancing_v2
         }
 
         private static void CreateBoneBakeInfos(
-            GameObject prefab, GameObject go,
+            GameObject go,
             List<string> selectedExtraBones,
             out Transform[] allBones,
             out Matrix4x4[] allBindPoses,
@@ -77,7 +77,7 @@ namespace AnimationInstancing_v2
 
             RuntimeHelper.MergeBone(skinnedMeshRenderers, out var mainBones, out var mainBindPoses);
 
-            GetExtraBones(go, prefab, selectedExtraBones, out var extraBones, out var extraBindPoses);
+            GetExtraBones(go, selectedExtraBones, out var extraBones, out var extraBindPoses);
 
             allBones = mainBones.Concat(extraBones).ToArray();
             allBindPoses = mainBindPoses.Concat(extraBindPoses).ToArray();
@@ -132,24 +132,21 @@ namespace AnimationInstancing_v2
 
         private static void GetExtraBones(
             GameObject generatedObject,
-            GameObject prefab,
             List<string> selectedExtraBones,
             out List<Transform> extraBones, out List<Matrix4x4> extraBindPose)
         {
             extraBindPose = new List<Matrix4x4>(150);
             extraBones = new List<Transform>(150);
 
-            var trans = prefab.GetComponentsInChildren<Transform>(true);
             var bakedTrans = generatedObject.GetComponentsInChildren<Transform>(true);
-            var root = prefab.transform;
+            var root = generatedObject.transform;
             foreach (var path in selectedExtraBones)
             {
-                for (int i = 0; i != trans.Length; ++i)
+                for (int i = 0; i != bakedTrans.Length; ++i)
                 {
-                    var tran = trans[i];
-                    if (RuntimeHelper.GetTransformPath(root, tran) == path)
+                    if (RuntimeHelper.GetTransformPath(root, bakedTrans[i]) == path)
                     {
-                        extraBindPose.Add(tran.localToWorldMatrix);
+                        extraBindPose.Add(bakedTrans[i].localToWorldMatrix);
                         extraBones.Add(bakedTrans[i]);
                         break;
                     }
