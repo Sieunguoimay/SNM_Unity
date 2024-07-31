@@ -157,6 +157,7 @@ namespace AnimationInstancing_v2
                     var allBonePaths = serializedData.prefab
                         .GetComponentsInChildren<Transform>(true)
                         .Select(t => RuntimeHelper.GetTransformPath(serializedData.prefab.transform, t))
+                        .Where(p => !string.IsNullOrEmpty(p))
                         .ToArray();
                     UpdateSelectedBones(allBonePaths);
 
@@ -192,9 +193,31 @@ namespace AnimationInstancing_v2
                 }
                 else
                 {
-                    var savePath = UnityEditor.AssetDatabase.GetAssetPath(serializedData.prefab)
-                        .Replace(".prefab", ".asset");
+                    var savePath = "";
+                    if (PrefabUtility.IsOutermostPrefabInstanceRoot(serializedData.prefab))
+                    {
+                        savePath = UnityEditor.AssetDatabase.GetAssetPath(serializedData.prefab)
+                            .Replace(".prefab", ".asset");
+                    }
 
+                    if (string.IsNullOrEmpty(savePath))
+                    {
+                        savePath = EditorUtility.SaveFilePanel(
+                            "Save file as",
+                            "Assets/",
+                            $"{serializedData.prefab?.name ?? "AnimationInstancingData"}.asset",
+                            "asset");
+                        if (savePath.StartsWith(Application.dataPath))
+                        {
+                            savePath = "Assets" + savePath[Application.dataPath.Length..];
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(savePath))
+                    {
+                        Debug.LogError("Failed to save. No path selected");
+                        return;
+                    }
                     SaveToPath(animationData, savePath);
 
                     _asset.value = animationData;
@@ -296,6 +319,8 @@ namespace AnimationInstancing_v2
 
             private void UpdateSelectedBones(IEnumerable<string> bonePaths)
             {
+                if (serializedData.selectedExtraBones == null)
+                    serializedData.selectedExtraBones = new List<string>();
                 serializedData.selectedExtraBones = serializedData.selectedExtraBones
                     .Where(b => bonePaths.Any(bb => bb == b)).ToList();
 

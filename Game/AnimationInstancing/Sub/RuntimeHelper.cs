@@ -11,9 +11,9 @@ namespace AnimationInstancing_v2
 
         public static IEnumerable<Transform> GetTransformPathSegments(Transform root, Transform bone)
         {
-            if (bone != null)
+            if (bone.parent != null)
             {
-                if (bone != root)
+                if (bone.parent != root)
                 {
                     foreach (var s in GetTransformPathSegments(root, bone.parent))
                     {
@@ -27,10 +27,10 @@ namespace AnimationInstancing_v2
         public static Transform GetTransformAtPath(Transform root, string[] pathSegments)
         {
             if (pathSegments.Length == 0) return null;
-            if (root.name != pathSegments[0]) return null;
+            // if (root.name != pathSegments[0]) return null;
 
             var current = root;
-            foreach (var s in pathSegments.Skip(1))
+            foreach (var s in pathSegments)
             {
                 var found = false;
                 foreach (Transform c in current)

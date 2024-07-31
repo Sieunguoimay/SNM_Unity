@@ -12,7 +12,6 @@ public class AnimationEventDispatcher: MonoBehaviour
     {
         onStringEvent?.Invoke(str);
         StringEventDispatched?.Invoke(this, str);
-        Debug.Log(str);
     }
 
     [Serializable] private class UnityEventString : UnityEvent<string> { }

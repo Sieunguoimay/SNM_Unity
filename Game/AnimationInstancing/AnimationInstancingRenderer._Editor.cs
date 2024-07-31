@@ -35,10 +35,10 @@ namespace AnimationInstancing_v2
 
             private void DrawBaker()
             {
-                if (_renderer.InstancingData != null
-                && _renderer.RootTransform != null)
+                using (new UnityEditor.EditorGUILayout.HorizontalScope())
                 {
-                    using (new UnityEditor.EditorGUILayout.HorizontalScope())
+                    if (_renderer.InstancingData != null
+                        && _renderer.RootTransform != null)
                     {
                         if (GUILayout.Button("Rebake"))
                         {
@@ -46,11 +46,18 @@ namespace AnimationInstancing_v2
                                 new AnimationBakerData(_renderer.InstancingData, _renderer.RootTransform.gameObject));
                             AnimationBakerWindow.SaveToExistingAsset(output, _renderer.InstancingData);
                         }
+                    }
 
-                        if (GUILayout.Button("BakerWindow"))
+                    if (GUILayout.Button("BakerWindow"))
+                    {
+                        if (_renderer.RootTransform != null)
                         {
                             AnimationBakerWindow.OpenWindow(
                                 new AnimationBakerData(_renderer.InstancingData, _renderer.RootTransform.gameObject));
+                        }
+                        else
+                        {
+                            AnimationBakerWindow.OpenWindow();
                         }
                     }
                 }
@@ -63,7 +70,7 @@ namespace AnimationInstancing_v2
                 {
                     _allBones = new();
 
-                    foreach (var smr in _renderer.GetComponentsInChildren<SkinnedMeshRenderer>())
+                    foreach (var smr in _renderer.RootTransform.GetComponentsInChildren<SkinnedMeshRenderer>())
                     {
                         foreach (var b in smr.bones)
                         {
@@ -103,7 +110,7 @@ namespace AnimationInstancing_v2
                     }
                 }
 
-                _allBonesFoldout = UnityEditor.EditorGUILayout.Foldout(_allBonesFoldout, "All bones:", true);
+                _allBonesFoldout = UnityEditor.EditorGUILayout.Foldout(_allBonesFoldout, $"All bones: ({_allBones.Count})", true);
 
                 if (_allBonesFoldout)
                 {
@@ -113,7 +120,17 @@ namespace AnimationInstancing_v2
                         UnityEditor.EditorGUILayout.ObjectField($"{i++} {bone.bonePath}", bone.boneTransform, typeof(Transform), true);
                         foreach (var r in bone.associatedRenderers)
                         {
-                            UnityEditor.EditorGUILayout.ObjectField($"      ", r, typeof(Renderer), true);
+                            if (r.sharedMaterial.shader.keywordSpace.keywords.Any(k => k.name == "SKINNED_INSTANCING_ON"))
+                            {
+                                UnityEditor.EditorGUILayout.ObjectField($"      ", r, typeof(Renderer), true);
+                            }
+                            else
+                            {
+                                var c = GUI.color;
+                                GUI.color = Color.red;
+                                UnityEditor.EditorGUILayout.ObjectField($"      [Unsupported Shader]", r, typeof(Renderer), true);
+                                GUI.color = c;
+                            }
                         }
                     }
                 }
@@ -133,11 +150,14 @@ namespace AnimationInstancing_v2
 
             public AnimationBakerData(AnimationInstancingData instancingData, GameObject prefab)
             {
-                this.instancingData = instancingData;
                 Prefab = prefab;
-                SelectedExtraBones = instancingData.boneData.extraBones.ToList();
-                SelectedAnims = instancingData.animInfoList.Select(a => a.animationName).ToList();
-                Fps = instancingData.animInfoList.FirstOrDefault()?.fps ?? 30;
+                if (instancingData != null)
+                {
+                    this.instancingData = instancingData;
+                    SelectedExtraBones = instancingData.boneData.extraBones.ToList();
+                    SelectedAnims = instancingData.animInfoList.Select(a => a.animationName).ToList();
+                    Fps = instancingData.animInfoList.FirstOrDefault()?.fps ?? 30;
+                }
             }
 
             public GameObject Prefab { get; }
@@ -190,9 +210,12 @@ namespace AnimationInstancing_v2
                 var line = new VisualElement();
                 line.style.flexDirection = FlexDirection.Row;
                 line.Add(new Label($"{vc.name} ({vc.nameHash})"));
-                var btn = new Button() { text = "Ping" };
-                btn.RegisterCallback<ClickEvent>(evt => Ping(vc));
-                line.Add(btn);
+                if (root != null)
+                {
+                    var btn = new Button() { text = "Ping" };
+                    btn.RegisterCallback<ClickEvent>(evt => Ping(vc));
+                    line.Add(btn);
+                }
                 Add(line);
                 Add(new UnityEditor.UIElements.ObjectField()
                 {
