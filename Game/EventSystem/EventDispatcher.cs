@@ -10,29 +10,29 @@ namespace EventSystem
 
         private readonly Dictionary<string, HashSet<IEventReceiver>> dictionary = new();
 
-        public void Register(EventInfo eventInfo, IEventReceiver receiver)
+        public void Register(EventObject eventInfo, IEventReceiver receiver)
         {
-            if (dictionary.TryGetValue(eventInfo.DisplayName, out var a))
+            if (dictionary.TryGetValue(eventInfo.ID, out var a))
             {
                 a.Add(receiver);
             }
             else
             {
-                dictionary.Add(eventInfo.DisplayName, new HashSet<IEventReceiver> { receiver });
+                dictionary.Add(eventInfo.ID, new HashSet<IEventReceiver> { receiver });
             }
         }
 
-        public void Unregister(EventInfo eventInfo, IEventReceiver receiver)
+        public void Unregister(EventObject eventInfo, IEventReceiver receiver)
         {
-            if (dictionary.TryGetValue(eventInfo.DisplayName, out var a))
+            if (dictionary.TryGetValue(eventInfo.ID, out var a))
             {
                 a.Remove(receiver);
             }
         }
 
-        public void Dispatch(IEvent evt)
+        public void Dispatch(EventObject evt)
         {
-            if (dictionary.TryGetValue(evt.EventInfo.DisplayName, out var d))
+            if (dictionary.TryGetValue(evt.ID, out var d))
             {
                 foreach (var receiver in d)
                 {
@@ -41,13 +41,15 @@ namespace EventSystem
             }
         }
 
-        public IEnumerable<IEventReceiver> GetEventReceivers(EventInfo eventInfo)
+#if UNITY_EDITOR
+        public IEnumerable<IEventReceiver> GetEventReceivers(EventObject eventObject)
         {
-            if (dictionary.TryGetValue(eventInfo.DisplayName, out var rs))
+            if (dictionary.TryGetValue(eventObject.ID, out var rs))
             {
                 return rs;
             }
             return Enumerable.Empty<IEventReceiver>();
         }
+#endif
     }
 }

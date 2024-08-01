@@ -1,70 +1,58 @@
 #if UNITY_EDITOR
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine.UIElements;
 
 namespace EventSystem
 {
-    public class EventInfoWindow : UnityEditor.EditorWindow
+    public class EventToolWindow : UnityEditor.EditorWindow
     {
         [UnityEditor.MenuItem("Tools/Game/EventInfoWindow")]
         public static void OpenWindow()
         {
-            GetWindow<EventInfoWindow>().Show();
+            GetWindow<EventToolWindow>().Show();
         }
 
         private void CreateGUI()
         {
-            rootVisualElement.Add(new EventInfoContainerVE(EventInfoContainer.Instance));
+            rootVisualElement.Add(new EventInfoContainerVE(EventObjectContainer.Instance));
         }
 
         private class EventInfoContainerVE : VisualElement
         {
-            private readonly EventInfoContainer container;
+            private readonly EventObjectContainer container;
 
-            private EventInfo[] _eventInfos;
-            private EventInfoVE[] _eventInfoVEs;
-            private VisualElement _eventInfoVEsContainer;
+            private EventObjectVE[] _eventObjectVEs;
+            private readonly VisualElement eventObjectVEsContainer;
 
-            public EventInfoContainerVE(EventInfoContainer container)
+            public EventInfoContainerVE(EventObjectContainer container)
             {
                 this.container = container;
                 var refreshBtn = new Button() { text = "Refresh" };
                 refreshBtn.RegisterCallback<ClickEvent>(evt => Refresh());
                 Add(refreshBtn);
-                Add(_eventInfoVEsContainer = new VisualElement());
+                Add(eventObjectVEsContainer = new VisualElement());
                 Refresh();
             }
 
             private void Refresh()
             {
-                _eventInfos = ExtractEventInfos().ToArray();
-                _eventInfoVEs = _eventInfos.Select((i, j) => new EventInfoVE(i, j)).ToArray();
+                _eventObjectVEs = container.GetAllEventObjects().Select((i, j) => new EventObjectVE(i, j)).ToArray();
 
-                _eventInfoVEsContainer.Clear();
+                eventObjectVEsContainer.Clear();
 
-                foreach (var ve in _eventInfoVEs)
+                foreach (var ve in _eventObjectVEs)
                 {
-                    _eventInfoVEsContainer.Add(ve);
+                    eventObjectVEsContainer.Add(ve);
                 }
-            }
-
-            private IEnumerable<EventInfo> ExtractEventInfos()
-            {
-                return container.AllEventInfos;
-                // var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-                // return typeof(EventInfoContainer).GetProperties(flags)
-                //     .Where(p => typeof(EventInfo).IsAssignableFrom(p.PropertyType))
-                //     .Select(p => p.GetValue(container) as EventInfo);
             }
         }
 
-        public class EventInfoVE : Foldout
+        public class EventObjectVE : Foldout
         {
-            private readonly EventInfo data;
+            private readonly EventObject data;
             private readonly int index;
 
-            public EventInfoVE(EventInfo data, int index)
+            public EventObjectVE(EventObject data, int index)
             {
                 this.data = data;
                 this.index = index;
