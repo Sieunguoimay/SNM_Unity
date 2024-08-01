@@ -16,12 +16,12 @@ namespace EventSystem
 
         private EventInfo _eventInfo;
 
-        private IEnumerable<string> EventIDs => EventInfoContainer.Instance.AllEventInfos.Select(e => e.ID);
+        private IEnumerable<string> EventIDs => EventInfoContainer.Instance.AllEventInfos.Select(e => e.DisplayName);
 
         private void Awake()
         {
             _eventInfo = EventInfoContainer.Instance.AllEventInfos
-                .FirstOrDefault(i => i.ID == eventID);
+                .FirstOrDefault(i => i.DisplayName == eventID);
 
             if (_eventInfo == null)
             {

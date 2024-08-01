@@ -69,7 +69,7 @@ namespace EventSystem
                 this.data = data;
                 this.index = index;
                 var subscribers = EventDispatcher.Instance.GetEventReceivers(data).ToArray();
-                text = $"{index}. {data.ID} ({subscribers.Length} subscribers)";
+                text = $"{index}. {data.DisplayName} ({subscribers.Length} subscribers)";
                 foreach (var s in subscribers)
                 {
                     if (s is UnityEngine.Object o)

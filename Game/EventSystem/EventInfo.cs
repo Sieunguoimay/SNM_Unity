@@ -2,11 +2,13 @@ namespace EventSystem
 {
     public class EventInfo
     {
-        public string ID { get; }
+        public string DisplayName { get; }
+        public string GUID { get; }
 
-        public EventInfo(string iD)
+        public EventInfo(string guid,string displayName)
         {
-            ID = iD;
+            GUID = guid;
+            DisplayName = displayName;
         }
     }
 }

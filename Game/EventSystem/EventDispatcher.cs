@@ -12,19 +12,19 @@ namespace EventSystem
 
         public void Register(EventInfo eventInfo, IEventReceiver receiver)
         {
-            if (dictionary.TryGetValue(eventInfo.ID, out var a))
+            if (dictionary.TryGetValue(eventInfo.DisplayName, out var a))
             {
                 a.Add(receiver);
             }
             else
             {
-                dictionary.Add(eventInfo.ID, new HashSet<IEventReceiver> { receiver });
+                dictionary.Add(eventInfo.DisplayName, new HashSet<IEventReceiver> { receiver });
             }
         }
 
         public void Unregister(EventInfo eventInfo, IEventReceiver receiver)
         {
-            if (dictionary.TryGetValue(eventInfo.ID, out var a))
+            if (dictionary.TryGetValue(eventInfo.DisplayName, out var a))
             {
                 a.Remove(receiver);
             }
@@ -32,7 +32,7 @@ namespace EventSystem
 
         public void Dispatch(IEvent evt)
         {
-            if (dictionary.TryGetValue(evt.EventInfo.ID, out var d))
+            if (dictionary.TryGetValue(evt.EventInfo.DisplayName, out var d))
             {
                 foreach (var receiver in d)
                 {
@@ -43,7 +43,7 @@ namespace EventSystem
 
         public IEnumerable<IEventReceiver> GetEventReceivers(EventInfo eventInfo)
         {
-            if (dictionary.TryGetValue(eventInfo.ID, out var rs))
+            if (dictionary.TryGetValue(eventInfo.DisplayName, out var rs))
             {
                 return rs;
             }
