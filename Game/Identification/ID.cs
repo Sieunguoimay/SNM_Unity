@@ -3,17 +3,17 @@ namespace Identification
     /// <summary>
     /// System Unique IDentifier
     /// </summary>
-    public class SUID
+    public class ID
     {
-        private readonly string id;
+        private readonly string idValue;
         private IdentifiedObject _identifiedObject;
 
-        public string ID => id;
+        public string Value => idValue;
         public IdentifiedObject IdentifiedObject => _identifiedObject;
 
-        public SUID(string iD)
+        public ID(string idValue)
         {
-            id = iD;
+            this.idValue = idValue;
         }
 
         public void SetIdentifiedObject(IdentifiedObject obj)

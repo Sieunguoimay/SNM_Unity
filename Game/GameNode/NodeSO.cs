@@ -10,7 +10,7 @@ namespace GameNode
     {
         [SerializeField]
         private ChildNodeEntry[] children;
-        private readonly GameNode gameNode = new();
+        private readonly IGameNode gameNode = new GameNode();
 
         public bool IsSetup => gameNode.IsSetup;
         public IGameNode Parent => gameNode.Parent;

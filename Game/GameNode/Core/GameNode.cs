@@ -6,9 +6,11 @@ namespace GameNode
     public class GameNode : IGameNode
     {
         private readonly List<IGameNode> runtimeChildren = new();
-
-        public IGameNode Parent { get; private set; } = null;
-        public bool IsSetup { get; private set; } = false;
+        private IGameNode _parent;
+        private bool _isSetup = false;
+        
+        IGameNode IGameNode.Parent => _parent;
+        bool IGameNode.IsSetup => _isSetup;
 
         public virtual void Setup()
         {
@@ -17,7 +19,7 @@ namespace GameNode
                 child.Setup();
             }
 
-            IsSetup = true;
+            _isSetup = true;
         }
 
         public virtual void TearDown()
@@ -29,10 +31,10 @@ namespace GameNode
             }
 
 
-            IsSetup = false;
+            _isSetup = false;
         }
 
-        public void AddNode(IGameNode node)
+        void IGameNode.AddNode(IGameNode node)
         {
             if (node == null)
             {
@@ -42,13 +44,13 @@ namespace GameNode
             runtimeChildren.Add(node);
             node.SetParent(this);
 
-            if (IsSetup)
+            if (_isSetup)
             {
                 node.Setup();
             }
         }
 
-        public void RemoveNode(IGameNode node)
+        void IGameNode.RemoveNode(IGameNode node)
         {
             if (node == null)
             {
@@ -71,9 +73,9 @@ namespace GameNode
             }
         }
 
-        public void SetParent(IGameNode node)
+        void IGameNode.SetParent(IGameNode node)
         {
-            Parent = node;
+            _parent = node;
         }
     }
 }

@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
 using Unity.VisualScripting;
 
 #if UNITY_EDITOR
@@ -17,20 +15,17 @@ using UnityEngine.UIElements;
 
 namespace Identification
 {
-    [AttributeUsage(AttributeTargets.Class)]
-    public class SUIDSpaceAttribute : Attribute { }
 
 #if UNITY_EDITOR
-    public partial class SUIDsToolWindow : EditorWindow
+    public partial class IDsToolWindow : EditorWindow
     {
-        [SerializeField] private MonoScript suidsSpaceScript;
-        [SerializeField] private List<SUID> suids = new();
-        [SerializeField] private int counter = 0;
+        [SerializeField] private MonoScript idSpaceScript;
+        [SerializeField] private List<ID> ids = new();
 
-        [MenuItem("Tools/Game/SUIDsTool")]
+        [MenuItem("Tools/Game/IDsTool")]
         public static void OpenWindow()
         {
-            GetWindow<SUIDsToolWindow>().Show();
+            GetWindow<IDsToolWindow>().Show();
         }
 
         private void CreateGUI()
@@ -40,14 +35,14 @@ namespace Identification
 
         private class ToolVE : VisualElement
         {
-            private readonly SUIDsToolWindow window;
+            private readonly IDsToolWindow window;
             private readonly VisualElement container;
             private readonly ObjectField script;
 
-            public ToolVE(SUIDsToolWindow window)
+            public ToolVE(IDsToolWindow window)
             {
                 this.window = window;
-                window.LoadSUIDSpace();
+                window.LoadIDSpace();
 
                 var bottom = new VisualElement();
                 bottom.style.flexDirection = FlexDirection.Row;
@@ -60,7 +55,7 @@ namespace Identification
                 {
                     name = "Script",
                     objectType = typeof(MonoScript),
-                    value = window.suidsSpaceScript
+                    value = window.idSpaceScript
                 };
                 script.RegisterValueChangedCallback(OnScriptChanged);
                 script.style.flexGrow = 1;
@@ -87,23 +82,23 @@ namespace Identification
                 Add(bottom);
                 bottom.Add(addNew);
                 bottom.Add(export);
-                PopulateSUIDVEs();
+                PopulateIDVEs();
             }
 
             private void OnSelect()
             {
                 var gm = new GenericMenu();
-                foreach (var t in GetTypesWithAttribute<SUIDSpaceAttribute>())
+                foreach (var t in GetTypesWithAttribute<IDSpaceAttribute>())
                 {
-                    var isCurrent = window.suidsSpaceScript != null && window.suidsSpaceScript.GetClass() == t;
+                    var isCurrent = window.idSpaceScript != null && window.idSpaceScript.GetClass() == t;
                     gm.AddItem(new GUIContent(t.Name), isCurrent, () =>
                     {
                         script.value = AssetDatabase.FindAssets($"t:MonoScript {t.Name}")
                             .Select(AssetDatabase.GUIDToAssetPath)
                             .Select(AssetDatabase.LoadAssetAtPath<MonoScript>)
-                            .Where(ms => ms.GetClass().GetAttribute<SUIDSpaceAttribute>() != null)
+                            .Where(ms => ms.GetClass().GetAttribute<IDSpaceAttribute>() != null)
                             .FirstOrDefault();
-                        window.LoadSUIDSpace();
+                        window.LoadIDSpace();
                         Refresh();
                     });
                 }
@@ -122,45 +117,44 @@ namespace Identification
 
             private void OnScriptChanged(ChangeEvent<UnityEngine.Object> evt)
             {
-                window.suidsSpaceScript = evt.newValue as MonoScript;
+                window.idSpaceScript = evt.newValue as MonoScript;
             }
 
             private void OnReload()
             {
-                window.LoadSUIDSpace();
+                window.LoadIDSpace();
                 Refresh();
             }
 
             private void Refresh()
             {
                 container.Clear();
-                PopulateSUIDVEs();
+                PopulateIDVEs();
             }
 
-            private void PopulateSUIDVEs()
+            private void PopulateIDVEs()
             {
-                container.Add(new Label($"Counter = {window.counter}"));
-                for (int i = 0; i < window.suids.Count; i++)
+                for (int i = 0; i < window.ids.Count; i++)
                 {
-                    var suid = window.suids[i];
-                    container.Add(new SUIDVE(suid, i, this));
+                    var id = window.ids[i];
+                    container.Add(new IDVE(id, i, this));
                 }
             }
 
-            private class SUIDVE : VisualElement
+            private class IDVE : VisualElement
             {
-                public SUIDVE(SUID suid, int index, ToolVE tool)
+                public IDVE(ID id, int index, ToolVE tool)
                 {
                     style.flexDirection = FlexDirection.Row;
                     style.alignItems = Align.Center;
-                    var obj = suid.IdentifiedObject != null ? $" -> {suid.IdentifiedObject}" : "";
-                    var label = new Label($"{index}. {suid.ID}{obj}");
+                    var obj = id.IdentifiedObject != null ? $" -> {id.IdentifiedObject}" : "";
+                    var label = new Label($"{index}. {id.Value}{obj}");
                     label.style.flexGrow = 1;
                     var btn = new Button() { text = "X" };
                     btn.style.width = 20;
                     btn.RegisterCallback<ClickEvent>(evt =>
                     {
-                        tool.window.suids.Remove(suid);
+                        tool.window.ids.Remove(id);
                         tool.Refresh();
                     });
                     Add(label);
@@ -170,33 +164,31 @@ namespace Identification
 
         }
 
-        private void LoadSUIDSpace()
+        private void LoadIDSpace()
         {
-            if (suidsSpaceScript == null) return;
+            if (idSpaceScript == null) return;
             var flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static;
-            var t = suidsSpaceScript.GetClass();
-            suids = t.GetProperties(flags)
-                .Where(p => p.PropertyType == typeof(SUID))
+            var t = idSpaceScript.GetClass();
+            ids = t.GetProperties(flags)
+                .Where(p => p.PropertyType == typeof(ID))
                 .Select(p => p.GetValue(null))
-                .OfType<SUID>().ToList();
+                .OfType<ID>().ToList();
             var ct = t.GetField("Counter");
-            counter = ct != null ? (int)ct.GetValue(null) : 0;
         }
 
         [ContextMenu("AddNew")]
         private void AddNew()
         {
-            if (suidsSpaceScript == null) return;
-            suids.Add(new SUID(GenerateGUID()));
-            counter++;
+            if (idSpaceScript == null) return;
+            ids.Add(new ID(GenerateGUID()));
         }
 
         [ContextMenu("Export")]
         private void Export()
         {
-            if (suidsSpaceScript == null) return;
+            if (idSpaceScript == null) return;
 
-            var path = AssetDatabase.GetAssetPath(suidsSpaceScript);
+            var path = AssetDatabase.GetAssetPath(idSpaceScript);
             var absolutePath = path.Replace("Assets", Application.dataPath);
             var cs = string.Join("\n", CreateCSLines());
 
@@ -212,13 +204,12 @@ namespace Identification
             var tab = "    ";
             yield return $"namespace Identification";
             yield return $"{{";
-            yield return $"{tab}[SUIDSpace]";
-            yield return $"{tab}public class {suidsSpaceScript.name}";
+            yield return $"{tab}[IDSpace]";
+            yield return $"{tab}public class {idSpaceScript.name}";
             yield return $"{tab}{{";
-            yield return $"{tab}{tab}public const int Counter = {counter}; //Counter is not Total SUIDs of this space";
-            foreach (var metaObject in suids)
+            foreach (var id in ids)
             {
-                yield return $"{tab}{tab}public static SUID _{metaObject.ID} {{ get; }} = new(\"{metaObject.ID}\");";
+                yield return $"{tab}{tab}public static ID _{id.Value} {{ get; }} = new(\"{id.Value}\");";
             }
             yield return $"{tab}}}";
             yield return $"}}";
@@ -226,55 +217,8 @@ namespace Identification
 
         public string GenerateGUID()
         {
-            var uniqueId = GenerateHash(counter);
-            return uniqueId;
+            return System.Guid.NewGuid().ToString()[..8];
         }
-        public static string GenerateHash(int input)
-        {
-            // Convert integer to byte array
-            byte[] inputBytes = BitConverter.GetBytes(input);
-
-            // Create SHA256 hash
-            using (SHA256 sha256 = SHA256.Create())
-            {
-                byte[] hashBytes = sha256.ComputeHash(inputBytes);
-
-                // Convert hash bytes to base32 string
-                string base32String = Base32Encode(hashBytes);
-
-                // Return the first 8 characters of the base32 string
-                return base32String.Substring(0, 8);
-            }
-        }
-
-        private static string Base32Encode(byte[] bytes)
-        {
-            const string base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-            StringBuilder sb = new StringBuilder();
-            int value = 0, bits = 0;
-
-            foreach (byte b in bytes)
-            {
-                value = (value << 8) | b;
-                bits += 8;
-
-                while (bits >= 5)
-                {
-                    int index = (value >> (bits - 5)) & 0x1F;
-                    sb.Append(base32Chars[index]);
-                    bits -= 5;
-                }
-            }
-
-            if (bits > 0)
-            {
-                int index = (value << (5 - bits)) & 0x1F;
-                sb.Append(base32Chars[index]);
-            }
-
-            return sb.ToString();
-        }
-
 
         public static Type[] GetTypesWithAttribute<T>() where T : Attribute
         {

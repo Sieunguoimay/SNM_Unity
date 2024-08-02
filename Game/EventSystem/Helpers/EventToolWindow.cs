@@ -6,7 +6,7 @@ namespace EventSystem
 {
     public class EventToolWindow : UnityEditor.EditorWindow
     {
-        [UnityEditor.MenuItem("Tools/Game/EventInfoWindow")]
+        [UnityEditor.MenuItem("Tools/Game/EventToolWindow")]
         public static void OpenWindow()
         {
             GetWindow<EventToolWindow>().Show();
@@ -14,17 +14,17 @@ namespace EventSystem
 
         private void CreateGUI()
         {
-            rootVisualElement.Add(new EventInfoContainerVE(EventObjectContainer.Instance));
+            rootVisualElement.Add(new EventToolContainerVE(EventObjectContainer.Instance));
         }
 
-        private class EventInfoContainerVE : VisualElement
+        private class EventToolContainerVE : VisualElement
         {
             private readonly EventObjectContainer container;
 
             private EventObjectVE[] _eventObjectVEs;
             private readonly VisualElement eventObjectVEsContainer;
 
-            public EventInfoContainerVE(EventObjectContainer container)
+            public EventToolContainerVE(EventObjectContainer container)
             {
                 this.container = container;
                 var refreshBtn = new Button() { text = "Refresh" };

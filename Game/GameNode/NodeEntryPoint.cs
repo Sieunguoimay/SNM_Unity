@@ -7,7 +7,7 @@ namespace GameNode
 {
     public class NodeEntryPoint : MonoBehaviour
     {
-        [ObjectSelector]
+        [ObjectSelector(typeof(IGameNode))]
         [SerializeField]
         private Object[] rootNodes;
 

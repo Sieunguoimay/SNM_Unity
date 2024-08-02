@@ -2,13 +2,13 @@ namespace Identification
 {
     public class IdentifiedObject
     {
-        private readonly SUID suid;
-        public string ID => suid.ID;
+        private readonly ID id;
+        public string ID => id.Value;
 
-        public IdentifiedObject(SUID suid)
+        public IdentifiedObject(ID id)
         {
-            suid.SetIdentifiedObject(this);
-            this.suid = suid;
+            id.SetIdentifiedObject(this);
+            this.id = id;
         }
     }
 }

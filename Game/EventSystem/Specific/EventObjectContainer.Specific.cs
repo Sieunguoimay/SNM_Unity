@@ -5,7 +5,7 @@ namespace EventSystem
 {
     public partial class EventObjectContainer
     {
-        public EventObject OnGameStarted { get; } = new(null, nameof(OnGameStarted));
+        public EventObject OnGameStarted { get; } = new(EventSystemIDs._e9dc4420, nameof(OnGameStarted));
 
         public IEnumerable<EventObject> GetAllEventObjects()
         {

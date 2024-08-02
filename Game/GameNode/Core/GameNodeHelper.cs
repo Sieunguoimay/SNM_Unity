@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace GameNode
 {
-    public static class GameNodeExtensions
+    public static class GameNodeHelper
     {
         public static TNode GetNodeInParent<TNode>(this IGameNode node) where TNode : IGameNode
         {
