@@ -13,14 +13,14 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Identification
+namespace IDs
 {
 
 #if UNITY_EDITOR
     public partial class IDsToolWindow : EditorWindow
     {
         [SerializeField] private MonoScript idSpaceScript;
-        [SerializeField] private List<ID> ids = new();
+        [SerializeField] private List<string> ids = new();
 
         [MenuItem("Tools/Game/IDsTool")]
         public static void OpenWindow()
@@ -143,12 +143,12 @@ namespace Identification
 
             private class IDVE : VisualElement
             {
-                public IDVE(ID id, int index, ToolVE tool)
+                public IDVE(string id, int index, ToolVE tool)
                 {
                     style.flexDirection = FlexDirection.Row;
                     style.alignItems = Align.Center;
-                    var obj = id.IdentifiedObject != null ? $" -> {id.IdentifiedObject}" : "";
-                    var label = new Label($"{index}. {id.Value}{obj}");
+                    // var obj = id.IdentifiedObject != null ? $" -> {id.IdentifiedObject}" : "";
+                    var label = new Label($"{index}. {id}");
                     label.style.flexGrow = 1;
                     var btn = new Button() { text = "X" };
                     btn.style.width = 20;
@@ -167,20 +167,24 @@ namespace Identification
         private void LoadIDSpace()
         {
             if (idSpaceScript == null) return;
+            ids = LoadIDSpace(idSpaceScript).ToList();
+        }
+
+        public static IEnumerable<string> LoadIDSpace(MonoScript idSpaceScript)
+        {
             var flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static;
             var t = idSpaceScript.GetClass();
-            ids = t.GetProperties(flags)
-                .Where(p => p.PropertyType == typeof(ID))
-                .Select(p => p.GetValue(null))
-                .OfType<ID>().ToList();
-            var ct = t.GetField("Counter");
+            return t.GetProperties(flags)
+                 .Where(p => p.PropertyType == typeof(string))
+                 .Select(p => p.GetValue(null))
+                 .OfType<string>();
         }
 
         [ContextMenu("AddNew")]
         private void AddNew()
         {
             if (idSpaceScript == null) return;
-            ids.Add(new ID(GenerateGUID()));
+            ids.Add(IDHelper.GenerateID());
         }
 
         [ContextMenu("Export")]
@@ -188,9 +192,16 @@ namespace Identification
         {
             if (idSpaceScript == null) return;
 
+            Export(idSpaceScript, ids);
+        }
+
+        public static void Export(MonoScript idSpaceScript, IEnumerable<string> ids)
+        {
+            if (idSpaceScript == null) return;
+
             var path = AssetDatabase.GetAssetPath(idSpaceScript);
             var absolutePath = path.Replace("Assets", Application.dataPath);
-            var cs = string.Join("\n", CreateCSLines());
+            var cs = string.Join("\n", CreateCSLines(idSpaceScript, ids));
 
             File.WriteAllText(absolutePath, cs);
 
@@ -199,7 +210,7 @@ namespace Identification
             Debug.Log($"{absolutePath}");
         }
 
-        private IEnumerable<string> CreateCSLines()
+        private static IEnumerable<string> CreateCSLines(MonoScript idSpaceScript, IEnumerable<string> ids)
         {
             var tab = "    ";
             yield return $"namespace Identification";
@@ -209,17 +220,12 @@ namespace Identification
             yield return $"{tab}{{";
             foreach (var id in ids)
             {
-                yield return $"{tab}{tab}public static ID _{id.Value} {{ get; }} = new(\"{id.Value}\");";
+                yield return $"{tab}{tab}public static string _{id} {{ get; }} = \"{id}\";";
             }
             yield return $"{tab}}}";
             yield return $"}}";
         }
-
-        public string GenerateGUID()
-        {
-            return System.Guid.NewGuid().ToString()[..8];
-        }
-
+        
         public static Type[] GetTypesWithAttribute<T>() where T : Attribute
         {
             var assembly = Assembly.GetExecutingAssembly();
@@ -231,5 +237,6 @@ namespace Identification
         }
 
     }
+
 #endif
 }

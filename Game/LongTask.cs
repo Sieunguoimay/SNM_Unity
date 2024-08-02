@@ -3,16 +3,15 @@ using UnityEngine;
 
 public abstract class LongTask
 {
-    public bool IsRunning { get; private set; }
-    public bool IsSucceeded { get; private set; }
+    public bool IsWaiting { get; private set; }
 
-    private Action<LongTask> _taskEndCallback;
+    private Action<LongTask, bool> _taskEndCallback;
 
-    public event Action<LongTask> RunningStatusChanged;
+    public event Action<LongTask> StatusChanged;
 
-    public void TryBeginTask(Action<LongTask> endCallback)
+    public void TryBeginTask(Action<LongTask, bool> endCallback)
     {
-        if (IsRunning)
+        if (IsWaiting)
         {
             Debug.LogError("Failed to begin task. Task has already started");
         }
@@ -22,18 +21,17 @@ public abstract class LongTask
         }
     }
 
-    private void BeginTask(Action<LongTask> endCallback)
+    private void BeginTask(Action<LongTask, bool> endCallback)
     {
         _taskEndCallback = endCallback;
-        IsRunning = true;
-        IsSucceeded = false;
+        IsWaiting = true;
         OnTaskBegin();
-        RunningStatusChanged?.Invoke(this);
+        StatusChanged?.Invoke(this);
     }
 
     public void TryEndTask(bool success)
     {
-        if (!IsRunning)
+        if (!IsWaiting)
         {
             Debug.LogError("Failed to end task. Task is not started");
         }
@@ -45,10 +43,9 @@ public abstract class LongTask
 
     private void EndTask(bool success)
     {
-        IsSucceeded = success;
-        IsRunning = false;
-        _taskEndCallback?.Invoke(this);
-        RunningStatusChanged?.Invoke(this);
+        IsWaiting = false;
+        _taskEndCallback?.Invoke(this, success);
+        StatusChanged?.Invoke(this);
     }
 
     protected abstract void OnTaskBegin();

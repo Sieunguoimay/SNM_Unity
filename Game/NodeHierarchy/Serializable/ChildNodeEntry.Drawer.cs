@@ -7,7 +7,7 @@ using UnityEditor;
 
 using UnityEngine;
 
-namespace GameNode
+namespace GameNodeHierarchy
 {
     public partial class ChildNodeEntry
     {

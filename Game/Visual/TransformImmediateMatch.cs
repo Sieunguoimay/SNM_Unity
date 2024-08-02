@@ -1,40 +1,30 @@
 using System;
-using ObjectAccess;
 using UnityEngine;
 using UnityEngine.Serialization;
 
 public class TransformImmediateMatch : MonoBehaviour
 {
     [FormerlySerializedAs("from")]
-    [SerializeField] private CommonObjectProvider from;
+    [SerializeField] private Transform from;
     [SerializeField] private Transform to;
     [SerializeField] private MatchType matchType = MatchType.All;
-
-    private Transform _from;
-
-    private void Start()
-    {
-        if (!from.TryGetObject<Transform>(out _from))
-        {
-            Debug.LogError("From is not assigned");
-        }
-    }
 
     private void Update()
     {
         if (matchType == MatchType.All)
         {
-            to.SetPositionAndRotation(_from.position, _from.rotation);
+            to.SetPositionAndRotation(from.position, from.rotation);
         }
         if (matchType == MatchType.Position)
         {
-            to.position = _from.position;
+            to.position = from.position;
         }
         if (matchType == MatchType.Rotation)
         {
-            to.rotation = _from.rotation;
+            to.rotation = from.rotation;
         }
     }
+    
     [Flags]
     private enum MatchType
     {

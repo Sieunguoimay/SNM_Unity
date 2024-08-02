@@ -3,6 +3,9 @@ using UnityEngine;
 
 public class AttractionEffectAnim : MonoBehaviour
 {
+    [SerializeField] private float speed = 20f;
+    [SerializeField] private float acc = 15f;
+    
     public void FlyUpToTarget(Transform flyer, Transform target)
     {
         StartCoroutine(IEFlyUpToTarget(flyer, target));
@@ -10,13 +13,11 @@ public class AttractionEffectAnim : MonoBehaviour
 
     private IEnumerator IEFlyUpToTarget(Transform flyer, Transform target)
     {
-        var speed = 20f;
-        var acc = 15f;
         var offset = target.position - flyer.position;
         var sqrDistance = offset.sqrMagnitude;
         var stopDistance = 1f;
 
-        var velocity = Random.insideUnitSphere * speed * .4f;
+        var velocity = .4f * speed * Random.insideUnitSphere;
 
         while (sqrDistance > stopDistance)
         {

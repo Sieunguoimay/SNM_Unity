@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace GameNode
+namespace GameNodeHierarchy
 {
     public class NodeEntryPoint : MonoBehaviour
     {

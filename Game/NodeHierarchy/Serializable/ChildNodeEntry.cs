@@ -3,7 +3,7 @@ using System.Linq;
 using Reflection;
 using UnityEngine;
 
-namespace GameNode
+namespace GameNodeHierarchy
 {
     [Serializable]
     public partial class ChildNodeEntry
@@ -39,7 +39,7 @@ namespace GameNode
         }
 
 #if UNITY_EDITOR
-        public void SetSource_Editor(object source)
+        public void SetPreviewSource(object source)
         {
             foreach (var i in assigners)
             {

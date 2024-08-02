@@ -1,12 +1,12 @@
-using Identification;
-
 namespace EventSystem
 {
-    public class EventObject : IdentifiedObject
+    public class EventObject
     {
+        public string ID { get; }
         public string DisplayName { get; }
-        public EventObject(ID id, string eventName) : base(id)
+        public EventObject(string id, string eventName)
         {
+            ID = id;
             DisplayName = eventName;
         }
     }

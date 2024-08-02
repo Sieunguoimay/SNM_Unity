@@ -2,7 +2,6 @@ using System;
 
 namespace Reflection
 {
-    public class InjectFieldAttribute : Attribute
-    {
-    }
+    [AttributeUsage(AttributeTargets.Field)]
+    public class InjectFieldAttribute : Attribute { }
 }
