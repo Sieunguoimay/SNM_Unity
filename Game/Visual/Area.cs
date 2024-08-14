@@ -4,15 +4,15 @@ public class Area : MonoBehaviour
 {
     [SerializeField] private Bounds bounds;
 
-    private Bounds _ = new();
+    private Bounds tempBounds = new();
 
     public Bounds WorldBounds
     {
         get
         {
-            _.size = bounds.size;
-            _.center = transform.position + bounds.center;
-            return _;
+            tempBounds.size = bounds.size;
+            tempBounds.center = transform.position + bounds.center;
+            return tempBounds;
         }
     }
 
