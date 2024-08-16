@@ -16,7 +16,6 @@ namespace Tools
         private string _searchString = "";
         private string[] _searchResult;
         private int _displayCount = 20;
-        private int _currentPage;
         private bool _firstTime = true;
 
         public static void Show(IEnumerable<string> options, Action<string> onResult)
@@ -58,6 +57,7 @@ namespace Tools
 
         private void UpdateSearchResult()
         {
+            if (_options == null) return;
             var regex = new Regex(string.Join(".*", _searchString.Split(" ")), RegexOptions.IgnoreCase);
             _searchResult = _options.Where(o => !string.IsNullOrEmpty(o)).Where(o => regex.IsMatch(o)).ToArray();
         }

@@ -30,7 +30,7 @@ namespace Reflection
         private MemberInfo _destMemberInfo;
 
         private static BindingFlags SourceFlags => BindingFlags.Public | BindingFlags.Instance;
-        private static BindingFlags DestinationFlags => BindingFlags.NonPublic | BindingFlags.Instance;
+        private static BindingFlags DestinationFlags => BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
         public string DestMemberName => destMemberName;
         public string SrcMemberName => srcMemberName;
@@ -48,7 +48,7 @@ namespace Reflection
             return destination == null ? Enumerable.Empty<string>() :
             destination.GetType()
             .GetMembers(DestinationFlags)
-            .Where(m => m.MemberType == MemberTypes.Field && m.GetCustomAttribute<InjectFieldAttribute>() != null)
+            // .Where(m => m.MemberType == MemberTypes.Field && m.GetCustomAttribute<InjectFieldAttribute>() != null)
             .Select(m => m.Name);
         }
 #endif
@@ -143,13 +143,13 @@ namespace Reflection
             {
                 // base.OnGUI(position, property, label);
                 var r1 = new Rect(position.x, position.y, position.width / 2 - 12, position.height);
-                EditorGUI.PropertyField(r1, property.FindPropertyRelative(nameof(destMemberName)));
+                EditorGUI.PropertyField(r1, property.FindPropertyRelative(nameof(srcMemberName)));
 
-                var r2 = new Rect(position.x + position.width / 2 - 12, position.y, 24, position.height);
-                EditorGUI.LabelField(r2, " <- ");
+                var r2 = new Rect(position.x + position.width / 2 - 25, position.y, 50, position.height);
+                EditorGUI.LabelField(r2, " -> ");
 
                 var r3 = new Rect(position.x + position.width / 2 + 12, position.y, position.width / 2 - 12, position.height);
-                EditorGUI.PropertyField(r3, property.FindPropertyRelative(nameof(srcMemberName)));
+                EditorGUI.PropertyField(r3, property.FindPropertyRelative(nameof(destMemberName)));
             }
         }
 #endif

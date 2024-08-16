@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace Reflection
@@ -17,11 +18,23 @@ namespace Reflection
         [SerializeField] private ReflectionConnect[] connections;
 
         private Type SourceType => sourceObject?.GetType();
-        private static BindingFlags BindingFlags => BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        private static BindingFlags BindingFlags => BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
         private IEnumerable<string> SourceEvents => SourceType?.GetEvents(BindingFlags)?.Select(e => e.Name);
-        private IEnumerable<string> SourceGetMembers => SourceType?.GetMembers(BindingFlags)?.Where(m => m is PropertyInfo || m is FieldInfo)?.Select(e => $"{e.Name}: {(e as PropertyInfo)?.PropertyType?.Name ?? (e as FieldInfo)?.FieldType?.Name}");
+        private IEnumerable<string> SourceGetMembers
+        {
+            get
+            {
+                if (SourceType == null) return Enumerable.Empty<string>();
 
-        private static readonly Regex ExtractMemberNameRegex = new("^[a-zA-Z0-9_]+");
+                return GetAllTypes(SourceType)
+                    .SelectMany(i => i.GetMembers(BindingFlags))
+                    .Distinct()
+                    .Where(m => m is PropertyInfo || m is FieldInfo)
+                    .Select(e => $"{e.Name}: {(e as PropertyInfo)?.PropertyType?.Name ?? (e as FieldInfo)?.FieldType?.Name}");
+            }
+        }
+
+        private static readonly Regex ExtractMemberNameRegex = new("^[a-zA-Z0-9_.]+");
 
         private void OnEnable()
         {
@@ -79,6 +92,51 @@ namespace Reflection
             {
                 g.BindData();
             }
+        }
+
+        private static IEnumerable<Type> GetAllTypes(Type type)
+        {
+            var t = type;
+            yield return t;
+            foreach (var i in t.GetInterfaces())
+            {
+                yield return i;
+            }
+            while (t.BaseType != null)
+            {
+                t = t.BaseType;
+                yield return t;
+            }
+        }
+
+        private static FieldInfo GetFieldInfo(Type type, string fieldName)
+        {
+            foreach (var t in GetAllTypes(type))
+            {
+                var f = t.GetField(fieldName, BindingFlags);
+                if (f != null) return f;
+            }
+            return null;
+        }
+
+        private static PropertyInfo GetPropertyInfo(Type type, string propName)
+        {
+            foreach (var t in GetAllTypes(type))
+            {
+                var f = t.GetProperty(propName, BindingFlags);
+                if (f != null) return f;
+            }
+            return null;
+        }
+
+        private static MethodInfo GetMethodInfo(Type type, string methName)
+        {
+            foreach (var t in GetAllTypes(type))
+            {
+                var f = t.GetMethod(methName, BindingFlags);
+                if (f != null) return f;
+            }
+            return null;
         }
 
         [Serializable]
@@ -154,25 +212,28 @@ namespace Reflection
             {
                 if (targetObject != null)
                 {
-                    var type = targetObject.GetType();
-                    var properties = type.GetProperties(Flag);
-                    var propertyAutoMethods = properties.SelectMany(p => p.GetAccessors()).ToArray();
-
-                    foreach (var p in properties)
+                    var typed = targetObject.GetType();
+                    foreach (var type in GetAllTypes(typed))
                     {
-                        if (p.GetSetMethod() != null)
-                        {
-                            yield return $"{p.Name}: {p.PropertyType.Name}";
-                        }
-                    }
+                        var properties = type.GetProperties(Flag);
+                        var propertyAutoMethods = properties.SelectMany(p => p.GetAccessors()).ToArray();
 
-                    foreach (var m in type.GetMethods(Flag))
-                    {
-                        if (!propertyAutoMethods.Contains(m))
+                        foreach (var p in properties)
                         {
-                            if (m.GetParameters().Count() == 1)
+                            if (p.GetSetMethod() != null)
                             {
-                                yield return $"{m.Name}({string.Join(',', m.GetParameters().Select(p => p.ParameterType.Name))})";
+                                yield return $"{p.Name}: {p.PropertyType.Name}";
+                            }
+                        }
+
+                        foreach (var m in type.GetMethods(Flag))
+                        {
+                            if (!propertyAutoMethods.Contains(m))
+                            {
+                                if (m.GetParameters().Count() == 1)
+                                {
+                                    yield return $"{m.Name}({string.Join(',', m.GetParameters().Select(p => p.ParameterType.Name))})";
+                                }
                             }
                         }
                     }
@@ -189,10 +250,10 @@ namespace Reflection
                 var sourceMember = ExtractMemberNameRegex.Match(sourceMemberName).Value;
                 var targetMember = ExtractMemberNameRegex.Match(targetMemberName).Value;
 
-                _sourceFieldInfo = sourceType.GetField(sourceMember, BindingFlags);
-                _sourcePropertyInfo = sourceType.GetProperty(sourceMember, BindingFlags);
-                _targetMethodInfo = targetType.GetMethod(targetMember, BindingFlags);
-                _targetPropertyInfo = targetType.GetProperty(targetMember, BindingFlags);
+                _sourceFieldInfo = GetFieldInfo(sourceType, sourceMember);
+                _sourcePropertyInfo = GetPropertyInfo(sourceType, sourceMember);
+                _targetMethodInfo = GetMethodInfo(targetType, targetMember);
+                _targetPropertyInfo = GetPropertyInfo(targetType, targetMember);
             }
 
             public void TearDown()

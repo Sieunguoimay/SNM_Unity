@@ -5,7 +5,6 @@ using UnityEngine.Events;
 
 public class InfiniteTimePlayer : MonoBehaviour
 {
-
     [SerializeField]
     [Tooltip("TimeFactor")]
     private UnityEventFloat onFactorValue;
