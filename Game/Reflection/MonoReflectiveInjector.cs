@@ -7,9 +7,26 @@ namespace Reflection
     {
         [ObjectSelector]
         [SerializeField] private UnityEngine.Object source;
-        [SerializeField] private Entry[] entries;
+        [SerializeField] private bool selfInject = true;
+        [SerializeField] private Entry[] entries = Array.Empty<Entry>();
 
         private void OnEnable()
+        {
+            if (selfInject)
+            {
+                Inject();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (selfInject)
+            {
+                Eject();
+            }
+        }
+
+        public void Inject()
         {
             foreach (var entry in entries)
             {
@@ -18,7 +35,7 @@ namespace Reflection
             }
         }
 
-        private void OnDisable()
+        public void Eject()
         {
             foreach (var entry in entries)
             {
@@ -45,6 +62,7 @@ namespace Reflection
             void OnEnable()
             {
                 _target ??= target as MonoReflectiveInjector;
+                if (_target == null) return;
                 SetPreviewSourceObject();
             }
 

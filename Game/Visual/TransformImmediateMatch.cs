@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -24,7 +26,7 @@ public class TransformImmediateMatch : MonoBehaviour
             to.rotation = from.rotation;
         }
     }
-    
+
     [Flags]
     private enum MatchType
     {

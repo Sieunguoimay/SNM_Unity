@@ -31,7 +31,7 @@ namespace InspectorExtensions
             var ve = new VisualElement();
             if (ext.Target is Material material)
             {
-                var foldout = new Foldout { text = "Material keywords" };
+                var foldout = new Foldout { text = "Material keywords", value = false };
                 foldout.style.unityFontStyleAndWeight = FontStyle.Bold;
                 ve.Add(foldout);
                 ve.Add(new ThreeDots());
