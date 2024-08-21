@@ -9,10 +9,13 @@ public class PeriodicEventRunner : MonoBehaviour
     [SerializeField] private bool triggerOnStart = false;
     [SerializeField] private UnityEvent onTrigger;
 
+    public float PeriodSecs { get; private set; }
+
     public event Action<PeriodicEventRunner> TriggerEvent;
 
     private void Start()
     {
+        SetPeriodSecs(periodSecs);
         StartCoroutine(IE_IntervalLoop());
     }
 
@@ -30,5 +33,10 @@ public class PeriodicEventRunner : MonoBehaviour
             TriggerEvent?.Invoke(this);
             onTrigger?.Invoke();
         }
+    }
+
+    public void SetPeriodSecs(float periodSecs)
+    {
+        PeriodSecs = periodSecs;
     }
 }
