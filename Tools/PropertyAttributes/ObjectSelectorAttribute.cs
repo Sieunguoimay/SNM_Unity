@@ -71,10 +71,12 @@ public class ObjectSelectorDrawer : PropertyDrawer
     {
         if (obj is GameObject go)
         {
+            yield return go;
             foreach (var c in go.GetComponents<Component>()) yield return c;
         }
         else if (obj is Component c)
         {
+            yield return c.gameObject;
             foreach (var c1 in c.gameObject.GetComponents<Component>()) yield return c1;
         }
         else if (obj is ScriptableObject so)

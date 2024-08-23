@@ -8,6 +8,7 @@ public class PeriodicEventRunner : MonoBehaviour
     [SerializeField] private float periodSecs = 1f;
     [SerializeField] private bool triggerOnStart = false;
     [SerializeField] private UnityEvent onTrigger;
+    [SerializeField] private bool debug = false;
 
     public float PeriodSecs { get; private set; }
 
@@ -29,7 +30,9 @@ public class PeriodicEventRunner : MonoBehaviour
 
         while (true)
         {
-            yield return new WaitForSeconds(periodSecs);
+            yield return new WaitForSeconds(PeriodSecs);
+            if(debug)
+            Debug.Log(PeriodSecs);
             TriggerEvent?.Invoke(this);
             onTrigger?.Invoke();
         }
