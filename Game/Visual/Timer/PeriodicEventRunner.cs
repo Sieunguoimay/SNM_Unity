@@ -7,8 +7,8 @@ public class PeriodicEventRunner : MonoBehaviour
 {
     [SerializeField] private float periodSecs = 1f;
     [SerializeField] private bool triggerOnStart = false;
+    [SerializeField] private bool runOnStart = true;
     [SerializeField] private UnityEvent onTrigger;
-    [SerializeField] private bool debug = false;
 
     public float PeriodSecs { get; private set; }
 
@@ -16,8 +16,21 @@ public class PeriodicEventRunner : MonoBehaviour
 
     private void Start()
     {
+        if (runOnStart)
+        {
+            StartRunning();
+        }
+    }
+
+    public void StartRunning()
+    {
         SetPeriodSecs(periodSecs);
         StartCoroutine(IE_IntervalLoop());
+    }
+
+    public void StopRunning()
+    {
+        StopAllCoroutines();
     }
 
     private IEnumerator IE_IntervalLoop()
@@ -31,8 +44,6 @@ public class PeriodicEventRunner : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(PeriodSecs);
-            if(debug)
-            Debug.Log(PeriodSecs);
             TriggerEvent?.Invoke(this);
             onTrigger?.Invoke();
         }
