@@ -60,7 +60,6 @@ public class FiniteTimePlayer : MonoBehaviour
 
             if (time >= duration)
             {
-                PlayingStatusChangedEvent?.Invoke(this);
                 break;
             }
 
@@ -68,7 +67,9 @@ public class FiniteTimePlayer : MonoBehaviour
 
             time += Time.deltaTime;
         }
+        
         _coroutine = null;
+        PlayingStatusChangedEvent?.Invoke(this);
     }
 
     [Serializable]
