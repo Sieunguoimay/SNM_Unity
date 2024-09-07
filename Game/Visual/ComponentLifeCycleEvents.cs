@@ -6,6 +6,7 @@ public class ComponentLifeCycleEvents : MonoBehaviour
 {
     [SerializeField] private UnityEvent onStart;
     [SerializeField] private UnityEvent onEnable;
+    
     public event Action<ComponentLifeCycleEvents> EnabledEvent;
     public event Action<ComponentLifeCycleEvents> DisabledEvent;
     public event Action<ComponentLifeCycleEvents> StartedEvent;
