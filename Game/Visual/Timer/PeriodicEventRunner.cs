@@ -2,24 +2,31 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 
 public class PeriodicEventRunner : MonoBehaviour
 {
     [SerializeField] private float periodSecs = 1f;
     [SerializeField] private bool triggerOnStart = false;
-    [SerializeField] private bool runOnStart = true;
+    [FormerlySerializedAs("runOnStart")]
+    [SerializeField] private bool runOnEnable = true;
     [SerializeField] private UnityEvent onTrigger;
 
     public float PeriodSecs { get; private set; }
 
     public event Action<PeriodicEventRunner> TriggerEvent;
 
-    private void Start()
+    private void OnEnable()
     {
-        if (runOnStart)
+        if (runOnEnable)
         {
             StartRunning();
         }
+    }
+
+    private void OnDisable()
+    {
+        StopRunning();
     }
 
     public void StartRunning()
