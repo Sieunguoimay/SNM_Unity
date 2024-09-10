@@ -19,6 +19,7 @@ public class ClickBox : MonoBehaviour
             }
         }
     }
+    
     Ray TransformRayToLocal(Ray worldRay)
     {
         // Get the inverse transformation matrix of the object

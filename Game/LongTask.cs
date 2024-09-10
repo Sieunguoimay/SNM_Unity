@@ -50,4 +50,3 @@ public abstract class LongTask
 
     protected abstract void OnTaskBegin();
 }
-
