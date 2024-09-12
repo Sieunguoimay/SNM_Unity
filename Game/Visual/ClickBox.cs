@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -6,35 +7,35 @@ public class ClickBox : MonoBehaviour
     [SerializeField] private Vector3 boxSize = Vector3.one;
     [SerializeField] private UnityEvent onClick;
 
+    public event Action<ClickBox, Vector3> OnClicked;
+
     private void Update()
     {
         if (Input.GetMouseButtonDown(0))
         {
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            var localRay = TransformRayToLocal(ray);
+            var localRay = TransformRayToLocal(ray, transform.worldToLocalMatrix);
             var bounds = new Bounds(Vector3.zero, boxSize);
-            if (bounds.IntersectRay(localRay))
+            if (bounds.IntersectRay(localRay, out var distance))
             {
-                onClick.Invoke();
+                onClick?.Invoke();
+                OnClicked?.Invoke(this, transform.TransformPoint(localRay.origin + localRay.direction * distance));
             }
         }
     }
-    
-    Ray TransformRayToLocal(Ray worldRay)
+
+    private static Ray TransformRayToLocal(Ray worldRay, Matrix4x4 worldToLocalMatrix)
     {
-        // Get the inverse transformation matrix of the object
-        Matrix4x4 localToWorldMatrix = transform.localToWorldMatrix;
-        Matrix4x4 worldToLocalMatrix = localToWorldMatrix.inverse;
-
-        // Transform the ray to local space
-        Vector3 localOrigin = worldToLocalMatrix.MultiplyPoint(worldRay.origin);
-        Vector3 localDirection = worldToLocalMatrix.MultiplyVector(worldRay.direction);
-
-        return new Ray(localOrigin, localDirection);
+        return new Ray(
+            worldToLocalMatrix.MultiplyPoint(worldRay.origin),
+            worldToLocalMatrix.MultiplyVector(worldRay.direction)
+        );
     }
+
     private void OnDrawGizmos()
     {
         Gizmos.matrix = transform.localToWorldMatrix;
         Gizmos.DrawWireCube(Vector3.zero, boxSize);
     }
+
 }

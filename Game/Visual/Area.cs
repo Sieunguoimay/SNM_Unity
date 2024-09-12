@@ -3,18 +3,7 @@ using UnityEngine;
 public class Area : MonoBehaviour
 {
     [SerializeField] private Bounds bounds;
-
-    private Bounds tempBounds = new();
-
-    public Bounds WorldBounds
-    {
-        get
-        {
-            tempBounds.size = bounds.size;
-            tempBounds.center = transform.position + bounds.center;
-            return tempBounds;
-        }
-    }
+    [SerializeField] private Color gizmosColor = Color.white;
 
     public Bounds LocalBounds => bounds;
 
@@ -28,6 +17,7 @@ public class Area : MonoBehaviour
 
     private void OnDrawGizmos()
     {
+        Gizmos.color = gizmosColor;
         Gizmos.matrix = transform.localToWorldMatrix;
         Gizmos.DrawWireCube(bounds.center, bounds.size);
     }

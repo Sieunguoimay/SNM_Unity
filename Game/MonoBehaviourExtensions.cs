@@ -25,4 +25,21 @@ public static class MonoBehaviourExtensions
         yield return new WaitForSeconds(duration);
         callback?.Invoke();
     }
+
+    public static Coroutine StartLerping(this MonoBehaviour mb, float duration, Action<float> onLerp)
+    {
+        return mb.StartCoroutine(Lerping(duration, onLerp));
+    }
+
+    private static IEnumerator Lerping(float duration, Action<float> onLerp)
+    {
+        var time = 0f;
+        while (time < duration)
+        {
+            onLerp?.Invoke(time / duration);
+            yield return null;
+            time += Time.deltaTime;
+        }
+        onLerp?.Invoke(1f);
+    }
 }

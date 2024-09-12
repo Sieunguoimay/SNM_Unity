@@ -28,9 +28,9 @@ namespace Reflection
 
                 return GetAllTypes(SourceType)
                     .SelectMany(i => i.GetMembers(BindingFlags))
-                    .Distinct()
                     .Where(m => m is PropertyInfo || m is FieldInfo)
-                    .Select(e => $"{e.Name}: {(e as PropertyInfo)?.PropertyType?.Name ?? (e as FieldInfo)?.FieldType?.Name}");
+                    .Select(e => $"{e.Name}: {(e as PropertyInfo)?.PropertyType?.Name ?? (e as FieldInfo)?.FieldType?.Name}")
+                    .Distinct();
             }
         }
 
