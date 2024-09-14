@@ -7,29 +7,25 @@ public class ClickBox : MonoBehaviour
     [SerializeField] private Vector3 boxSize = Vector3.one;
     [SerializeField] private UnityEvent onClick;
 
+    public Vector3 BoxSize => boxSize;
+
     public event Action<ClickBox, Vector3> OnClicked;
 
-    private void Update()
+    private void OnEnable()
     {
-        if (Input.GetMouseButtonDown(0))
-        {
-            var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            var localRay = TransformRayToLocal(ray, transform.worldToLocalMatrix);
-            var bounds = new Bounds(Vector3.zero, boxSize);
-            if (bounds.IntersectRay(localRay, out var distance))
-            {
-                onClick?.Invoke();
-                OnClicked?.Invoke(this, transform.TransformPoint(localRay.origin + localRay.direction * distance));
-            }
-        }
+        ClickBoxManager.Instance.RegisterClickBox(this);
     }
 
-    private static Ray TransformRayToLocal(Ray worldRay, Matrix4x4 worldToLocalMatrix)
+    private void OnDisable()
     {
-        return new Ray(
-            worldToLocalMatrix.MultiplyPoint(worldRay.origin),
-            worldToLocalMatrix.MultiplyVector(worldRay.direction)
-        );
+        ClickBoxManager.Instance.UnregisterClickBox(this);
+    }
+
+    public void HandleClicked(Vector3 position)
+    {
+        Debug.Log("HandleClicked", this);
+        onClick?.Invoke();
+        OnClicked?.Invoke(this, position);
     }
 
     private void OnDrawGizmos()
@@ -37,5 +33,4 @@ public class ClickBox : MonoBehaviour
         Gizmos.matrix = transform.localToWorldMatrix;
         Gizmos.DrawWireCube(Vector3.zero, boxSize);
     }
-
 }
