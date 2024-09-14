@@ -18,12 +18,11 @@ public class ClickBox : MonoBehaviour
 
     private void OnDisable()
     {
-        ClickBoxManager.Instance.UnregisterClickBox(this);
+        ClickBoxManager.Instance?.UnregisterClickBox(this);
     }
 
     public void HandleClicked(Vector3 position)
     {
-        Debug.Log("HandleClicked", this);
         onClick?.Invoke();
         OnClicked?.Invoke(this, position);
     }
