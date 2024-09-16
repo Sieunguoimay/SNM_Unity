@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Reflection
 {
+    [Obsolete]
     public class MonoReflectiveInjector : MonoBehaviour
     {
         [ObjectSelector]
