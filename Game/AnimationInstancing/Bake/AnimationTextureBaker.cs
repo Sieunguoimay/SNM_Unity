@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using UnityEngine;
 using static AnimationInstancing_v2.AnimationBaker;
@@ -21,7 +22,7 @@ namespace AnimationInstancing_v2
         }
 
         public static AnimationTextureData CreateAnimationTextureData(
-            List<AnimationInfo> infoList, 
+            List<AnimationInfo> infoList,
             int boneCount)
         {
             var textureBlockWidth = 4;
@@ -253,3 +254,4 @@ namespace AnimationInstancing_v2
         }
     }
 }
+#endif

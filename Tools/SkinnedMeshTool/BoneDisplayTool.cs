@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System;
 using UnityEditor;
 using UnityEditor.EditorTools;
@@ -6,7 +7,7 @@ using UnityEngine;
 [EditorTool("Bone Display", typeof(SkinnedMeshRenderer))]
 public class BoneDisplayTool : EditorTool
 {
-    static private Texture CircleTexture =>EditorGUIUtility.FindTexture("sv_icon_dot0_pix16_gizmo");
+    static private Texture CircleTexture => EditorGUIUtility.FindTexture("sv_icon_dot0_pix16_gizmo");
     static private Material _boneWeightMaterial;
     static private Material BoneWeightMaterial
     {
@@ -277,3 +278,4 @@ public class BoneDisplayTool : EditorTool
         public bool useRotationHandle = true;
     }
 }
+#endif

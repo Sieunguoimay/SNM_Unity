@@ -92,7 +92,9 @@ namespace AnimationInstancing_v2
                         {
                             var package = blockUnit.PackageStack[j];
 
+#if UNITY_EDITOR
                             blockUnit.totalInstancingCount = package.instancingCount;
+#endif
 
                             if (package.instancingCount > 0)
                             {
