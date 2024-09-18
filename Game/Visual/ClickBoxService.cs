@@ -1,11 +1,10 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
-public class ClickBoxManager : MonoBehaviour
+public class ClickBoxService : MonoBehaviour
 {
-    private static ClickBoxManager _instance;
-    public static ClickBoxManager Instance
+    private static ClickBoxService _instance;
+    public static ClickBoxService Instance
     {
         get
         {
@@ -13,7 +12,8 @@ public class ClickBoxManager : MonoBehaviour
 
             if (_instance == null)
             {
-                _instance = new GameObject($"[Singleton]{nameof(ClickBoxManager)}").AddComponent<ClickBoxManager>();
+                _instance = new GameObject($"[Singleton]{nameof(ClickBoxService)}").AddComponent<ClickBoxService>();
+                DontDestroyOnLoad(_instance.gameObject);
             }
             return _instance;
         }
@@ -21,7 +21,6 @@ public class ClickBoxManager : MonoBehaviour
 
     private static bool _isDestroyed = false;
     private readonly List<ClickBox> clickBoxes = new();
-
 
     private void OnDestroy()
     {
@@ -58,7 +57,7 @@ public class ClickBoxManager : MonoBehaviour
                     }
                 }
             }
-            
+
             if (minDistanceClickBox != null && minHit != null)
             {
                 minDistanceClickBox.HandleClicked(minHit.Value);

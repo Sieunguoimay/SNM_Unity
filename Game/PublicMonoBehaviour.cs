@@ -11,7 +11,8 @@ public class PublicMonoBehaviour : MonoBehaviour
             {
                 if (_isDestroyed) return null;
 
-                _instance = new GameObject(nameof(PublicMonoBehaviour) + "_Singleton").AddComponent<PublicMonoBehaviour>();
+                _instance = new GameObject("[Singleton]" + nameof(PublicMonoBehaviour))
+                    .AddComponent<PublicMonoBehaviour>();
 
                 DontDestroyOnLoad(_instance.gameObject);
             }

@@ -13,12 +13,12 @@ public class ClickBox : MonoBehaviour
 
     private void OnEnable()
     {
-        ClickBoxManager.Instance.RegisterClickBox(this);
+        ClickBoxService.Instance.RegisterClickBox(this);
     }
 
     private void OnDisable()
     {
-        ClickBoxManager.Instance?.UnregisterClickBox(this);
+        ClickBoxService.Instance?.UnregisterClickBox(this);
     }
 
     public void HandleClicked(Vector3 position)
