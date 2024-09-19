@@ -51,6 +51,7 @@ namespace Tools
             {
                 var parent = context.transform;
                 empty.transform.SetParent(parent);
+                empty.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
             }
 
             Debug.Log($"Created GameObject with component {item.name}", empty);
@@ -66,8 +67,8 @@ namespace Tools
                 .Select(AssetDatabase.LoadAssetAtPath<MonoScript>).Where(ms =>
                 {
                     var clss = ms.GetClass();
-                    return clss != null 
-                        && clss.Name == ms.name 
+                    return clss != null
+                        && clss.Name == ms.name
                         && (clss.IsSubclassOf(mb) || clss.IsSubclassOf(c))
                         && !clss.IsAbstract;
                 });
