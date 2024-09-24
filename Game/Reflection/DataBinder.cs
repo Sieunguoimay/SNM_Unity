@@ -9,6 +9,14 @@ using UnityEngine;
 
 namespace Reflection
 {
+    /*
+    todo: Update DataBinder to support ChangeEventAttribute of a SourceMember. 
+    This attribute associates the SourceMember with a selected event. So that,
+    we don't have to serialize the event, instead we hardcode it. And since the 
+    member change is always triggered by one or more events.
+    */
+    
+    [Obsolete]
     public class DataBinder : MonoBehaviour
     {
         [SerializeField] private bool bindOnEnable;
