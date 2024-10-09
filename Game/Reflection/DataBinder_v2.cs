@@ -81,6 +81,8 @@ namespace Reflection
         {
             if (obj != null)
             {
+                yield return "@SourceObject";
+
                 var t = obj.GetType();
 
                 while (t != null)
@@ -335,14 +337,26 @@ namespace Reflection
 
         private class Getter : ReflectiveItem
         {
+            private bool _isGettingSourceObject;
+
             public override void Setup(object obj, string memberName)
             {
                 _obj = obj;
-                _memberInfo = GetGetterMemberInfo(obj, memberName);
+                if (memberName == "@SourceObject")
+                {
+                    _isGettingSourceObject = true;
+                }
+                else
+                {
+                    _isGettingSourceObject = false;
+                    _memberInfo = GetGetterMemberInfo(obj, memberName);
+                }
             }
 
             public object GetData()
             {
+                if (_isGettingSourceObject) return _obj;
+
                 if (_memberInfo is PropertyInfo propertyInfo)
                 {
                     return propertyInfo.GetValue(_obj);
