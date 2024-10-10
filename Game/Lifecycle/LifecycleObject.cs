@@ -8,7 +8,7 @@ namespace FruitCollectorGame
     {
         [SerializeField] private LifecycleObject[] directSubObjects;
 
-        private IReadOnlyList<ILifecycle> DirectSubObjects => directSubObjects;
+        public IReadOnlyList<ILifecycle> DirectSubObjects => directSubObjects;
 
         void ILifecycle.SetupInternal()
         {
