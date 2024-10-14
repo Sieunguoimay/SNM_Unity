@@ -7,6 +7,7 @@ public class MaterialColorSetter : MonoBehaviour
     [SerializeField] private Renderer targetRenderer;
     [SerializeField] private Mode mode = Mode.Material;
 
+    [ContextMenu("SetDefaultColor")]
     public void SetDefaultColor()
     {
         SetColor(defaultColor);
