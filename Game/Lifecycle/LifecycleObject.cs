@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace FruitCollectorGame
+namespace Lifecycle
 {
 
     public class LifecycleObject : MonoBehaviour, ILifecycle

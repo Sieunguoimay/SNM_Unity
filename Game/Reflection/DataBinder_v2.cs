@@ -48,6 +48,7 @@ namespace Reflection
                 var m = new MemberPair();
                 m.getter.Setup(sourceObject, mc.sourceMember);
                 m.setter.Setup(mc.destObject, mc.destMember);
+                m.dataConverter = mc.dataConverter;
                 m.SetupEvents();
                 _memberPairs[i] = m;
             }
@@ -58,6 +59,7 @@ namespace Reflection
             foreach (var m in _memberPairs)
             {
                 m.TearDownEvents();
+                m.dataConverter = null;
                 m.getter.TearDown();
                 m.setter.TearDown();
             }
@@ -252,6 +254,7 @@ namespace Reflection
 
             [StringSelector(nameof(AllDestMembers))]
             public string destMember;
+            public DataConverter dataConverter;
 
             public IEnumerable<string> AllDestMembers => GetAllSetterMembers(destObject).Distinct();
         }
@@ -260,6 +263,7 @@ namespace Reflection
         {
             public readonly Getter getter = new();
             public readonly Setter setter = new();
+            public DataConverter dataConverter;
 
             private ReflectiveEvent[] _events;
 
@@ -314,8 +318,39 @@ namespace Reflection
 
             public void Bind()
             {
-                setter.SetData(getter.GetData());
+                var converted = dataConverter.Convert(getter.GetData());
+                setter.SetData(converted);
             }
+        }
+
+        [Serializable]
+        private class DataConverter
+        {
+            [SerializeField] private DataConversionType conversionType;
+
+            public object Convert(object value)
+            {
+                if (conversionType == DataConversionType.NotBool)
+                {
+                    if (value is bool b)
+                    {
+                        return !b;
+                    }
+                    else
+                    {
+                        Debug.LogError($"Failed to convert to boolean for {value}");
+                        return value;
+                    }
+                }
+                return value;
+            }
+
+        }
+
+        private enum DataConversionType
+        {
+            None,
+            NotBool
         }
 
         private class ReflectiveItem
@@ -396,17 +431,6 @@ namespace Reflection
                     methodInfo.Invoke(_obj, new[] { data });
                 }
             }
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-    public class PropertyChangeEventAttribute : System.Attribute
-    {
-        public string EventName { get; }
-
-        public PropertyChangeEventAttribute(string eventName)
-        {
-            EventName = eventName;
         }
     }
 

@@ -1,4 +1,4 @@
-namespace FruitCollectorGame
+namespace Lifecycle
 {
     public interface ILifecycle
     {
