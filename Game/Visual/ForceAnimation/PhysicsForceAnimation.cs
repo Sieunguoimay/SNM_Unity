@@ -12,7 +12,7 @@ namespace ForceAnim
         [SerializeField] private float simulationDuration = 10f;
         [SerializeField] private bool clearForcesOnPlayEnd = true;
 
-        public Vector3 Velocity => target.velocity;
+        public Vector3 Velocity => target.linearVelocity;
         public float Time => _time;
         public float SimulationDuration => simulationDuration;
         public IReadOnlyList<ForceEvaluator> Forces => forces;
@@ -76,7 +76,7 @@ namespace ForceAnim
         [ContextMenu("ClearAllForces")]
         private void ClearAllForces()
         {
-            target.velocity = Vector3.zero;
+            target.linearVelocity = Vector3.zero;
             target.angularVelocity = Vector3.zero;
             target.Sleep();
         }

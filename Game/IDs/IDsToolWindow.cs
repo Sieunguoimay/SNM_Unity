@@ -95,7 +95,7 @@ namespace IDs
                         script.value = AssetDatabase.FindAssets($"t:MonoScript {t.Name}")
                             .Select(AssetDatabase.GUIDToAssetPath)
                             .Select(AssetDatabase.LoadAssetAtPath<MonoScript>)
-                            .Where(ms => ms.GetClass().GetAttribute<IDSpaceAttribute>() != null)
+                            .Where(ms => ms.GetClass().GetCustomAttribute<IDSpaceAttribute>() != null)
                             .FirstOrDefault();
                         window.LoadIDSpace();
                         Refresh();
