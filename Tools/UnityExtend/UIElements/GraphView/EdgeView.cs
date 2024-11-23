@@ -18,7 +18,6 @@ namespace Common.UnityExtend.UIElements.GraphView
         public NodeView From => _from;
         public NodeView To => _to;
         protected virtual Color Color => IsSelected ? new Color(0.2666667f, 0.7529f, 1f, 1f) : Color.gray;
-        public event Action<NodeView> OnGeometryReady;
         public bool GeometryReady { get; set; }
         public bool IsSelected { get; private set; }
 

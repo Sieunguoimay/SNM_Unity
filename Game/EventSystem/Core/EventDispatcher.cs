@@ -30,13 +30,13 @@ namespace EventSystem
             }
         }
 
-        public void Dispatch(EventObject evt)
+        public void Dispatch(EventObject evt, object data)
         {
             if (dictionary.TryGetValue(evt.ID, out var d))
             {
                 foreach (var receiver in d)
                 {
-                    receiver.OnReceiveEvent(evt);
+                    receiver.OnReceiveEvent(evt, data);
                 }
             }
         }

@@ -12,7 +12,6 @@ namespace InspectorExtensions
 {
     public class MaterialInspectorExt : IInspectorExtension
     {
-        private static readonly string GlobalProperty = "GlobalProperty";
         public ExtensionType ExtensionType => ExtensionType.Object;
         public Type TargetType => typeof(Material);
 

@@ -13,7 +13,6 @@ namespace Common.UnityExtend.UIElements.GraphView
         private readonly Dragger _dragger;
         public event Action<NodeView> OnMove;
         public event Action<NodeView, MouseDownEvent> OnClick;
-        public event Action<NodeView> OnGeometryReady;
 
         private bool _hover;
         public bool IsSelected { get; private set; }

@@ -11,7 +11,7 @@ namespace EventSystem
         [ContextMenu("Dispatch")]
         public void Dispatch()
         {
-            EventDispatcher.Instance.Dispatch(eventSelector.EventObject);
+            EventDispatcher.Instance.Dispatch(eventSelector.EventObject, this);
         }
     }
 }

@@ -57,7 +57,9 @@ namespace Sieunguoimay.Tools
         private static void TakeAPictureAtTransformWithLayer(Camera srcCamera, string layerName, string savePath)
         {
 
-            var lights = UnityEngine.Object.FindObjectsOfType<Light>().Select(l => new { l, l.cullingMask }).ToArray();
+            var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None)
+                .Select(l => new { l, l.cullingMask })
+                .ToArray();
             var cullingMask = LayerMask.GetMask(layerName);
             foreach (var l in lights)
             {

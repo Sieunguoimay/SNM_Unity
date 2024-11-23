@@ -20,7 +20,7 @@ namespace ReflectionUsage
                     var v = field.GetValue(o);
                     if (v is UnityEngine.Events.UnityEvent ue)
                     {
-                        for (var i = 0; i < ue.GetPersistentEventCount(); i++)
+                        for (var i = 0; i < ue.GetPersistentEventCount();)
                         {
                             var target = ue.GetPersistentTarget(i);
                             var method = ue.GetPersistentMethodName(i);

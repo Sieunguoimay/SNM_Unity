@@ -31,7 +31,7 @@ namespace EventSystem
             }
         }
 
-        public void OnReceiveEvent(EventObject evt)
+        public void OnReceiveEvent(EventObject evt, object data)
         {
             onReceived?.Invoke();
         }
