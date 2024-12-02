@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -6,15 +7,17 @@ namespace SNM.Lifecycle
     /// <summary>
     /// This class provides the unity lifecycle events to the Lifecycle system.
     /// </summary>
-    public class EngineLifecycleProvider : MonoBehaviour
+    public class EngineLifecycleProvider : MonoBehaviour, ILifecycleManager
     {
-        [ObjectSelector(typeof(ILifecycle))]
-        [SerializeField] private Object[] lifecycleObjects;
-        private ILifecycle[] _lifecycles;
+        [ObjectSelector(typeof(IBatchLifecycle))]
+        [SerializeField] private Object[] preAttachedLifecycleObjects;
+
+        private readonly List<IBatchLifecycle> lifecycles = new();
+        private bool _isInitialized = false;
 
         private void Awake()
         {
-            _lifecycles = lifecycleObjects.OfType<ILifecycle>().ToArray();
+            lifecycles.AddRange(preAttachedLifecycleObjects.OfType<IBatchLifecycle>());
         }
 
         //Initialize on enable is fine! No difference.
@@ -40,29 +43,37 @@ namespace SNM.Lifecycle
             TryDisposeLifecycleManager();
         }
 
+        private void OnDestroy()
+        {
+            lifecycles.Clear();
+        }
+
         private void TryInitializeLifecycleManager()
         {
-            foreach (var lifecycle in _lifecycles)
+            foreach (var lifecycle in lifecycles)
             {
-                lifecycle.Initialize();
+                lifecycle.Initialize(this);
             }
 
-            foreach (var lifecycle in _lifecycles)
+            foreach (var lifecycle in lifecycles)
             {
                 lifecycle.AfterInitialize();
             }
+
+            _isInitialized = true;
         }
 
         private void TryDisposeLifecycleManager()
         {
-            foreach (var lifecycle in _lifecycles)
+            foreach (var lifecycle in lifecycles)
             {
                 lifecycle.BeforeDispose();
             }
-            foreach (var lifecycle in _lifecycles)
+            foreach (var lifecycle in lifecycles)
             {
                 lifecycle.Dispose();
             }
+            _isInitialized = false;
         }
     }
 }

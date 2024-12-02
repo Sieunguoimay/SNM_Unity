@@ -29,6 +29,10 @@ public class ObjectSelectorDrawer : PropertyDrawer
         _att ??= attribute as ObjectSelectorAttribute;
         EditorGUI.BeginProperty(position, label, property);
         position.width -= 20;
+
+        using var changed = new EditorGUI.ChangeCheckScope();
+        var oldValue = property.objectReferenceValue;
+
         if (_att.ShouldDrawLabel)
         {
             EditorGUI.PropertyField(position, property, label, true);
@@ -37,6 +41,20 @@ public class ObjectSelectorDrawer : PropertyDrawer
         {
             EditorGUI.PropertyField(position, property, GUIContent.none, true);
         }
+
+        if (changed.changed)
+        {
+            var newValue = property.objectReferenceValue;
+            if (oldValue == null && newValue != null)
+            {
+                var autoSelected = GetAllAssociatedObjects(newValue).FirstOrDefault(o => _att.TypeConstraint.IsInstanceOfType(o));
+
+                property.serializedObject.Update();
+                property.objectReferenceValue = autoSelected;
+                property.serializedObject.ApplyModifiedProperties();
+            }
+        }
+
         position.x += position.width;
         position.width = 20;
         if (GUI.Button(position, new GUIContent("..", property.objectReferenceValue?.GetType()?.Name)))

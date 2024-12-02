@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SNM.Lifecycle
 {
-    public class LifecycleObjectSpawner<T> : BasicSpawner<T, AutoRemoveList<T>>
+    public class LifecycleObjectSpawner<T> : BasicSpawner<T, AutoRemoveList<T>>, IDynamicLifecycleManager
         where T : MonoBehaviour, ILifecycle
     {
         public LifecycleObjectSpawner()
@@ -12,16 +12,34 @@ namespace SNM.Lifecycle
             SpawnedObjects.OnItemRemoved += List_OnItemRemoved;
         }
 
+        void IDynamicLifecycleManager.Initialize(ILifecycle lifecycle)
+        {
+            Initialize(lifecycle);
+        }
+        
+        private void Initialize(ILifecycle lifecycle)
+        {
+            lifecycle.Initialize(this);
+        }
+
+        void IDynamicLifecycleManager.Dispose(ILifecycle lifecycle)
+        {
+            Dispose(lifecycle);
+        }
+
+        private void Dispose(ILifecycle lifecycle)
+        {
+            lifecycle.Dispose();
+        }
+
         private void List_OnItemAdded(IBasicList<T> list, T lifecycle)
         {
-            lifecycle.Initialize();
-            lifecycle.AfterInitialize();
+            Initialize(lifecycle);
         }
 
         private void List_OnItemRemoved(IBasicList<T> list, T lifecycle)
         {
-            lifecycle.BeforeDispose();
-            lifecycle.Dispose();
+            Dispose(lifecycle);
         }
     }
 }

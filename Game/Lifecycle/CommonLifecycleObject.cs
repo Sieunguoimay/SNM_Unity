@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using SNM.Structures;
 using UnityEngine;
 
@@ -8,26 +9,32 @@ namespace SNM.Lifecycle
     /// This object provides automatic subscription with lifecycle system.
     /// Otherwise you got to manually do it.
     /// </summary>
-    public class LifecycleObject : MonoBehaviour, ILifecycle,
+    public class CommonLifecycleObject : MonoBehaviour,
+        ILifecycle, IBatchLifecycle, IAutoDisposeLifecycle,
+        IDynamicLifecycleManager,
         ISelfRemoveItem, IListTrackingItem<IAutoRemoveList>//This allow you to Dispose - RemoveSelf() and Destroy this object without knowing the containing lists
     {
-        [SerializeField] private LifecycleObject[] directSubObjects;
+        [SerializeField] private CommonLifecycleObject[] directSubObjects;
 
         private readonly List<IAutoRemoveList> trackedLists = new();
-        private IReadOnlyList<ILifecycle> _directSubObjects;
+        private readonly List<ILifecycle> dynamicLifecycles = new();
+        private IBatchLifecycle[] _directSubObjects;
 
-        void ILifecycle.Initialize()
+        private ILifecycleManager _manager;
+
+        void ILifecycle.Initialize(ILifecycleManager manager)
         {
-            _directSubObjects = directSubObjects;
+            _manager = manager;
+            _directSubObjects = directSubObjects.OfType<IBatchLifecycle>().ToArray();
             OnInitialize();
         }
 
-        void ILifecycle.AfterInitialize()
+        void IBatchLifecycle.AfterInitialize()
         {
             OnAfterInitialize();
         }
 
-        void ILifecycle.BeforeDispose()
+        void IBatchLifecycle.BeforeDispose()
         {
             OnBeforeDispose();
         }
@@ -39,7 +46,7 @@ namespace SNM.Lifecycle
 
         protected virtual void OnInitialize()
         {
-            foreach (var o in _directSubObjects) o.Initialize();
+            foreach (var o in _directSubObjects) o.Initialize(this);
         }
         protected virtual void OnAfterInitialize()
         {
@@ -70,6 +77,24 @@ namespace SNM.Lifecycle
         void IListTrackingItem<IAutoRemoveList>.RemoveList(IAutoRemoveList list)
         {
             trackedLists.Remove(list);
+        }
+
+        void IDynamicLifecycleManager.Initialize(ILifecycle lifecycle)
+        {
+            dynamicLifecycles.Add(lifecycle);
+        }
+
+        void IDynamicLifecycleManager.Dispose(ILifecycle lifecycle)
+        {
+            dynamicLifecycles.Remove(lifecycle);
+        }
+
+        void IAutoDisposeLifecycle.RequestDispose()
+        {
+            if (_manager is IDynamicLifecycleManager m)
+            {
+                m.Dispose(this);
+            }
         }
     }
 }
