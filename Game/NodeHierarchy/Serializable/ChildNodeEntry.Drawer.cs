@@ -1,11 +1,10 @@
-#if UNITY_EDITOR
-using System;
+using UnityEngine;
 using System.Linq;
 using Reflection;
+
+#if UNITY_EDITOR
 using UnityEditor;
 #endif
-
-using UnityEngine;
 
 namespace GameNodeHierarchy
 {
