@@ -11,7 +11,7 @@ using System.Collections;
 
 namespace InspectorExtensions
 {
-    public class InspectorExtensionInstaller
+    public class InspectorExtensionInstaller : IExtensionElementProvider
     {
         private static InspectorExtensionInstaller _instance;
         public static InspectorExtensionInstaller Instance => _instance ??= new();
@@ -33,11 +33,26 @@ namespace InspectorExtensions
         }
 
         private readonly List<IInspectorExtension> _inspectorExtensions = new();
+        private readonly List<InspectorExtensionElementObject> _inspectorExtensionElements = new();
         private InspectorExtensionHeader _header;
+        private EditorCoroutine _nextFrameCoroutine;
 
         public IReadOnlyList<IInspectorExtension> InspectorExtensions => _inspectorExtensions;
 
-        public void Init()
+        private Action<IExtensionElementProvider> _onExtensionElementsChanged;
+        event Action<IExtensionElementProvider> IExtensionElementProvider.OnExtensionElementsChanged
+        {
+            add { _onExtensionElementsChanged += value; }
+            remove { _onExtensionElementsChanged -= value; }
+        }
+
+        public void InjectExtensions(params IInspectorExtension[] extensions)
+        {
+            _inspectorExtensions.Clear();
+            _inspectorExtensions.AddRange(extensions);
+        }
+
+        public void HookupEditorEvents()
         {
             Selection.selectionChanged -= OnSelectionChanged;
             Selection.selectionChanged += OnSelectionChanged;
@@ -45,7 +60,11 @@ namespace InspectorExtensions
             EditorApplication.playModeStateChanged -= OnEditorPlaymodeChanged;
             EditorApplication.playModeStateChanged += OnEditorPlaymodeChanged;
 
-            EditorCoroutineUtility.StartCoroutine(WaitForNextFrame(TryModify), this);
+            if (_nextFrameCoroutine != null)
+            {
+                EditorCoroutineUtility.StopCoroutine(_nextFrameCoroutine);
+            }
+            _nextFrameCoroutine = EditorCoroutineUtility.StartCoroutine(WaitForNextFrame(TryModify), this);
 
             _inspectorWindow = null;
         }
@@ -60,66 +79,83 @@ namespace InspectorExtensions
             TryModify();
         }
 
-        public void AddExtension(IInspectorExtension extension)
-        {
-            _inspectorExtensions.Add(extension);
-        }
-
         public void TryModify()
         {
             if (InspectorWindow != null)
             {
+                InsertHeader(InspectorWindow.rootVisualElement);
                 InsertInspectorExtensions(InspectorWindow.rootVisualElement);
             }
         }
 
         private void InsertInspectorExtensions(VisualElement rootVisualElement)
         {
-            if (_header == null)
-            {
-                _header = new InspectorExtensionHeader();
-
-                var mainContainer = rootVisualElement.Query<VisualElement>(null, "unity-inspector-main-container").First();
-                mainContainer.Insert(0, _header);
-            }
-            else
-            {
-                _header.ClearExtensions();
-            }
-
             foreach (var e in _inspectorExtensions)
             {
                 e.CleanUp();
             }
 
-            var veContainer = rootVisualElement.Query<VisualElement>(null, "unity-inspector-editors-list").First();
-            TryApplyExtensionsToInspector(_header, veContainer, _inspectorExtensions);
+            foreach (var e in _inspectorExtensionElements)
+            {
+                e.parent?.Remove(e.element);
+            }
 
-            _header.ApplyToggleButton();
+            _inspectorExtensionElements.Clear();
+
+            _inspectorExtensionElements.AddRange(CreateExtensionsForAllInspectors(rootVisualElement, _inspectorExtensions));
+
+            foreach (var e in _inspectorExtensionElements)
+            {
+                e.parent.Add(e.element);
+            }
+            
+            _onExtensionElementsChanged?.Invoke(this);
         }
 
-        public void TryApplyExtensionsToInspector(InspectorExtensionHeader header, VisualElement veContainer, IEnumerable<IInspectorExtension> inspectorExts)
+        private void InsertHeader(VisualElement rootVisualElement)
         {
+            if (_header == null)
+            {
+                _header = new InspectorExtensionHeader();
+                _header.SetExtensionElementProvider(this);
+            }
+
+            var mainContainer = rootVisualElement.Query<VisualElement>(null, "unity-inspector-main-container").First();
+            var found = mainContainer.Query<InspectorExtensionHeader>();
+            if (found != null && mainContainer.Contains(found))
+            {
+                mainContainer.Remove(found);
+            }
+            mainContainer.Insert(0, _header);
+        }
+
+        public IEnumerable<InspectorExtensionElementObject> CreateExtensionsForAllInspectors(VisualElement rootVisualElement, IEnumerable<IInspectorExtension> inspectorExts)
+        {
+            var veContainer = rootVisualElement.Query<VisualElement>(null, "unity-inspector-editors-list").First();
             if (veContainer != null)
             {
                 var editorElements = veContainer.Children().Where(ve => ve.GetType().FullName == "UnityEditor.UIElements.EditorElement");
 
                 foreach (var editorElement in editorElements)
                 {
+                    SetupContainerElement(editorElement, out var extensionContainer);
+
                     var targetEditor = editorElement.GetType().GetProperty("editor", BindingFlags).GetValue(editorElement) as Editor;
-                    var extensionContainer = AddContainerElement(editorElement);
-                    var extensionElements = CreateExtensionElements(targetEditor.target, inspectorExts);
+                    var extensionElements = CreateInspectorExtensionElementsForObject(targetEditor.target, inspectorExts);
 
                     foreach (var element in extensionElements)
                     {
-                        extensionContainer.Add(element);
-                        header.AddExtension(element);
+                        yield return new()
+                        {
+                            element = element,
+                            parent = extensionContainer
+                        };
                     }
                 }
             }
         }
 
-        private static IEnumerable<InspectorExtensionElement> CreateExtensionElements(UnityEngine.Object target, IEnumerable<IInspectorExtension> inspectorExts)
+        private static IEnumerable<InspectorExtensionElement> CreateInspectorExtensionElementsForObject(UnityEngine.Object target, IEnumerable<IInspectorExtension> inspectorExts)
         {
             var memberInfos = IterateMembers(target.GetType());
 
@@ -165,7 +201,7 @@ namespace InspectorExtensions
             }
         }
 
-        private static VisualElement AddContainerElement(VisualElement editorElement)
+        private static void SetupContainerElement(VisualElement editorElement, out VisualElement container)
         {
             var existing = editorElement.Q<InspectorExtsContainer>("inspector-extensions");
             if (existing != null)
@@ -181,7 +217,7 @@ namespace InspectorExtensions
                 extensionContainer.PlaceInFront(inspectorElement);
             }
 
-            return extensionContainer;
+            container = extensionContainer;
         }
 
         private IEnumerator WaitForNextFrame(Action callback)
@@ -190,8 +226,19 @@ namespace InspectorExtensions
             callback?.Invoke();
         }
 
+        IEnumerable<InspectorExtensionElement> IExtensionElementProvider.GetExtensionElements()
+        {
+            return _inspectorExtensionElements.Select(e => e.element);
+        }
+
         private class InspectorExtsContainer : VisualElement
         {
+        }
+
+        public class InspectorExtensionElementObject
+        {
+            public InspectorExtensionElement element;
+            public VisualElement parent;
         }
     }
 }
