@@ -14,81 +14,131 @@ namespace InspectorExtensions
     {
         private const int MAX_HISTORY = 10;
         private readonly List<GUIDData> history = new();
+        private readonly List<GUIDData> navigation = new();
         private int currentIndex = -1;
-
+        private bool _skipUpdateNavigation = false;
         public bool CanNavigateBack => currentIndex > 0;
-        public bool CanNavigateForward => currentIndex < history.Count - 1;
-        public int CurrentIndex => currentIndex;
-        public IEnumerable<string> History => history.Select(GetHistoryDisplay);
-        public string Next => currentIndex < history.Count - 1 ? GetHistoryDisplay(history[currentIndex + 1]) : "NULL";
-        public string Prev => currentIndex > 0 ? GetHistoryDisplay(history[currentIndex - 1]) : "NULL";
+        public bool CanNavigateForward => currentIndex >= 0 && currentIndex < navigation.Count - 1;
+
+        public int HistoryCount => history.Count;
+
+        public IEnumerable<string> History => history.Select(GetGUIDDataDisplay);
+
+        public string Next => GetNavigationDisplay(currentIndex + 1);
+        public string Prev => GetNavigationDisplay(currentIndex - 1);
+        public string Current => GetNavigationDisplay(currentIndex);
 
         public event Action<BrowsingHistory> OnHistoryChanged;
+
+        private bool _isEnabled = false;
 
         public BrowsingHistory()
         {
             Selection.selectionChanged -= OnSelectionChanged;
             Selection.selectionChanged += OnSelectionChanged;
             UpdateHistory();
+            UpdateNavigation();
         }
 
         void IDisposable.Dispose()
         {
             Selection.selectionChanged -= OnSelectionChanged;
+            ClearHistory();
         }
 
         private void OnSelectionChanged()
         {
+            if (!_isEnabled) return;
+
             UpdateHistory();
+
+            if (_skipUpdateNavigation) return;
+            UpdateNavigation();
         }
 
         private void UpdateHistory()
         {
-            var selectedObject = GetGUIDData(Selection.activeObject);
+            var selected = GetGUIDData(Selection.activeObject);
+            var selectedDisplay = GetGUIDDataDisplay(selected);
 
-            selectedObject?.Log();
+            for (int i = history.Count - 1; i >= 0; i--)
+            {
+                if (GetGUIDDataDisplay(history[i]) == selectedDisplay)
+                {
+                    history.RemoveAt(i);
+                }
+            }
+            history.Add(selected);
+        }
 
-            if (currentIndex >= 0 && GetHistoryDisplay(history[currentIndex]) == GetHistoryDisplay(selectedObject))
+        private void UpdateNavigation()
+        {
+            var selected = GetGUIDData(Selection.activeObject);
+            var selectedDisplay = GetGUIDDataDisplay(selected);
+            selected?.Log();
+
+            if (currentIndex >= 0 && GetNavigationDisplay(currentIndex) == selectedDisplay)
                 return;
 
-            if (currentIndex < history.Count - 1)
-                history.RemoveRange(currentIndex + 1, history.Count - currentIndex - 1);
+            if (currentIndex < navigation.Count - 1)
+                navigation.RemoveRange(currentIndex + 1, navigation.Count - currentIndex - 1);
 
-            history.Add(selectedObject);
+            navigation.Add(selected);
             currentIndex++;
 
-            if (history.Count > MAX_HISTORY)
+            if (navigation.Count > MAX_HISTORY)
             {
-                history.RemoveAt(0);
+                navigation.RemoveAt(0);
                 currentIndex--;
             }
 
             OnHistoryChanged?.Invoke(this);
         }
 
+        public void SetEnabled(bool enabled)
+        {
+            _isEnabled = enabled;
+        }
+
         public void Navigate(int direction)
         {
             int newIndex = currentIndex + direction;
 
-            if (newIndex >= 0 && newIndex < history.Count)
+            if (newIndex >= 0 && newIndex < navigation.Count)
             {
                 currentIndex = newIndex;
-                Selection.activeObject = LoadObject(history[currentIndex]);
+                _skipUpdateNavigation = true;
+                Selection.activeObject = LoadObject(navigation[currentIndex]);
+                _skipUpdateNavigation = false;
                 OnHistoryChanged?.Invoke(this);
             }
         }
 
-        public void SelectObjectAtIndex(int index)
+        public void ClearHistory()
         {
-            currentIndex = index;
-            Selection.activeObject = LoadObject(history[currentIndex]);
+            history.Clear();
+            navigation.Clear();
+            currentIndex = -1;
             OnHistoryChanged?.Invoke(this);
         }
 
-        private static string GetHistoryDisplay(GUIDData data)
+        public UnityEngine.Object GetObjectFromHistory(int index)
+        {
+            var valid = index >= 0 && index < history.Count;
+            return valid ? LoadObject(history[index]) : null;
+        }
+
+        private string GetNavigationDisplay(int index)
+        {
+            var valid = index >= 0 && index < navigation.Count;
+            return GetGUIDDataDisplay(valid ? navigation[index] : null);
+        }
+
+        private static string GetGUIDDataDisplay(GUIDData data)
         {
             return data?.Display ?? "NULL";
         }
+
         // private const string HISTORY_KEY = "InspectorHistoryTracker_History";
         // private void SaveHistory()
         // {
@@ -177,15 +227,15 @@ namespace InspectorExtensions
                         };
                     }
                 }
-                else
-                {
-                    return new GUIDData
-                    {
-                        path = AssetDatabase.GetAssetPath(go),
-                        localId = "",
-                        guidDataType = GUIDDataType.PrefabAsset,
-                    };
-                }
+                // else
+                // {
+                //     return new GUIDData
+                //     {
+                //         path = AssetDatabase.GetAssetPath(go),
+                //         localId = "",
+                //         guidDataType = GUIDDataType.PrefabAsset,
+                //     };
+                // }
             }
 
             if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out var guid, out long localId))
@@ -207,7 +257,10 @@ namespace InspectorExtensions
 
             if (guidData.path.EndsWith(".unity") && guidData.guidDataType == GUIDDataType.ObjectInScene)
             {
-                var scene = EditorSceneManager.OpenScene(guidData.path);
+                var activeScene = EditorSceneManager.GetActiveScene();
+                var isCurrent = activeScene != null && activeScene.path == guidData.path;
+                var scene = isCurrent ? activeScene : EditorSceneManager.OpenScene(guidData.path);
+
                 foreach (var rgo in scene.GetRootGameObjects())
                 {
                     foreach (var go in Iterate(rgo))
@@ -222,7 +275,9 @@ namespace InspectorExtensions
             }
             else if (guidData.path.EndsWith(".prefab") && guidData.guidDataType == GUIDDataType.ObjectInPrefab)
             {
-                var stage = PrefabStageUtility.OpenPrefab(guidData.path);
+                var currentStage = PrefabStageUtility.GetCurrentPrefabStage();
+                var isCurrent = currentStage != null && currentStage.assetPath == guidData.path;
+                var stage = isCurrent ? currentStage : PrefabStageUtility.OpenPrefab(guidData.path);
                 foreach (var go in Iterate(stage.prefabContentsRoot))
                 {
                     var goLocalId = GetLocalID(go);
@@ -232,10 +287,10 @@ namespace InspectorExtensions
                     }
                 }
             }
-            else if (guidData.guidDataType == GUIDDataType.PrefabAsset)
-            {
-                return AssetDatabase.LoadAssetAtPath<GameObject>(guidData.path);
-            }
+            // else if (guidData.guidDataType == GUIDDataType.PrefabAsset)
+            // {
+            //     return AssetDatabase.LoadAssetAtPath<GameObject>(guidData.path);
+            // }
             else
             {
                 var allAssets = AssetDatabase.LoadAllAssetsAtPath(guidData.path);

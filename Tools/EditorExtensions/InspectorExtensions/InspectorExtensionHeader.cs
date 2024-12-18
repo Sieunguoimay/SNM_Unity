@@ -74,6 +74,7 @@ namespace InspectorExtensions
             Add(pingButton);
 
             browsingHistory.OnHistoryChanged += OnHistoryChanged;
+            browsingHistory.SetEnabled(true);
             UpdateHistoryNavigationButtons();
         }
 
@@ -85,10 +86,23 @@ namespace InspectorExtensions
             {
                 var index = i;
                 var hItem = history[i];
-                menu.AddItem(new GUIContent(hItem), browsingHistory.CurrentIndex == index, () =>
+                menu.AddItem(new GUIContent($"{history.Count - i}. {hItem}"), browsingHistory.Current == hItem, selected =>
                 {
-                    browsingHistory.SelectObjectAtIndex(index);
+                    Selection.activeObject = browsingHistory.GetObjectFromHistory((int)selected);
+                }, i);
+            }
+
+            if (history.Count > 0)
+            {
+                menu.AddSeparator("");
+                menu.AddItem(new GUIContent("Clear History"), false, () =>
+                {
+                    browsingHistory.ClearHistory();
                 });
+            }
+            else
+            {
+                menu.AddDisabledItem(new GUIContent("Start browsing to get history"));
             }
             menu.ShowAsContext();
         }
@@ -101,9 +115,9 @@ namespace InspectorExtensions
         private void UpdateHistoryNavigationButtons()
         {
             prevButton.pickingMode = browsingHistory.CanNavigateBack ? PickingMode.Position : PickingMode.Ignore;
-            prevButton.style.opacity = browsingHistory.CanNavigateBack ? 1 : 0.5f;
+            prevButton.style.opacity = browsingHistory.CanNavigateBack ? 1 : 0.25f;
             nextButton.style.display = browsingHistory.CanNavigateForward ? DisplayStyle.Flex : DisplayStyle.None;
-            historyButton.style.display = browsingHistory.History.Count() > 1 ? DisplayStyle.Flex : DisplayStyle.None;
+            historyButton.style.display = browsingHistory.HistoryCount > 1 ? DisplayStyle.Flex : DisplayStyle.None;
 
             prevButton.tooltip = browsingHistory.CanNavigateBack ? browsingHistory.Next : "";
             nextButton.tooltip = browsingHistory.CanNavigateForward ? browsingHistory.Prev : "";
@@ -143,6 +157,11 @@ namespace InspectorExtensions
             {
                 e.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
             }
+
+            browsingHistory.SetEnabled(status);
+            historyButton.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
+            nextButton.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
+            prevButton.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         public void SetExtensionElementProvider(IExtensionElementProvider extensionElementProvider)
