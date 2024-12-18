@@ -1,5 +1,4 @@
 #if UNITY_EDITOR
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,14 +11,14 @@ namespace InspectorExtensions
 {
     public class MaterialInspectorExt : IInspectorExtension
     {
-        public ExtensionType ExtensionType => ExtensionType.Object;
-        public Type TargetType => typeof(Material);
+        ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
+        Type IInspectorExtension.TargetType => typeof(Material);
 
-        public void CleanUp()
+        void IInspectorExtension.CleanUp()
         {
         }
 
-        public void ModifyExtensionElement(InspectorExtensionElement extensionElement)
+        void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
             extensionElement.Add(CreateMaterialInspectorExtension(extensionElement));
         }

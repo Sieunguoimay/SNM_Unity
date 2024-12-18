@@ -1,10 +1,8 @@
 ﻿#if UNITY_EDITOR
-
 using System;
 using System.Collections;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
@@ -12,14 +10,14 @@ namespace InspectorExtensions
 {
     public class RevealNonSerializedExt : IInspectorExtension
     {
-        public ExtensionType ExtensionType => ExtensionType.Attribute;
-        public Type TargetType => typeof(RevealNonSerializedAttribute);
+        ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Attribute;
+        Type IInspectorExtension.TargetType => typeof(RevealNonSerializedAttribute);
 
-        public void CleanUp()
+        void IInspectorExtension.CleanUp()
         {
         }
 
-        public void ModifyExtensionElement(InspectorExtensionElement extensionElement)
+        void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
             extensionElement.style.display = DisplayStyle.Flex;
             extensionElement.style.flexDirection = FlexDirection.Row;

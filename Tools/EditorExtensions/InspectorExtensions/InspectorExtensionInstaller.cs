@@ -16,8 +16,6 @@ namespace InspectorExtensions
         private static InspectorExtensionInstaller _instance;
         public static InspectorExtensionInstaller Instance => _instance ??= new();
 
-        private static BindingFlags BindingFlags => BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
-
         private EditorWindow _inspectorWindow;
         private EditorWindow InspectorWindow
         {
@@ -46,19 +44,32 @@ namespace InspectorExtensions
             remove { _onExtensionElementsChanged -= value; }
         }
 
+        private InspectorExtensionInstaller()
+        {
+            Debug.Log("InspectorExtensionInstaller created");
+        }
+
+        ~InspectorExtensionInstaller()
+        {
+            Teardown();
+            Debug.Log("InspectorExtensionInstaller destroyed");
+        }
+
         public void InjectExtensions(params IInspectorExtension[] extensions)
         {
             _inspectorExtensions.Clear();
             _inspectorExtensions.AddRange(extensions);
         }
 
-        public void HookupEditorEvents()
+        public void Setup()
         {
             Selection.selectionChanged -= OnSelectionChanged;
             Selection.selectionChanged += OnSelectionChanged;
 
             EditorApplication.playModeStateChanged -= OnEditorPlaymodeChanged;
             EditorApplication.playModeStateChanged += OnEditorPlaymodeChanged;
+
+            _header = new InspectorExtensionHeader(this);
 
             if (_nextFrameCoroutine != null)
             {
@@ -67,6 +78,28 @@ namespace InspectorExtensions
             _nextFrameCoroutine = EditorCoroutineUtility.StartCoroutine(WaitForNextFrame(TryModify), this);
 
             _inspectorWindow = null;
+        }
+
+        public void Teardown()
+        {
+            if (_header != null)
+            {
+                _header.Dispose();
+            }
+
+            foreach (var e in _inspectorExtensions)
+            {
+                e.CleanUp();
+            }
+
+            _inspectorExtensions.Clear();
+
+            foreach (var e in _inspectorExtensionElements)
+            {
+                e.parent?.Remove(e.element);
+            }
+
+            _inspectorExtensionElements.Clear();
         }
 
         private void OnEditorPlaymodeChanged(PlayModeStateChange obj)
@@ -108,29 +141,25 @@ namespace InspectorExtensions
             {
                 e.parent.Add(e.element);
             }
-            
+
             _onExtensionElementsChanged?.Invoke(this);
         }
 
         private void InsertHeader(VisualElement rootVisualElement)
         {
-            if (_header == null)
-            {
-                _header = new InspectorExtensionHeader();
-                _header.SetExtensionElementProvider(this);
-            }
-
             var mainContainer = rootVisualElement.Query<VisualElement>(null, "unity-inspector-main-container").First();
             var found = mainContainer.Query<InspectorExtensionHeader>();
             if (found != null && mainContainer.Contains(found))
             {
                 mainContainer.Remove(found);
             }
-            mainContainer.Insert(0, _header);
+            mainContainer.Insert(0, _header ??= new InspectorExtensionHeader(this));
         }
 
         public IEnumerable<InspectorExtensionElementObject> CreateExtensionsForAllInspectors(VisualElement rootVisualElement, IEnumerable<IInspectorExtension> inspectorExts)
         {
+            const BindingFlags BindingFlags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
+
             var veContainer = rootVisualElement.Query<VisualElement>(null, "unity-inspector-editors-list").First();
             if (veContainer != null)
             {

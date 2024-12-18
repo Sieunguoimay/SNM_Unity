@@ -6,14 +6,14 @@ namespace InspectorExtensions
 {
     public class CreateVisualElementExt : IInspectorExtension
     {
-        public ExtensionType ExtensionType => ExtensionType.Attribute;
-        public Type TargetType => typeof(CreateVisualElementAttribute);
+        ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Attribute;
+        Type IInspectorExtension.TargetType => typeof(CreateVisualElementAttribute);
 
-        public void CleanUp()
+        void IInspectorExtension.CleanUp()
         {
         }
 
-        public void ModifyExtensionElement(InspectorExtensionElement extensionElement)
+        void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
             (extensionElement.MemberInfo as MethodInfo)
                 .Invoke(extensionElement.Target, new object[] { extensionElement });

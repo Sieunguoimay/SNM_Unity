@@ -23,6 +23,7 @@ namespace InspectorExtensions
         private class ReferenceEditorVE : VisualElement
         {
             private Editor _editor;
+            
             public ReferenceEditorVE(SerializedProperty property)
             {
                 _editor = Editor.CreateEditor(property.objectReferenceValue);

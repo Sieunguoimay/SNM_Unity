@@ -12,15 +12,15 @@ namespace InspectorExtensions
 {
     public class AnimationClipInspectorExt : IInspectorExtension
     {
-        public ExtensionType ExtensionType => ExtensionType.Object;
+        ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
 
-        public Type TargetType => typeof(AnimationClip);
+        Type IInspectorExtension.TargetType => typeof(AnimationClip);
 
-        public void CleanUp()
+        void IInspectorExtension.CleanUp()
         {
         }
 
-        public void ModifyExtensionElement(InspectorExtensionElement extensionElement)
+        void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
             var clip = extensionElement.Target as AnimationClip;
             extensionElement.Add(new EditorContainer(clip));

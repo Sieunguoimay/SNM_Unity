@@ -10,14 +10,14 @@ namespace InspectorExtensions
 {
     public class ScriptableObjectInspectorExt : IInspectorExtension
     {
-        public ExtensionType ExtensionType => ExtensionType.Object;
-        public Type TargetType => typeof(ScriptableObject);
+        ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
+        Type IInspectorExtension.TargetType => typeof(ScriptableObject);
 
-        public void CleanUp()
+        void IInspectorExtension.CleanUp()
         {
         }
 
-        public void ModifyExtensionElement(InspectorExtensionElement extensionElement)
+        void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
             if (extensionElement.Target is ScriptableObject so && AssetDatabase.IsMainAsset(so))
             {

@@ -9,17 +9,17 @@ using UnityEngine.UIElements;
 
 namespace InspectorExtensions
 {
-    public class InspectorExtensionHeader : VisualElement
-    {
-        private IExtensionElementProvider _extensionElementProvider;
-        private readonly ToggleButton toggleButton;
-        private readonly VisualElement prevButton;
-        private readonly VisualElement nextButton;
-        private readonly BrowsingHistory browsingHistory = new();
-        private readonly HoverButton historyButton;
 
-        public InspectorExtensionHeader()
+    public class InspectorExtensionHeader : VisualElement, IDisposable
+    {
+        private readonly IExtensionElementProvider _extensionElementProvider;
+        private readonly ToggleButton toggleButton;
+        private readonly HistoryBrowserController historyBrowser;
+
+        public InspectorExtensionHeader(IExtensionElementProvider extensionElementProvider)
         {
+            _extensionElementProvider = extensionElementProvider;
+
             style.flexDirection = FlexDirection.RowReverse;
             style.borderBottomWidth = 1;
             style.borderBottomColor = new Color(.1f, .1f, .1f, 1f);
@@ -32,7 +32,7 @@ namespace InspectorExtensions
             refreshButton.RegisterCallback<ClickEvent>(OnRefreshButtonClicked);
             Add(refreshButton);
 
-            toggleButton = new ToggleButton("ON", "OFF", true, UpdateExtensionElementsVisible) { tooltip = GetTooltipText() };
+            toggleButton = new ToggleButton("ON", "OFF", UpdateExtensionElementsVisible) { tooltip = GetTooltipText() };
             toggleButton.style.unityTextAlign = TextAnchor.MiddleCenter;
             Add(toggleButton);
 
@@ -40,29 +40,7 @@ namespace InspectorExtensions
             space.style.flexGrow = 1;
             Add(space);
 
-            historyButton = new HoverButton() { tooltip = "History" };
-            historyButton.style.width = 20;
-            historyButton.style.marginRight = 5;
-            historyButton.style.marginLeft = 5;
-            historyButton.style.backgroundImage = EditorGUIUtility.IconContent("align_vertically_center_active").image as Texture2D;
-            historyButton.RegisterCallback<ClickEvent>(OnShowHistoryButtonClicked);
-            Add(historyButton);
-
-            nextButton = new HoverButton() { tooltip = "Next" };
-            nextButton.style.width = 20;
-            nextButton.style.marginRight = 5;
-            nextButton.style.marginLeft = 5;
-            nextButton.style.backgroundImage = EditorGUIUtility.IconContent("d_tab_next@2x").image as Texture2D;
-            nextButton.RegisterCallback<ClickEvent>(OnNextButtonClicked);
-            Add(nextButton);
-
-            prevButton = new HoverButton() { tooltip = "Prev" };
-            prevButton.style.width = 20;
-            prevButton.style.marginRight = 5;
-            prevButton.style.marginLeft = 5;
-            prevButton.style.backgroundImage = EditorGUIUtility.IconContent("d_tab_prev@2x").image as Texture2D;
-            prevButton.RegisterCallback<ClickEvent>(OnPrevButtonClicked);
-            Add(prevButton);
+            Add(historyBrowser = new());
 
             var pingButton = new Button(() => EditorGUIUtility.PingObject(Selection.activeObject))
             {
@@ -73,64 +51,15 @@ namespace InspectorExtensions
             pingButton.style.marginBottom = 0;
             Add(pingButton);
 
-            browsingHistory.OnHistoryChanged += OnHistoryChanged;
-            browsingHistory.SetEnabled(true);
-            UpdateHistoryNavigationButtons();
+            _extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
+            _extensionElementProvider.OnExtensionElementsChanged += OnExtensionElementsChanged;
+
+            UpdateExtensionElementsVisible();
         }
 
-        private void OnShowHistoryButtonClicked(ClickEvent evt)
+        public void Dispose()
         {
-            var menu = new GenericMenu();
-            var history = browsingHistory.History.ToList();
-            for (int i = history.Count - 1; i >= 0; i--)
-            {
-                var index = i;
-                var hItem = history[i];
-                menu.AddItem(new GUIContent($"{history.Count - i}. {hItem}"), browsingHistory.Current == hItem, selected =>
-                {
-                    Selection.activeObject = browsingHistory.GetObjectFromHistory((int)selected);
-                }, i);
-            }
-
-            if (history.Count > 0)
-            {
-                menu.AddSeparator("");
-                menu.AddItem(new GUIContent("Clear History"), false, () =>
-                {
-                    browsingHistory.ClearHistory();
-                });
-            }
-            else
-            {
-                menu.AddDisabledItem(new GUIContent("Start browsing to get history"));
-            }
-            menu.ShowAsContext();
-        }
-
-        private void OnHistoryChanged(BrowsingHistory history)
-        {
-            UpdateHistoryNavigationButtons();
-        }
-
-        private void UpdateHistoryNavigationButtons()
-        {
-            prevButton.pickingMode = browsingHistory.CanNavigateBack ? PickingMode.Position : PickingMode.Ignore;
-            prevButton.style.opacity = browsingHistory.CanNavigateBack ? 1 : 0.25f;
-            nextButton.style.display = browsingHistory.CanNavigateForward ? DisplayStyle.Flex : DisplayStyle.None;
-            historyButton.style.display = browsingHistory.HistoryCount > 1 ? DisplayStyle.Flex : DisplayStyle.None;
-
-            prevButton.tooltip = browsingHistory.CanNavigateBack ? browsingHistory.Next : "";
-            nextButton.tooltip = browsingHistory.CanNavigateForward ? browsingHistory.Prev : "";
-        }
-
-        private void OnPrevButtonClicked(ClickEvent evt)
-        {
-            browsingHistory.Navigate(-1);
-        }
-
-        private void OnNextButtonClicked(ClickEvent evt)
-        {
-            browsingHistory.Navigate(1);
+            _extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
         }
 
         private string GetTooltipText()
@@ -145,6 +74,29 @@ namespace InspectorExtensions
             {
                 InspectorExtensionInstaller.Instance.TryModify();
             });
+
+            menu.AddItem(new GUIContent($"Open script {nameof(InspectorExtensionHeader)}"), false, () =>
+            {
+                AssetDatabase.OpenAsset(
+                    AssetDatabase.FindAssets($"t:MonoScript {nameof(InspectorExtensionHeader)}")
+                    .Select(AssetDatabase.GUIDToAssetPath)
+                    .Select(AssetDatabase.LoadAssetAtPath<MonoScript>)
+                    .FirstOrDefault());
+            });
+
+            var extraMenuItems = historyBrowser.GetMenuItems();
+
+            foreach (var e in extraMenuItems)
+            {
+                menu.AddItem(new GUIContent($"{e.Category}/{e.DisplayName}"), e.IsActive, ee =>
+                {
+                    if (ee is IHeaderMenuItem i)
+                    {
+                        i.SetActive(!i.IsActive);
+                    }
+                }, e);
+            }
+
             menu.ShowAsContext();
         }
 
@@ -157,19 +109,7 @@ namespace InspectorExtensions
             {
                 e.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
             }
-
-            browsingHistory.SetEnabled(status);
-            historyButton.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
-            nextButton.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
-            prevButton.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
-        }
-
-        public void SetExtensionElementProvider(IExtensionElementProvider extensionElementProvider)
-        {
-            _extensionElementProvider = extensionElementProvider;
-            _extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
-            _extensionElementProvider.OnExtensionElementsChanged += OnExtensionElementsChanged;
-            UpdateExtensionElementsVisible();
+            historyBrowser.SetActive(status);
         }
 
         private void OnExtensionElementsChanged(IExtensionElementProvider provider)
@@ -177,7 +117,7 @@ namespace InspectorExtensions
             UpdateExtensionElementsVisible();
         }
 
-        private class HoverButton : VisualElement
+        public class HoverButton : VisualElement
         {
             private readonly Color defaultBGColor;
 
@@ -195,42 +135,47 @@ namespace InspectorExtensions
                 });
             }
         }
+        
         private class ToggleButton : Label
         {
+            private static string STATUS_KEY = "InspectorExtensions_ToggleButton_Status";
             private readonly string textOn;
             private readonly string textOff;
-            private bool status = false;
-            public bool Status => status;
+            private bool StatusInternal
+            {
+                get => EditorPrefs.GetBool(STATUS_KEY, true);
+                set => EditorPrefs.SetBool(STATUS_KEY, value);
+            }
+            public bool Status => StatusInternal;
             private readonly Action changed;
 
-            public ToggleButton(string textOn, string textOff, bool initialStatus, Action changed)
+            public ToggleButton(string textOn, string textOff, Action changed)
             {
                 this.textOn = textOn;
                 this.textOff = textOff;
                 this.changed = changed;
-                status = initialStatus;
-                text = status ? this.textOn : this.textOff;
-                style.backgroundColor = new StyleColor() { value = status ? Color.green : Color.black };
+                text = StatusInternal ? this.textOn : this.textOff;
+                style.backgroundColor = new StyleColor() { value = StatusInternal ? Color.green : Color.black };
                 RegisterCallback<ClickEvent>(OnClick);
 
                 RegisterCallback<MouseEnterEvent>(evt =>
                 {
-                    var color = status ? Color.green : Color.black;
+                    var color = StatusInternal ? Color.green : Color.black;
                     style.backgroundColor = color * .75f;
                 });
 
                 RegisterCallback<MouseLeaveEvent>(evt =>
                 {
-                    var color = status ? Color.green : Color.black;
+                    var color = StatusInternal ? Color.green : Color.black;
                     style.backgroundColor = color;
                 });
             }
 
             private void OnClick(ClickEvent evt)
             {
-                status = !status;
-                text = status ? textOn : textOff;
-                style.backgroundColor = new StyleColor() { value = status ? Color.green : Color.black };
+                StatusInternal = !StatusInternal;
+                text = StatusInternal ? textOn : textOff;
+                style.backgroundColor = new StyleColor() { value = StatusInternal ? Color.green : Color.black };
                 changed?.Invoke();
             }
         }
@@ -240,6 +185,14 @@ namespace InspectorExtensions
     {
         IEnumerable<InspectorExtensionElement> GetExtensionElements();
         event Action<IExtensionElementProvider> OnExtensionElementsChanged;
+    }
+
+    public interface IHeaderMenuItem
+    {
+        string Category { get; }
+        string DisplayName { get; }
+        bool IsActive { get; }
+        void SetActive(bool active);
     }
 }
 

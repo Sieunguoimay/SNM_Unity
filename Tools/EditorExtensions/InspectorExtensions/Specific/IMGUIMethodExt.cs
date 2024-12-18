@@ -10,14 +10,14 @@ namespace InspectorExtensions
 {
     public class IMGUIMethodExt : IInspectorExtension
     {
-        public ExtensionType ExtensionType => ExtensionType.Attribute;
-        public Type TargetType => typeof(IMGUIMethodAttribute);
+        ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Attribute;
+        Type IInspectorExtension.TargetType => typeof(IMGUIMethodAttribute);
 
-        public void CleanUp()
+        void IInspectorExtension.CleanUp()
         {
         }
 
-        public void ModifyExtensionElement(InspectorExtensionElement extensionElement)
+        void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
             var drawer = new IMGUIDrawer(extensionElement.MemberInfo as MethodInfo, extensionElement.Target, (extensionElement.Attribute as IMGUIMethodAttribute).ShowTitle);
             extensionElement.Add(drawer.Container);

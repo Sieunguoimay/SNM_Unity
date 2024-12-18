@@ -10,12 +10,11 @@ namespace InspectorExtensions
 {
     public class RevealReferenceEditorExt : IInspectorExtension
     {
-        public ExtensionType ExtensionType => ExtensionType.Object;
+        ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
 
-        public Type TargetType => typeof(UnityEngine.Object);
-        private readonly List<Editor> editors = new();
+        Type IInspectorExtension.TargetType => typeof(UnityEngine.Object);
 
-        public void ModifyExtensionElement(InspectorExtensionElement extensionElement)
+        void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
             var obj = extensionElement.Target as UnityEngine.Object;
             var serializedObject = new SerializedObject(obj);
@@ -43,17 +42,40 @@ namespace InspectorExtensions
 
                 AddIconAndPingButtonToFoldout(r.objectReferenceValue, foldout);
 
-                var e = Editor.CreateEditor(r.objectReferenceValue);
-                foldout.Add(new IMGUIContainer()
-                {
-                    onGUIHandler = () =>
-                    {
-                        try { e.OnInspectorGUI(); }
-                        catch (Exception) { }
-                    }
-                });
+                foldout.Add(new CustomIMGUIContainer(r.objectReferenceValue));
+            }
+        }
 
-                editors.Add(e);
+        private class CustomIMGUIContainer : IMGUIContainer
+        {
+            private readonly UnityEngine.Object obj;
+            private readonly Editor editor;
+
+            public CustomIMGUIContainer(UnityEngine.Object obj)
+            {
+                this.obj = obj;
+                onGUIHandler = OnGUI;
+                editor = Editor.CreateEditor(obj);
+            }
+
+            private void OnGUI()
+            {
+                if (obj != null)
+                {
+                    if (editor != null)
+                    {
+                        editor.OnInspectorGUI();
+                        return;
+                    }
+                }
+
+                Cleanup();
+            }
+
+            private void Cleanup()
+            {
+                RemoveFromHierarchy();
+                onGUIHandler = null;
             }
         }
 
@@ -91,13 +113,8 @@ namespace InspectorExtensions
             }
         }
 
-        public void CleanUp()
+        void IInspectorExtension.CleanUp()
         {
-            foreach (var e in editors)
-            {
-                UnityEngine.Object.DestroyImmediate(e);
-            }
-            editors.Clear();
         }
     }
 }

@@ -8,19 +8,21 @@ namespace InspectorExtensions
     {
         static InspectorExtensionEntryPoint()
         {
+            InspectorExtensionInstaller.Instance.Teardown();
+
             InspectorExtensionInstaller.Instance.InjectExtensions(
                 new MaterialInspectorExt(),
                 new RevealNonSerializedExt(),
                 new IMGUIMethodExt(),
                 new ContextMenuInspectorExt(),
                 new RevealReferenceEditorExt(),
-                new ScriptableObjectInspectorExt(),
+                // new ScriptableObjectInspectorExt(),
                 new CreateVisualElementExt(),
                 new AnimationClipInspectorExt()
             );
-            InspectorExtensionInstaller.Instance.HookupEditorEvents();
+
+            InspectorExtensionInstaller.Instance.Setup();
         }
     }
 }
-
 #endif

@@ -8,15 +8,15 @@ namespace InspectorExtensions
 {
     public class ContextMenuInspectorExt : IInspectorExtension
     {
-        public Type TargetType => typeof(ContextMenu);
+        Type IInspectorExtension.TargetType => typeof(ContextMenu);
 
-        public ExtensionType ExtensionType => ExtensionType.Attribute;
+        ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Attribute;
 
-        public void CleanUp()
+        void IInspectorExtension.CleanUp()
         {
         }
 
-        public void ModifyExtensionElement(InspectorExtensionElement extensionElement)
+        void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
             var button = new Button { text = (extensionElement.Attribute as ContextMenu).menuItem };
             button.clicked += () =>
