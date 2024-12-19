@@ -12,7 +12,9 @@ namespace InspectorExtensions
     public class MaterialInspectorExt : IInspectorExtension
     {
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
-        Type IInspectorExtension.TargetType => typeof(Material);
+        ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Bottom;
+        int IInspectorExtension.Priority => 0;
+        bool IInspectorExtension.IsSupportedFor(object target) => target is Material;
 
         void IInspectorExtension.CleanUp()
         {

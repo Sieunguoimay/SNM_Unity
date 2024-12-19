@@ -11,8 +11,9 @@ namespace InspectorExtensions
     public class RevealReferenceEditorExt : IInspectorExtension
     {
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
-
-        Type IInspectorExtension.TargetType => typeof(UnityEngine.Object);
+        ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Bottom;
+        int IInspectorExtension.Priority => 0;
+        bool IInspectorExtension.IsSupportedFor(object target) => target is UnityEngine.Object;
 
         void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
@@ -32,6 +33,12 @@ namespace InspectorExtensions
             dFoldout.style.borderTopWidth = 1;
             dFoldout.style.borderTopColor = new Color(.1f, .1f, .1f, 1f);
             extensionElement.Add(dFoldout);
+
+            if (InspectorExtensionInstaller.Instance.DebugEnabled)
+            {
+                Debug.Log($"RevealReferenceEditorExt for {obj.name} ({obj.GetType().Name})");
+            }
+
 
             foreach (var rObject in references)
             {
@@ -54,36 +61,70 @@ namespace InspectorExtensions
         private class CustomIMGUIContainer : IMGUIContainer
         {
             private readonly UnityEngine.Object obj;
-            private readonly Editor editor;
-
+            private Editor editor;
+            private string _name;
+            private bool _disposed;
             public CustomIMGUIContainer(UnityEngine.Object obj)
             {
                 this.obj = obj;
                 onGUIHandler = OnGUI;
                 editor = Editor.CreateEditor(obj);
+                _name = obj.name + " " + obj.GetType().Name;
+
+                if (InspectorExtensionInstaller.Instance.DebugEnabled)
+                {
+                    Debug.Log($"CustomIMGUIContainer Created for {_name}");
+                }
+                _disposed = false;
+
+                RegisterCallback<DetachFromPanelEvent>(e =>
+                {
+                    Cleanup();
+                });
             }
 
             private void OnGUI()
             {
-                if (obj != null)
+                try
                 {
-                    if (editor != null)
+                    if (obj != null)
                     {
-                        editor.OnInspectorGUI();
-                        return;
+                        if (editor != null)
+                        {
+                            editor.OnInspectorGUI();
+                            return;
+                        }
                     }
+                    Cleanup();
                 }
-
-                Cleanup();
+                catch (Exception)
+                {
+                    Cleanup();
+                }
             }
 
             private void Cleanup()
             {
+                if (_disposed) return;
+
+                if (InspectorExtensionInstaller.Instance.DebugEnabled)
+                {
+                    Debug.Log($"CustomIMGUIContainer Cleanup for {_name}");
+                }
+
+                _disposed = true;
                 RemoveFromHierarchy();
                 onGUIHandler = null;
                 if (editor != null)
                 {
-                    UnityEngine.Object.DestroyImmediate(editor);
+                    // try
+                    // {
+                        UnityEngine.Object.DestroyImmediate(editor);
+                    // }
+                    // catch (Exception)
+                    // {
+                    // }
+                    editor = null;
                 }
             }
         }

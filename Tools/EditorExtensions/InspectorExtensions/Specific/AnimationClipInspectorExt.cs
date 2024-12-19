@@ -13,8 +13,9 @@ namespace InspectorExtensions
     public class AnimationClipInspectorExt : IInspectorExtension
     {
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
-
-        Type IInspectorExtension.TargetType => typeof(AnimationClip);
+        ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Bottom;
+        int IInspectorExtension.Priority => 0;
+        bool IInspectorExtension.IsSupportedFor(object target) => target is AnimationClip;
 
         void IInspectorExtension.CleanUp()
         {

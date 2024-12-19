@@ -8,23 +8,27 @@ namespace InspectorExtensions
 {
     public class ContextMenuInspectorExt : IInspectorExtension
     {
-        Type IInspectorExtension.TargetType => typeof(ContextMenu);
-
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Attribute;
-
-        void IInspectorExtension.CleanUp()
-        {
-        }
+        public ExtensionPosition Position => ExtensionPosition.Bottom;
+        public int Priority => 0;
+        bool IInspectorExtension.IsSupportedFor(object target) => target is ContextMenu;
 
         void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
             var button = new Button { text = (extensionElement.Attribute as ContextMenu).menuItem };
             button.clicked += () =>
             {
-                var method = extensionElement.MemberInfo as MethodInfo;
-                method.Invoke(extensionElement.Target, new object[] { });
+                if (extensionElement is InspectorExtensionElement_MemberInfo e)
+                {
+                    var method = e.MemberInfo as MethodInfo;
+                    method.Invoke(extensionElement.Target, new object[] { });
+                }
             };
             extensionElement.Add(button);
+        }
+
+        void IInspectorExtension.CleanUp()
+        {
         }
     }
 }

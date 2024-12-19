@@ -56,12 +56,8 @@ namespace InspectorExtensions
             get => EditorPrefs.GetBool(IS_ENABLED_KEY, false);
         }
 
-        public bool IsDebugEnabled
-        {
-            set => EditorPrefs.SetBool(IS_DEBUG_ENABLED_KEY, value);
-            get => EditorPrefs.GetBool(IS_DEBUG_ENABLED_KEY, false);
-        }
-
+        public bool IsDebugEnabled => InspectorExtensionInstaller.Instance.DebugEnabled;
+        
         public HistoryBrowsingData()
         {
             Selection.selectionChanged -= OnSelectionChanged;

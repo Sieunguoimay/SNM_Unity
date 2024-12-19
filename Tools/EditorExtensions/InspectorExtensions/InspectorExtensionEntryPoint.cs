@@ -11,14 +11,15 @@ namespace InspectorExtensions
             InspectorExtensionInstaller.Instance.Teardown();
 
             InspectorExtensionInstaller.Instance.InjectExtensions(
-                new MaterialInspectorExt(),
+                // new MaterialInspectorExt(),
                 new RevealNonSerializedExt(),
                 new IMGUIMethodExt(),
                 new ContextMenuInspectorExt(),
                 new RevealReferenceEditorExt(),
-                // new ScriptableObjectInspectorExt(),
+                new ScriptableObjectInspectorExt(),
                 new CreateVisualElementExt(),
-                new AnimationClipInspectorExt()
+                new EditorSecondHeaderExt()
+                // new AnimationClipInspectorExt()
             );
 
             InspectorExtensionInstaller.Instance.Setup();

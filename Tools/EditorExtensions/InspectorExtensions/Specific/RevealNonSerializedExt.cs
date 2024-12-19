@@ -8,10 +8,13 @@ using UnityEngine.UIElements;
 
 namespace InspectorExtensions
 {
+
     public class RevealNonSerializedExt : IInspectorExtension
     {
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Attribute;
-        Type IInspectorExtension.TargetType => typeof(RevealNonSerializedAttribute);
+        ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Bottom;
+        int IInspectorExtension.Priority => 0;
+        bool IInspectorExtension.IsSupportedFor(object target) => target is RevealNonSerializedAttribute;
 
         void IInspectorExtension.CleanUp()
         {
@@ -28,7 +31,7 @@ namespace InspectorExtensions
             label.style.paddingRight = 1;
             extensionElement.Add(label);
 
-            var ve = CreateVE(extensionElement.MemberInfo, extensionElement.Target);
+            var ve = CreateVE((extensionElement as InspectorExtensionElement_MemberInfo).MemberInfo, extensionElement.Target);
             ve.style.flexGrow = 1;
             ve.SetEnabled(false);
             extensionElement.Add(ve);

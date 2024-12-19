@@ -7,16 +7,20 @@ namespace InspectorExtensions
     public class CreateVisualElementExt : IInspectorExtension
     {
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Attribute;
-        Type IInspectorExtension.TargetType => typeof(CreateVisualElementAttribute);
-
+        ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Bottom;
+        int IInspectorExtension.Priority => 0;
+        bool IInspectorExtension.IsSupportedFor(object target) => target is CreateVisualElementAttribute;
         void IInspectorExtension.CleanUp()
         {
         }
 
         void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
-            (extensionElement.MemberInfo as MethodInfo)
-                .Invoke(extensionElement.Target, new object[] { extensionElement });
+            if (extensionElement is InspectorExtensionElement_MemberInfo e)
+            {
+                (e.MemberInfo as MethodInfo)
+                    .Invoke(extensionElement.Target, new object[] { extensionElement });
+            }
         }
     }
 }

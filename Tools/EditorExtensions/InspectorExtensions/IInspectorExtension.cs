@@ -7,7 +7,9 @@ namespace InspectorExtensions
     public interface IInspectorExtension
     {
         ExtensionType ExtensionType { get; }
-        Type TargetType { get; }
+        ExtensionPosition Position { get; }
+        int Priority { get; }
+        bool IsSupportedFor(object target);
         void ModifyExtensionElement(InspectorExtensionElement extensionElement);
         void CleanUp();
     }

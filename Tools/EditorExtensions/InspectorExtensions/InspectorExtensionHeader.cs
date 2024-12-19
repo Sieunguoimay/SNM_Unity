@@ -64,7 +64,7 @@ namespace InspectorExtensions
 
         private string GetTooltipText()
         {
-            return "Inspector Extensions for: \n" + string.Join("\n", InspectorExtensionInstaller.Instance.InspectorExtensions.Select(e => $"{e.TargetType.Name}"));
+            return "No tooltip!";//Inspector Extensions for: \n" + string.Join("\n", InspectorExtensionInstaller.Instance.InspectorExtensions.Select(e => $"{e.TargetType.Name}"));
         }
 
         private void OnRefreshButtonClicked(ClickEvent evt)
@@ -74,7 +74,6 @@ namespace InspectorExtensions
             {
                 InspectorExtensionInstaller.Instance.TryModify();
             });
-
             menu.AddItem(new GUIContent($"Open script {nameof(InspectorExtensionHeader)}"), false, () =>
             {
                 AssetDatabase.OpenAsset(
@@ -96,6 +95,12 @@ namespace InspectorExtensions
                     }
                 }, e);
             }
+            
+            menu.AddSeparator("");
+            menu.AddItem(new GUIContent("Debug"), InspectorExtensionInstaller.Instance.DebugEnabled, () =>
+            {
+                InspectorExtensionInstaller.Instance.DebugEnabled = !InspectorExtensionInstaller.Instance.DebugEnabled;
+            });
 
             menu.ShowAsContext();
         }
@@ -135,7 +140,7 @@ namespace InspectorExtensions
                 });
             }
         }
-        
+
         private class ToggleButton : Label
         {
             private static string STATUS_KEY = "InspectorExtensions_ToggleButton_Status";

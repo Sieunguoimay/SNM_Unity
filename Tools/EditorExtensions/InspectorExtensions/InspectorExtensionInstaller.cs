@@ -35,8 +35,6 @@ namespace InspectorExtensions
         private InspectorExtensionHeader _header;
         private EditorCoroutine _nextFrameCoroutine;
 
-        public IReadOnlyList<IInspectorExtension> InspectorExtensions => _inspectorExtensions;
-
         private Action<IExtensionElementProvider> _onExtensionElementsChanged;
         event Action<IExtensionElementProvider> IExtensionElementProvider.OnExtensionElementsChanged
         {
@@ -44,15 +42,28 @@ namespace InspectorExtensions
             remove { _onExtensionElementsChanged -= value; }
         }
 
+        public bool DebugEnabled
+        {
+            get => EditorPrefs.GetBool("InspectorExtensionInstaller_DebugEnabled", false);
+            set => EditorPrefs.SetBool("InspectorExtensionInstaller_DebugEnabled", value);
+        }
+
         private InspectorExtensionInstaller()
         {
-            Debug.Log("InspectorExtensionInstaller created");
+            if (DebugEnabled)
+            {
+                Debug.Log("InspectorExtensionInstaller created");
+            }
         }
 
         ~InspectorExtensionInstaller()
         {
             Teardown();
-            Debug.Log("InspectorExtensionInstaller destroyed");
+            
+            if (DebugEnabled)
+            {
+                Debug.Log("InspectorExtensionInstaller destroyed");
+            }
         }
 
         public void InjectExtensions(params IInspectorExtension[] extensions)
@@ -167,17 +178,21 @@ namespace InspectorExtensions
 
                 foreach (var editorElement in editorElements)
                 {
-                    SetupContainerElement(editorElement, out var extensionContainer);
+                    SetupContainerElement(editorElement, out var topVE, out var bottomVE);
 
                     var targetEditor = editorElement.GetType().GetProperty("editor", BindingFlags).GetValue(editorElement) as Editor;
-                    var extensionElements = CreateInspectorExtensionElementsForObject(targetEditor.target, inspectorExts);
+
+                    var extensionElements = CreateInspectorExtensionElementsForObject(targetEditor.target, inspectorExts)
+                        .OrderBy(e => e.Extension.Priority);
 
                     foreach (var element in extensionElements)
                     {
+                        var parent = element.Extension.Position == ExtensionPosition.Bottom ? bottomVE : topVE;
+
                         yield return new()
                         {
                             element = element,
-                            parent = extensionContainer
+                            parent = parent
                         };
                     }
                 }
@@ -192,13 +207,13 @@ namespace InspectorExtensions
 
             var maes = memberInfos.OrderBy(mi => mi is FieldInfo ? 0 : (mi is PropertyInfo ? 1 : 2))
                 .SelectMany(mi => mi.GetCustomAttributes()
-                    .Select(a => new { extension = attributeExts.FirstOrDefault(e => e.TargetType.IsInstanceOfType(a)), attribute = a })
+                    .Select(a => new { extension = attributeExts.FirstOrDefault(e => e.IsSupportedFor(a)), attribute = a })
                     .Where(ea => ea.extension != null)
                     .Select(a => new { memberInfo = mi, a.attribute, a.extension })).ToArray();
 
             foreach (var mae in maes)
             {
-                var element = new InspectorExtensionElement(target, mae.memberInfo, mae.attribute)
+                var element = new InspectorExtensionElement_MemberInfo(target, mae.memberInfo, mae.attribute, mae.extension)
                 { name = mae.memberInfo.Name };
                 mae.extension.ModifyExtensionElement(element);
 
@@ -207,11 +222,11 @@ namespace InspectorExtensions
 
             var exts = inspectorExts
                 .Where(e => e.ExtensionType == ExtensionType.Object)
-                .Where(e => e.TargetType.IsInstanceOfType(target));
+                .Where(e => e.IsSupportedFor(target));
 
             foreach (var ext in exts)
             {
-                var element2 = new InspectorExtensionElement(target, null, null) { name = target.GetType().Name };
+                var element2 = new InspectorExtensionElement(target, null, ext) { name = target.GetType().Name };
                 ext.ModifyExtensionElement(element2);
                 yield return element2;
             }
@@ -230,23 +245,30 @@ namespace InspectorExtensions
             }
         }
 
-        private static void SetupContainerElement(VisualElement editorElement, out VisualElement container)
+        private static void SetupContainerElement(VisualElement editorElement, out VisualElement topVE, out VisualElement bottomVE)
         {
-            var existing = editorElement.Q<InspectorExtsContainer>("inspector-extensions");
-            if (existing != null)
+            var existings = editorElement.Query<InspectorExtsContainer>(className: "inspector-extensions").Build();
+
+            foreach (var existing in existings)
             {
                 editorElement.Remove(existing);
             }
-            var extensionContainer = new InspectorExtsContainer() { name = "inspector-extensions" };
-            editorElement.Add(extensionContainer);
+
+            topVE = new InspectorExtsContainer() { name = "inspector-extensions-top" };
+            bottomVE = new InspectorExtsContainer() { name = "inspector-extensions-bottom" };
+
+            topVE.AddToClassList("inspector-extensions");
+            bottomVE.AddToClassList("inspector-extensions");
+
+            editorElement.Add(topVE);
+            editorElement.Add(bottomVE);
 
             var inspectorElement = editorElement.Children().FirstOrDefault(e => e.GetType().FullName == "UnityEditor.UIElements.InspectorElement");
             if (inspectorElement != null)
             {
-                extensionContainer.PlaceInFront(inspectorElement);
+                topVE.PlaceBehind(inspectorElement);
+                bottomVE.PlaceInFront(inspectorElement);
             }
-
-            container = extensionContainer;
         }
 
         private IEnumerator WaitForNextFrame(Action callback)

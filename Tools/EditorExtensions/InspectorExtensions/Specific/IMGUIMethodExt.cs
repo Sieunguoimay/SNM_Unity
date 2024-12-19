@@ -11,7 +11,10 @@ namespace InspectorExtensions
     public class IMGUIMethodExt : IInspectorExtension
     {
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Attribute;
-        Type IInspectorExtension.TargetType => typeof(IMGUIMethodAttribute);
+        ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Bottom;
+        int IInspectorExtension.Priority => 0;
+        bool IInspectorExtension.IsSupportedFor(object target) => target is IMGUIMethodAttribute;
+
 
         void IInspectorExtension.CleanUp()
         {
@@ -19,7 +22,8 @@ namespace InspectorExtensions
 
         void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
-            var drawer = new IMGUIDrawer(extensionElement.MemberInfo as MethodInfo, extensionElement.Target, (extensionElement.Attribute as IMGUIMethodAttribute).ShowTitle);
+            var memberInfo = (extensionElement as InspectorExtensionElement_MemberInfo).MemberInfo;
+            var drawer = new IMGUIDrawer(memberInfo as MethodInfo, extensionElement.Target, (extensionElement.Attribute as IMGUIMethodAttribute).ShowTitle);
             extensionElement.Add(drawer.Container);
         }
 
