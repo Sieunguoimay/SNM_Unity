@@ -19,30 +19,35 @@ namespace InspectorExtensions
             var obj = extensionElement.Target as UnityEngine.Object;
             var serializedObject = new SerializedObject(obj);
             serializedObject.Update();
-            var references = Iterate(serializedObject);
-            var count = references.Count();
+            var references = Iterate(serializedObject).Select(o => o.objectReferenceValue).ToArray();
+            var count = references.Length;
             if (count == 0) return;
 
-            var dFoldout = new Foldout() { text = $"{obj.GetType().Name} References ({count})", value = false };
+            var dFoldout = new Foldout()
+            {
+                text = $"{obj.GetType().Name} References ({count})",
+                value = false
+            };
             dFoldout.style.color = Color.gray;
             dFoldout.style.borderTopWidth = 1;
             dFoldout.style.borderTopColor = new Color(.1f, .1f, .1f, 1f);
             extensionElement.Add(dFoldout);
-            foreach (var r in references)
+
+            foreach (var rObject in references)
             {
                 var foldout = new Foldout()
                 {
-                    text = $"{r.objectReferenceValue.name} ({r.objectReferenceValue.GetType().Name})",
+                    text = $"{rObject.name} ({rObject.GetType().Name})",
                     value = false,
-                    tooltip = $"{r.propertyPath}"
+                    // tooltip = $"{r.propertyPath}"
                 };
 
                 foldout.style.unityFontStyleAndWeight = FontStyle.Bold;
                 dFoldout.Add(foldout);
 
-                AddIconAndPingButtonToFoldout(r.objectReferenceValue, foldout);
+                AddIconAndPingButtonToFoldout(rObject, foldout);
 
-                foldout.Add(new CustomIMGUIContainer(r.objectReferenceValue));
+                foldout.Add(new CustomIMGUIContainer(rObject));
             }
         }
 
@@ -76,6 +81,10 @@ namespace InspectorExtensions
             {
                 RemoveFromHierarchy();
                 onGUIHandler = null;
+                if (editor != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(editor);
+                }
             }
         }
 
