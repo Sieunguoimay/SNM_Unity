@@ -16,7 +16,7 @@ namespace Tools
             }
         }
 
-        [MenuItem("CONTEXT/Component/Tools/CopyToNewGameObject")]
+        [MenuItem("CONTEXT/Component/Tools/CloneToNewGameObject")]
         private static void CopyToNewGameObject(MenuCommand command)
         {
             if (command.context is Component c)

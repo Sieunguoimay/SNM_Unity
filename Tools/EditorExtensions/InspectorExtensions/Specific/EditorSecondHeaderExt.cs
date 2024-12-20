@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
-using System;
-using System.Linq;
+using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -12,6 +12,7 @@ namespace InspectorExtensions
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
         ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Top;
         int IInspectorExtension.Priority => 0;
+
         bool IInspectorExtension.IsSupportedFor(object target)
         {
             if (target is MonoBehaviour) return true;
@@ -21,7 +22,7 @@ namespace InspectorExtensions
 
         void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
-            if (extensionElement.Target is UnityEngine.Object target)
+            if (extensionElement.Target is Object target)
             {
                 extensionElement.Add(new SecondHeaderVE(target));
             }
@@ -33,9 +34,9 @@ namespace InspectorExtensions
 
         private class SecondHeaderVE : VisualElement
         {
-            private readonly UnityEngine.Object target;
+            private readonly Object target;
 
-            public SecondHeaderVE(UnityEngine.Object target)
+            public SecondHeaderVE(Object target)
             {
                 this.target = target;
 
@@ -54,16 +55,12 @@ namespace InspectorExtensions
                 }
 
                 Add(CreateEditScriptButton());
+                Add(CreateFindReferencesInSceneButton());
             }
 
             private VisualElement CreateEditScriptButton()
             {
-                var button = new Button(() =>
-                {
-                    var serialized = new SerializedObject(target);
-                    var scriptProperty = serialized.FindProperty("m_Script");
-                    AssetDatabase.OpenAsset(scriptProperty.objectReferenceValue);
-                })
+                var button = new Button(OnEditScriptButtonClicked)
                 {
                     text = "Edit Script"
                 };
@@ -71,15 +68,56 @@ namespace InspectorExtensions
                 button.style.marginBottom = 0;
                 return button;
             }
-            private VisualElement CreateCopyComponentButton()
+
+            private void OnEditScriptButtonClicked()
             {
-                var button = new Button(() =>
+                if (target != null)
                 {
-                })
+                    var serialized = new SerializedObject(target);
+                    var scriptProperty = serialized.FindProperty("m_Script");
+                    AssetDatabase.OpenAsset(scriptProperty.objectReferenceValue);
+                }
+            }
+
+
+            private VisualElement CreateFindReferencesInSceneButton()
+            {
+                var button = new Button(OnFindReferencesInSceneClicked)
                 {
-                    text = "Copy Component"
+                    text = "Find References in Scene"
                 };
+                button.style.marginTop = 0;
+                button.style.marginBottom = 0;
                 return button;
+            }
+
+            private void OnFindReferencesInSceneClicked()
+            {
+                typeof(SearchableEditorWindow)
+                    .GetMethod("SearchForReferencesToInstanceID", BindingFlags.NonPublic | BindingFlags.Static)
+                    .Invoke(null, new object[] { target.GetInstanceID() });
+            }
+
+            private static IEnumerable<(System.Type type, MethodInfo methodInfo, MenuItem)> FindAllMenuItems()
+            {
+                var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+
+                foreach (var assembly in assemblies)
+                {
+                    foreach (var type in assembly.GetTypes())
+                    {
+                        foreach (var method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                        {
+                            MenuItem mi = null;
+                            try { mi = method.GetCustomAttribute<MenuItem>(); } catch (System.Exception) { }
+                            if (mi != null)
+                            {
+                                yield return (type, method, mi);
+                            }
+
+                        }
+                    }
+                }
             }
         }
     }

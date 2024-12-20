@@ -117,13 +117,7 @@ namespace InspectorExtensions
                 onGUIHandler = null;
                 if (editor != null)
                 {
-                    // try
-                    // {
-                        UnityEngine.Object.DestroyImmediate(editor);
-                    // }
-                    // catch (Exception)
-                    // {
-                    // }
+                    UnityEngine.Object.DestroyImmediate(editor);
                     editor = null;
                 }
             }

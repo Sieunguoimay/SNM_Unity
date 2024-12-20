@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -14,7 +15,9 @@ namespace InspectorExtensions
     {
         private readonly IExtensionElementProvider _extensionElementProvider;
         private readonly ToggleButton toggleButton;
+        private readonly ToggleButton inspectorModeToggleButton;
         private readonly HistoryBrowserController historyBrowser;
+        private readonly UnityInspectorWindowHelper inspectorWindow;
 
         public InspectorExtensionHeader(IExtensionElementProvider extensionElementProvider)
         {
@@ -32,9 +35,31 @@ namespace InspectorExtensions
             refreshButton.RegisterCallback<ClickEvent>(OnRefreshButtonClicked);
             Add(refreshButton);
 
-            toggleButton = new ToggleButton("ON", "OFF", UpdateExtensionElementsVisible) { tooltip = GetTooltipText() };
-            toggleButton.style.unityTextAlign = TextAnchor.MiddleCenter;
-            Add(toggleButton);
+            Add(toggleButton = new ToggleButton(
+                "ON", "OFF", Color.green, Color.black,
+                null,
+                UpdateExtensionElementsVisible,
+                "InspectorExtensions_ToggleButton_Status")
+            {
+                tooltip = GetTooltipText()
+            });
+
+            var window = InspectorExtensionInstaller.Instance.InspectorWindow;
+            if (window != null)
+            {
+                inspectorWindow = new UnityInspectorWindowHelper(window);
+                if (inspectorWindow != null)
+                {
+                    Add(inspectorModeToggleButton = new ToggleButton(
+                        "Debug", "Normal", Color.cyan * .8f, Color.black * .3f,
+                        inspectorWindow.GetInspectorMode() == InspectorMode.Debug,
+                        OnInspectorModeToggleButtonClicked,
+                        "InspectorExtensions_ToggleButton_InspectorMode"));
+                    inspectorModeToggleButton.style.marginRight = 3;
+                    inspectorModeToggleButton.style.paddingLeft = 3;
+                    inspectorModeToggleButton.style.paddingRight = 3;
+                }
+            }
 
             var space = new VisualElement();
             space.style.flexGrow = 1;
@@ -55,6 +80,11 @@ namespace InspectorExtensions
             _extensionElementProvider.OnExtensionElementsChanged += OnExtensionElementsChanged;
 
             UpdateExtensionElementsVisible();
+        }
+
+        private void OnInspectorModeToggleButtonClicked()
+        {
+            inspectorWindow.SetInspectorMode(inspectorWindow.GetInspectorMode() == InspectorMode.Normal ? InspectorMode.Debug : InspectorMode.Normal);
         }
 
         public void Dispose()
@@ -95,9 +125,9 @@ namespace InspectorExtensions
                     }
                 }, e);
             }
-            
+
             menu.AddSeparator("");
-            menu.AddItem(new GUIContent("Debug"), InspectorExtensionInstaller.Instance.DebugEnabled, () =>
+            menu.AddItem(new GUIContent("InspectorExtension Debug"), InspectorExtensionInstaller.Instance.DebugEnabled, () =>
             {
                 InspectorExtensionInstaller.Instance.DebugEnabled = !InspectorExtensionInstaller.Instance.DebugEnabled;
             });
@@ -143,35 +173,46 @@ namespace InspectorExtensions
 
         private class ToggleButton : Label
         {
-            private static string STATUS_KEY = "InspectorExtensions_ToggleButton_Status";
+            private readonly string saveKey;
             private readonly string textOn;
             private readonly string textOff;
+            private readonly Color colorOn = Color.green;
+            private readonly Color colorOff = Color.green;
             private bool StatusInternal
             {
-                get => EditorPrefs.GetBool(STATUS_KEY, true);
-                set => EditorPrefs.SetBool(STATUS_KEY, value);
+                get => EditorPrefs.GetBool(saveKey, true);
+                set => EditorPrefs.SetBool(saveKey, value);
             }
             public bool Status => StatusInternal;
             private readonly Action changed;
 
-            public ToggleButton(string textOn, string textOff, Action changed)
+            public ToggleButton(string textOn, string textOff, Color colorOn, Color colorOff, bool? status, Action changed, string saveKey)
             {
                 this.textOn = textOn;
                 this.textOff = textOff;
+                this.colorOn = colorOn;
+                this.colorOff = colorOff;
                 this.changed = changed;
+                this.saveKey = saveKey;
+                if (status != null)
+                {
+                    StatusInternal = status.Value;
+                }
                 text = StatusInternal ? this.textOn : this.textOff;
-                style.backgroundColor = new StyleColor() { value = StatusInternal ? Color.green : Color.black };
+                style.backgroundColor = new StyleColor() { value = StatusInternal ? colorOn : colorOff };
+                style.unityTextAlign = TextAnchor.MiddleCenter;
                 RegisterCallback<ClickEvent>(OnClick);
 
                 RegisterCallback<MouseEnterEvent>(evt =>
                 {
-                    var color = StatusInternal ? Color.green : Color.black;
-                    style.backgroundColor = color * .75f;
+                    // var color = StatusInternal ? colorOn : colorOff;
+                    // style.backgroundColor = color * .75f;
+                    style.backgroundColor = colorOn * .8f;
                 });
 
                 RegisterCallback<MouseLeaveEvent>(evt =>
                 {
-                    var color = StatusInternal ? Color.green : Color.black;
+                    var color = StatusInternal ? colorOn : colorOff;
                     style.backgroundColor = color;
                 });
             }
@@ -180,7 +221,7 @@ namespace InspectorExtensions
             {
                 StatusInternal = !StatusInternal;
                 text = StatusInternal ? textOn : textOff;
-                style.backgroundColor = new StyleColor() { value = StatusInternal ? Color.green : Color.black };
+                style.backgroundColor = new StyleColor() { value = StatusInternal ? colorOn : colorOff };
                 changed?.Invoke();
             }
         }
