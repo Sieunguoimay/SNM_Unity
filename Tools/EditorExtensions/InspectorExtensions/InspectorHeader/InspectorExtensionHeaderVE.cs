@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -11,15 +10,15 @@ using UnityEngine.UIElements;
 namespace InspectorExtensions
 {
 
-    public class InspectorExtensionHeader : VisualElement, IDisposable
+    public class InspectorExtensionHeaderVE : VisualElement, IDisposable
     {
         private readonly IExtensionElementProvider _extensionElementProvider;
         private readonly ToggleButton toggleButton;
         private readonly ToggleButton inspectorModeToggleButton;
-        private readonly HistoryBrowserController historyBrowser;
+        private readonly HistoryBrowserVE historyBrowser;
         private readonly UnityInspectorWindowHelper inspectorWindow;
 
-        public InspectorExtensionHeader(IExtensionElementProvider extensionElementProvider)
+        public InspectorExtensionHeaderVE(IExtensionElementProvider extensionElementProvider)
         {
             _extensionElementProvider = extensionElementProvider;
 
@@ -52,7 +51,7 @@ namespace InspectorExtensions
                 {
                     Add(inspectorModeToggleButton = new ToggleButton(
                         "Debug", "Normal", Color.cyan * .8f, Color.black * .3f,
-                        inspectorWindow.GetInspectorMode() == InspectorMode.Debug,
+                        () => inspectorWindow.GetInspectorMode() == InspectorMode.Debug,
                         OnInspectorModeToggleButtonClicked,
                         "InspectorExtensions_ToggleButton_InspectorMode"));
                     inspectorModeToggleButton.style.marginRight = 3;
@@ -85,6 +84,7 @@ namespace InspectorExtensions
         private void OnInspectorModeToggleButtonClicked()
         {
             inspectorWindow.SetInspectorMode(inspectorWindow.GetInspectorMode() == InspectorMode.Normal ? InspectorMode.Debug : InspectorMode.Normal);
+            InspectorExtensionInstaller.Instance.Refresh();
         }
 
         public void Dispose()
@@ -102,12 +102,12 @@ namespace InspectorExtensions
             var menu = new GenericMenu();
             menu.AddItem(new GUIContent("Refresh"), false, () =>
             {
-                InspectorExtensionInstaller.Instance.TryModify();
+                InspectorExtensionInstaller.Instance.Refresh();
             });
-            menu.AddItem(new GUIContent($"Open script {nameof(InspectorExtensionHeader)}"), false, () =>
+            menu.AddItem(new GUIContent($"Open script {nameof(InspectorExtensionHeaderVE)}"), false, () =>
             {
                 AssetDatabase.OpenAsset(
-                    AssetDatabase.FindAssets($"t:MonoScript {nameof(InspectorExtensionHeader)}")
+                    AssetDatabase.FindAssets($"t:MonoScript {nameof(InspectorExtensionHeaderVE)}")
                     .Select(AssetDatabase.GUIDToAssetPath)
                     .Select(AssetDatabase.LoadAssetAtPath<MonoScript>)
                     .FirstOrDefault());
@@ -127,7 +127,7 @@ namespace InspectorExtensions
             }
 
             menu.AddSeparator("");
-            menu.AddItem(new GUIContent("InspectorExtension Debug"), InspectorExtensionInstaller.Instance.DebugEnabled, () =>
+            menu.AddItem(new GUIContent("Toggle Extension Debug"), InspectorExtensionInstaller.Instance.DebugEnabled, () =>
             {
                 InspectorExtensionInstaller.Instance.DebugEnabled = !InspectorExtensionInstaller.Instance.DebugEnabled;
             });
@@ -178,28 +178,27 @@ namespace InspectorExtensions
             private readonly string textOff;
             private readonly Color colorOn = Color.green;
             private readonly Color colorOff = Color.green;
+            private readonly Func<bool> status;
             private bool StatusInternal
             {
                 get => EditorPrefs.GetBool(saveKey, true);
                 set => EditorPrefs.SetBool(saveKey, value);
             }
             public bool Status => StatusInternal;
-            private readonly Action changed;
+            private readonly Action onClicked;
 
-            public ToggleButton(string textOn, string textOff, Color colorOn, Color colorOff, bool? status, Action changed, string saveKey)
+            public ToggleButton(string textOn, string textOff, Color colorOn, Color colorOff, Func<bool> status, Action onClicked, string saveKey)
             {
                 this.textOn = textOn;
                 this.textOff = textOff;
                 this.colorOn = colorOn;
                 this.colorOff = colorOff;
-                this.changed = changed;
+                this.onClicked = onClicked;
                 this.saveKey = saveKey;
-                if (status != null)
-                {
-                    StatusInternal = status.Value;
-                }
-                text = StatusInternal ? this.textOn : this.textOff;
-                style.backgroundColor = new StyleColor() { value = StatusInternal ? colorOn : colorOff };
+                this.status = status;
+                SetInternalStatus(status?.Invoke() ?? StatusInternal);
+                // text = StatusInternal ? this.textOn : this.textOff;
+                // style.backgroundColor = new StyleColor() { value = StatusInternal ? colorOn : colorOff };
                 style.unityTextAlign = TextAnchor.MiddleCenter;
                 RegisterCallback<ClickEvent>(OnClick);
 
@@ -207,6 +206,7 @@ namespace InspectorExtensions
                 {
                     // var color = StatusInternal ? colorOn : colorOff;
                     // style.backgroundColor = color * .75f;
+                    SetInternalStatus(status?.Invoke() ?? StatusInternal);
                     style.backgroundColor = colorOn * .8f;
                 });
 
@@ -215,14 +215,32 @@ namespace InspectorExtensions
                     var color = StatusInternal ? colorOn : colorOff;
                     style.backgroundColor = color;
                 });
+
+                InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
+                RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
+            }
+
+            private void OnDetachFromPanel(DetachFromPanelEvent evt)
+            {
+                InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
+            }
+
+            private void OnRepaint(MouseEnterEvent evt)
+            {
+                SetInternalStatus(status?.Invoke() ?? StatusInternal);
             }
 
             private void OnClick(ClickEvent evt)
             {
-                StatusInternal = !StatusInternal;
+                SetInternalStatus(!StatusInternal);
+                onClicked?.Invoke();
+            }
+
+            public void SetInternalStatus(bool status)
+            {
+                StatusInternal = status;
                 text = StatusInternal ? textOn : textOff;
                 style.backgroundColor = new StyleColor() { value = StatusInternal ? colorOn : colorOff };
-                changed?.Invoke();
             }
         }
     }

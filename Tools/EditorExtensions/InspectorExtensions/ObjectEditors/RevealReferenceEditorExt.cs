@@ -17,44 +17,50 @@ namespace InspectorExtensions
 
         void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
         {
-            var obj = extensionElement.Target as UnityEngine.Object;
-            var serializedObject = new SerializedObject(obj);
-            serializedObject.Update();
-            var references = Iterate(serializedObject).Select(o => o.objectReferenceValue).ToArray();
-            var count = references.Length;
-            if (count == 0) return;
+            extensionElement.Add(new ReferencesFoldout(extensionElement.Target as UnityEngine.Object));
+        }
 
-            var dFoldout = new Foldout()
+        void IInspectorExtension.CleanUp()
+        {
+        }
+        
+        private class ReferencesFoldout : Foldout
+        {
+            public ReferencesFoldout(UnityEngine.Object obj)
             {
-                text = $"{obj.GetType().Name} References ({count})",
-                value = false
-            };
-            dFoldout.style.color = Color.gray;
-            dFoldout.style.borderTopWidth = 1;
-            dFoldout.style.borderTopColor = new Color(.1f, .1f, .1f, 1f);
-            extensionElement.Add(dFoldout);
+                var serializedObject = new SerializedObject(obj);
+                serializedObject.Update();
+                var references = Iterate(serializedObject).Select(o => o.objectReferenceValue).ToArray();
+                var count = references.Length;
 
-            if (InspectorExtensionInstaller.Instance.DebugEnabled)
-            {
-                Debug.Log($"RevealReferenceEditorExt for {obj.name} ({obj.GetType().Name})");
-            }
+                text = $"{obj.GetType().Name} References ({count})";
+                value = false;
+                style.color = Color.gray;
+                style.borderTopWidth = 1;
+                style.borderTopColor = new Color(.1f, .1f, .1f, 1f);
 
-
-            foreach (var rObject in references)
-            {
-                var foldout = new Foldout()
+                if (InspectorExtensionInstaller.Instance.DebugEnabled)
                 {
-                    text = $"{rObject.name} ({rObject.GetType().Name})",
-                    value = false,
-                    // tooltip = $"{r.propertyPath}"
-                };
+                    Debug.Log($"RevealReferenceEditorExt for {obj.name} ({obj.GetType().Name})");
+                }
 
-                foldout.style.unityFontStyleAndWeight = FontStyle.Bold;
-                dFoldout.Add(foldout);
 
-                AddIconAndPingButtonToFoldout(rObject, foldout);
+                foreach (var rObject in references)
+                {
+                    var foldout = new Foldout()
+                    {
+                        text = $"{rObject.name} ({rObject.GetType().Name})",
+                        value = false,
+                        // tooltip = $"{r.propertyPath}"
+                    };
 
-                foldout.Add(new CustomIMGUIContainer(rObject));
+                    foldout.style.unityFontStyleAndWeight = FontStyle.Bold;
+                    Add(foldout);
+
+                    AddIconAndPingButtonToFoldout(rObject, foldout);
+
+                    foldout.Add(new CustomIMGUIContainer(rObject));
+                }
             }
         }
 
@@ -113,8 +119,11 @@ namespace InspectorExtensions
                 }
 
                 _disposed = true;
+
                 RemoveFromHierarchy();
+
                 onGUIHandler = null;
+
                 if (editor != null)
                 {
                     UnityEngine.Object.DestroyImmediate(editor);
@@ -145,7 +154,7 @@ namespace InspectorExtensions
             label.parent.Insert(3, pingButton);
         }
 
-        private IEnumerable<SerializedProperty> Iterate(SerializedObject obj)
+        private static IEnumerable<SerializedProperty> Iterate(SerializedObject obj)
         {
             var it = obj.GetIterator();
             while (it.Next(true))
@@ -157,9 +166,6 @@ namespace InspectorExtensions
             }
         }
 
-        void IInspectorExtension.CleanUp()
-        {
-        }
     }
 }
 #endif

@@ -17,7 +17,7 @@ public class CopyAndPasteMultipleComponentsWindow : EditorWindow, IHasCustomMenu
     [SerializeField] private bool selfGameObject = false;
 
     [MenuItem("GameObject/Copy And Paste All Components Values")]
-    [MenuItem("CONTEXT/Component/Copy And Paste All Components Values")]
+    [MenuItem("CONTEXT/Component/Tools/Copy And Paste All Components Values")]
     public static void CopyGameObject2(MenuCommand menuCommand)
     {
         var go = (menuCommand.context is Component c)

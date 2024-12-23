@@ -10,10 +10,14 @@ namespace InspectorExtensions
 {
     public class ScriptableObjectInspectorExt : IInspectorExtension
     {
+        public static UnityEngine.Object CopiedObject;
+
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
         ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Bottom;
         int IInspectorExtension.Priority => 0;
         bool IInspectorExtension.IsSupportedFor(object target) => target is ScriptableObject;
+
+        private static Dictionary<UnityEngine.Object, bool> foldoutStates = new();
 
         void IInspectorExtension.CleanUp()
         {
@@ -66,7 +70,7 @@ namespace InspectorExtensions
                 var window = EditorWindow.GetWindow<Tools.ScriptableObjectAssetCreator>();
                 window.SetAssetCreatedCallback(() => { window.Close(); });
                 window.ShowModalUtility();
-                InspectorExtensionInstaller.Instance.TryModify();
+                InspectorExtensionInstaller.Instance.Refresh();
             }
         }
 
@@ -121,7 +125,7 @@ namespace InspectorExtensions
                         AssetDatabase.SaveAssets();
                         AssetDatabase.Refresh();
 
-                        InspectorExtensionInstaller.Instance.TryModify();
+                        InspectorExtensionInstaller.Instance.Refresh();
                     });
                 }
                 menu.ShowAsContext();
@@ -153,19 +157,25 @@ namespace InspectorExtensions
             private readonly UnityEngine.Object _asset;
             private readonly IMGUIContainer _imguiContainer;
             private readonly ObjectEditorHeader _header;
+            private readonly VisualElement _body;
 
             public SubSOInspectorElement(UnityEngine.Object asset)
             {
                 _asset = asset;
-                if(asset == null)return;
+                if (asset == null) return;
                 var editor = Editor.CreateEditor(asset);
                 _imguiContainer = new IMGUIContainer()
                 {
                     onGUIHandler = editor.OnInspectorGUI
                 };
-                _header = new ObjectEditorHeader(asset, OnFoldoutChanged);
-                Add(_header);
-                Add(ModifyEditor(_imguiContainer));
+                _body = new VisualElement();
+                Add(_header = new ObjectEditorHeader(asset, OnFoldoutChanged, foldoutStates.ContainsKey(asset) ? foldoutStates[asset] : false));
+                Add(_body);
+
+                _body.Add(new EditorSecondHeaderVE(_asset));
+                _body.Add(ModifyEditor(_imguiContainer));
+
+                // Add(ModifyEditor(_imguiContainer));
             }
 
             private void OnFoldoutChanged(bool open)
@@ -175,11 +185,16 @@ namespace InspectorExtensions
 
             public void SetFoldout(bool foldout, bool modifyHeaderFoldout = true)
             {
-                _imguiContainer.style.display = foldout ? DisplayStyle.Flex : DisplayStyle.None;
+                if (_body != null)
+                {
+                    _body.style.display = foldout ? DisplayStyle.Flex : DisplayStyle.None;
+                }
                 if (modifyHeaderFoldout)
                 {
                     _header.Foldout.value = foldout;
                 }
+
+                foldoutStates[_asset] = foldout;
             }
 
             private VisualElement ModifyEditor(VisualElement visualElement)
@@ -191,6 +206,7 @@ namespace InspectorExtensions
                 var wrapper = new VisualElement();
 
                 wrapper.Add(visualElement);
+                wrapper.style.flexDirection = FlexDirection.Column;
                 wrapper.style.borderBottomWidth = 1;
                 wrapper.style.borderBottomColor = new Color(.1f, .1f, .1f);
                 return wrapper;
@@ -202,9 +218,7 @@ namespace InspectorExtensions
             private readonly Action<bool> _foldoutCallback;
             public Foldout Foldout { get; private set; }
 
-            private static UnityEngine.Object _copiedObject;
-
-            public ObjectEditorHeader(UnityEngine.Object obj, Action<bool> foldoutCallback)
+            public ObjectEditorHeader(UnityEngine.Object obj, Action<bool> foldoutCallback, bool defaultValue)
             {
                 _foldoutCallback = foldoutCallback;
 
@@ -221,9 +235,9 @@ namespace InspectorExtensions
 
                 Foldout = new Foldout()
                 {
-                    value = false
+                    value = defaultValue
                 };
-                _foldoutCallback?.Invoke(false);
+                _foldoutCallback?.Invoke(defaultValue);
                 Foldout.RegisterCallback<ChangeEvent<bool>>(b =>
                 {
                     _foldoutCallback?.Invoke(b.newValue);
@@ -263,16 +277,16 @@ namespace InspectorExtensions
                     });
                     menu.AddItem(new GUIContent("Copy Object"), false, () =>
                     {
-                        _copiedObject = obj;
+                        CopiedObject = obj;
                     });
 
-                    if (_copiedObject != null)
+                    if (CopiedObject != null)
                     {
-                        if (obj.GetType().IsAssignableFrom(_copiedObject.GetType()))
+                        if (obj.GetType().IsAssignableFrom(CopiedObject.GetType()))
                         {
                             menu.AddItem(new GUIContent("Paste Object Values"), false, () =>
                             {
-                                EditorUtility.CopySerialized(_copiedObject, obj);
+                                EditorUtility.CopySerialized(CopiedObject, obj);
                                 AssetDatabase.SaveAssets();
                                 AssetDatabase.Refresh();
                             });
@@ -280,11 +294,11 @@ namespace InspectorExtensions
 
                         menu.AddItem(new GUIContent("Paste Object as New"), false, () =>
                         {
-                            AssetDatabase.AddObjectToAsset(UnityEngine.Object.Instantiate(_copiedObject), AssetDatabase.GetAssetPath(obj));
+                            AssetDatabase.AddObjectToAsset(UnityEngine.Object.Instantiate(CopiedObject), AssetDatabase.GetAssetPath(obj));
                             AssetDatabase.SaveAssets();
                             AssetDatabase.Refresh();
 
-                            InspectorExtensionInstaller.Instance.TryModify();
+                            InspectorExtensionInstaller.Instance.Refresh();
                         });
                     }
 
@@ -294,7 +308,7 @@ namespace InspectorExtensions
                         AssetDatabase.SaveAssets();
                         AssetDatabase.Refresh();
 
-                        InspectorExtensionInstaller.Instance.TryModify();
+                        InspectorExtensionInstaller.Instance.Refresh();
                     });
                     menu.ShowAsContext();
                 });

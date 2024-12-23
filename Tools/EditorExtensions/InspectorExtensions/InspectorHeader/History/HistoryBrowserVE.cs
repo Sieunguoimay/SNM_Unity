@@ -6,11 +6,11 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
-using static InspectorExtensions.InspectorExtensionHeader;
+using static InspectorExtensions.InspectorExtensionHeaderVE;
 
 namespace InspectorExtensions
 {
-    public class HistoryBrowserController : VisualElement, IDisposable
+    public class HistoryBrowserVE : VisualElement, IDisposable
     {
         private readonly IHistoryBrowser browsingData;
         private readonly IHistoryList historyList;
@@ -18,7 +18,7 @@ namespace InspectorExtensions
         private readonly VisualElement nextButton;
         private readonly HoverButton historyButton;
 
-        public HistoryBrowserController()
+        public HistoryBrowserVE()
         {
             var data = new HistoryBrowsingData();
             historyList = data;

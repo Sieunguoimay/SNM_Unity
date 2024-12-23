@@ -15,7 +15,7 @@ namespace InspectorExtensions
                 new RevealNonSerializedExt(),
                 new IMGUIMethodExt(),
                 new ContextMenuInspectorExt(),
-                new RevealReferenceEditorExt(),
+                // new RevealReferenceEditorExt(),
                 new ScriptableObjectInspectorExt(),
                 new CreateVisualElementExt(),    
                 new EditorSecondHeaderExt()

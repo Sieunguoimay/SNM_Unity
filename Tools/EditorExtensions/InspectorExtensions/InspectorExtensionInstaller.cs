@@ -11,39 +11,6 @@ using System.Collections;
 
 namespace InspectorExtensions
 {
-    public class UnityInspectorWindowHelper
-    {
-        private readonly EditorWindow inspectorWindow;
-        private readonly Type inspectorType;
-        private readonly FieldInfo fieldInfo_InspectorMode;
-        private readonly MethodInfo methodInfo_Repaint;
-
-        public UnityInspectorWindowHelper(EditorWindow inspectorWindow)
-        {
-            this.inspectorWindow = inspectorWindow;
-            inspectorType = inspectorWindow.GetType();
-            if (inspectorType.FullName != "UnityEditor.InspectorWindow")
-            {
-                Debug.LogError("This is not an inspector window");
-                return;
-            }
-
-            fieldInfo_InspectorMode = inspectorType.GetField("m_InspectorMode", BindingFlags.NonPublic | BindingFlags.Instance);
-            methodInfo_Repaint = inspectorType.GetMethod("Repaint", BindingFlags.Public | BindingFlags.Instance);
-        }
-
-        public InspectorMode GetInspectorMode()
-        {
-            return (InspectorMode)fieldInfo_InspectorMode.GetValue(inspectorWindow);
-        }
-
-        public void SetInspectorMode(InspectorMode mode)
-        {
-            fieldInfo_InspectorMode.SetValue(inspectorWindow, mode);
-            methodInfo_Repaint?.Invoke(inspectorWindow, null);
-        }
-    }
-
     public class InspectorExtensionInstaller : IExtensionElementProvider
     {
         private static InspectorExtensionInstaller _instance;
@@ -65,7 +32,7 @@ namespace InspectorExtensions
 
         private readonly List<IInspectorExtension> _inspectorExtensions = new();
         private readonly List<InspectorExtensionElementObject> _inspectorExtensionElements = new();
-        private InspectorExtensionHeader _header;
+        private InspectorExtensionHeaderVE _header;
         private EditorCoroutine _nextFrameCoroutine;
 
         private Action<IExtensionElementProvider> _onExtensionElementsChanged;
@@ -113,7 +80,6 @@ namespace InspectorExtensions
             EditorApplication.playModeStateChanged -= OnEditorPlaymodeChanged;
             EditorApplication.playModeStateChanged += OnEditorPlaymodeChanged;
 
-
             if (_nextFrameCoroutine != null)
             {
                 EditorCoroutineUtility.StopCoroutine(_nextFrameCoroutine);
@@ -122,6 +88,7 @@ namespace InspectorExtensions
 
             _inspectorWindow = null;
         }
+
 
         public void Teardown()
         {
@@ -155,16 +122,21 @@ namespace InspectorExtensions
             TryModify();
         }
 
-        public void TryModify()
+        public void Refresh()
+        {
+            TryModify();
+        }
+
+        private void TryModify()
         {
             if (InspectorWindow != null)
             {
                 InsertHeader(InspectorWindow.rootVisualElement);
-                InsertInspectorExtensions(InspectorWindow.rootVisualElement);
+                InsertInspectorExtensions();
             }
         }
 
-        private void InsertInspectorExtensions(VisualElement rootVisualElement)
+        private void InsertInspectorExtensions()
         {
             foreach (var e in _inspectorExtensions)
             {
@@ -178,7 +150,7 @@ namespace InspectorExtensions
 
             _inspectorExtensionElements.Clear();
 
-            _inspectorExtensionElements.AddRange(CreateExtensionsForAllInspectors(rootVisualElement, _inspectorExtensions));
+            _inspectorExtensionElements.AddRange(CreateExtensionsForAllInspectors(_inspectorExtensions));
 
             foreach (var e in _inspectorExtensionElements)
             {
@@ -190,9 +162,9 @@ namespace InspectorExtensions
 
         private void InsertHeader(VisualElement rootVisualElement)
         {
-            _header = new InspectorExtensionHeader(this);
+            _header = new InspectorExtensionHeaderVE(this);
             var mainContainer = rootVisualElement.Query<VisualElement>(null, "unity-inspector-main-container").First();
-            var found = mainContainer.Query<InspectorExtensionHeader>();
+            var found = mainContainer.Query<InspectorExtensionHeaderVE>();
             if (found != null && mainContainer.Contains(found))
             {
                 mainContainer.Remove(found);
@@ -200,11 +172,19 @@ namespace InspectorExtensions
             mainContainer.Insert(0, _header);
         }
 
-        public IEnumerable<InspectorExtensionElementObject> CreateExtensionsForAllInspectors(VisualElement rootVisualElement, IEnumerable<IInspectorExtension> inspectorExts)
+        public VisualElement GetEditorContainerVE()
+        {
+            var rootVisualElement = InspectorWindow.rootVisualElement;
+            var veContainer = rootVisualElement.Query<VisualElement>(null, "unity-inspector-editors-list").First();
+            return veContainer;
+        }
+
+        public IEnumerable<InspectorExtensionElementObject> CreateExtensionsForAllInspectors(IEnumerable<IInspectorExtension> inspectorExts)
         {
             const BindingFlags BindingFlags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
 
-            var veContainer = rootVisualElement.Query<VisualElement>(null, "unity-inspector-editors-list").First();
+            var veContainer = GetEditorContainerVE();
+
             if (veContainer != null)
             {
                 var editorElements = veContainer.Children().Where(ve => ve.GetType().FullName == "UnityEditor.UIElements.EditorElement");
