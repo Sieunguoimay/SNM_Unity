@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -11,6 +12,7 @@ namespace InspectorExtensions
     public class ScriptableObjectInspectorExt : IInspectorExtension
     {
         public static UnityEngine.Object CopiedObject;
+        private static UnityEngine.Object[] _copiedObjects;
 
         ExtensionType IInspectorExtension.ExtensionType => ExtensionType.Object;
         ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Bottom;
@@ -80,17 +82,20 @@ namespace InspectorExtensions
             private bool _foldoutState = false;
             private readonly Button _button;
             private readonly UnityEngine.Object _target;
-            private static UnityEngine.Object[] _copiedObjects;
+            private readonly int allSubAssetsCount;
 
             public Toolbar(UnityEngine.Object target)
             {
-                if (AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(target)).Length == 1) return;
-
                 _target = target;
+
+                allSubAssetsCount = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(_target))
+                    .Where(a => !AssetDatabase.IsMainAsset(a))
+                    .ToArray().Length;
+
+                if (allSubAssetsCount == 0) return;
+
                 style.display = DisplayStyle.Flex;
                 style.flexDirection = FlexDirection.RowReverse;
-
-                var allAssets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(_target)).Length > 1;
 
                 var moreButton = new Button { text = "..." };
                 moreButton.style.width = 20;
@@ -98,11 +103,14 @@ namespace InspectorExtensions
                 moreButton.RegisterCallback<ClickEvent>(OnMoreButtonClicked);
                 Add(moreButton);
 
-                _button = new Button() { text = "Reveal All" };
-                _button.style.width = 70;
-                _button.focusable = false;
-                _button.RegisterCallback<ClickEvent>(OnButtonClick);
-                Add(_button);
+                if (allSubAssetsCount >= 1)
+                {
+                    _button = new Button() { text = "Reveal All" };
+                    _button.style.width = 70;
+                    _button.focusable = false;
+                    _button.RegisterCallback<ClickEvent>(OnButtonClick);
+                    Add(_button);
+                }
 
                 SetFouldoutState(false);
             }
@@ -110,10 +118,26 @@ namespace InspectorExtensions
             private void OnMoreButtonClicked(ClickEvent evt)
             {
                 var menu = new GenericMenu();
-                menu.AddItem(new GUIContent("Copy All"), false, () =>
+                if (allSubAssetsCount >= 1)
                 {
-                    _copiedObjects = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(_target)).Where(a => !AssetDatabase.IsMainAsset(a)).ToArray();
-                });
+                    menu.AddItem(new GUIContent("Copy All"), false, () =>
+                    {
+                        _copiedObjects = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(_target)).Where(a => !AssetDatabase.IsMainAsset(a)).ToArray();
+                    });
+                }
+
+                if (CopiedObject != null)
+                {
+                    menu.AddItem(new GUIContent("Paste Object as New"), false, () =>
+                    {
+                        AssetDatabase.AddObjectToAsset(UnityEngine.Object.Instantiate(CopiedObject), AssetDatabase.GetAssetPath(_target));
+                        AssetDatabase.SaveAssets();
+                        AssetDatabase.Refresh();
+
+                        InspectorExtensionInstaller.Instance.Refresh();
+                    });
+                }
+
                 if (_copiedObjects != null)
                 {
                     menu.AddItem(new GUIContent("Paste All Objects"), false, () =>
@@ -154,28 +178,51 @@ namespace InspectorExtensions
 
         private class SubSOInspectorElement : VisualElement
         {
-            private readonly UnityEngine.Object _asset;
-            private readonly IMGUIContainer _imguiContainer;
-            private readonly ObjectEditorHeader _header;
-            private readonly VisualElement _body;
+            private readonly UnityEngine.Object asset;
+            private readonly Editor editor;
+            private readonly IMGUIContainer imguiContainer;
+            private readonly ObjectEditorHeader header;
+            private readonly VisualElement body;
+            private readonly PropertyInfo inspectorMode;
+            private readonly UnityInspectorWindowHelper inspectorWindow;
 
             public SubSOInspectorElement(UnityEngine.Object asset)
             {
-                _asset = asset;
+                this.asset = asset;
                 if (asset == null) return;
-                var editor = Editor.CreateEditor(asset);
-                _imguiContainer = new IMGUIContainer()
+                editor = Editor.CreateEditor(asset);
+                imguiContainer = new IMGUIContainer()
                 {
                     onGUIHandler = editor.OnInspectorGUI
                 };
-                _body = new VisualElement();
-                Add(_header = new ObjectEditorHeader(asset, OnFoldoutChanged, foldoutStates.ContainsKey(asset) ? foldoutStates[asset] : false));
-                Add(_body);
+                body = new VisualElement();
 
-                _body.Add(new EditorSecondHeaderVE(_asset));
-                _body.Add(ModifyEditor(_imguiContainer));
+                inspectorMode = typeof(SerializedObject).GetProperty("inspectorMode", BindingFlags.NonPublic | BindingFlags.Instance);
 
-                // Add(ModifyEditor(_imguiContainer));
+                Add(header = new ObjectEditorHeader(asset, OnFoldoutChanged, foldoutStates.ContainsKey(asset) ? foldoutStates[asset] : false));
+                Add(body);
+                EditorSecondHeaderVE header2 = null;
+                body.Add(header2 = new EditorSecondHeaderVE(this.asset));
+                body.Add(ModifyEditor(imguiContainer));
+
+                inspectorWindow = new UnityInspectorWindowHelper(InspectorExtensionInstaller.Instance.InspectorWindow);
+
+                ToggleButton2 inspectorModeToggleButton = null;
+                header2.ButtonsContainer.Add(inspectorModeToggleButton = new ToggleButton2(
+                    "Normal", "Debug", Color.cyan * .8f,
+                    () => (InspectorMode)inspectorMode.GetValue(editor.serializedObject) == InspectorMode.Debug,
+                    OnInspectorModeToggleButtonClicked,
+                    "InspectorExtensions_ToggleButton_InspectorMode"));
+
+                inspectorModeToggleButton.style.marginRight = 3;
+                inspectorModeToggleButton.style.paddingLeft = 3;
+                inspectorModeToggleButton.style.paddingRight = 3;
+            }
+
+            private void OnInspectorModeToggleButtonClicked()
+            {
+                var newValue = (InspectorMode)inspectorMode.GetValue(editor.serializedObject) == InspectorMode.Normal ? InspectorMode.Debug : InspectorMode.Normal;
+                inspectorMode.SetValue(editor.serializedObject, newValue, null);
             }
 
             private void OnFoldoutChanged(bool open)
@@ -185,16 +232,16 @@ namespace InspectorExtensions
 
             public void SetFoldout(bool foldout, bool modifyHeaderFoldout = true)
             {
-                if (_body != null)
+                if (body != null)
                 {
-                    _body.style.display = foldout ? DisplayStyle.Flex : DisplayStyle.None;
+                    body.style.display = foldout ? DisplayStyle.Flex : DisplayStyle.None;
                 }
                 if (modifyHeaderFoldout)
                 {
-                    _header.Foldout.value = foldout;
+                    header.Foldout.value = foldout;
                 }
 
-                foldoutStates[_asset] = foldout;
+                foldoutStates[asset] = foldout;
             }
 
             private VisualElement ModifyEditor(VisualElement visualElement)

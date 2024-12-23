@@ -13,40 +13,43 @@ namespace InspectorExtensions
     {
         private readonly Object target;
 
+        private readonly VisualElement buttonsContainer;
+        public VisualElement ButtonsContainer => buttonsContainer;
+
         public EditorSecondHeaderVE(Object target)
         {
             this.target = target;
 
             var foldout = new ReferencesFoldout(target);
             var toggle = foldout.Q<Toggle>();
-            var buttons = new VisualElement();
-            buttons.style.flexDirection = FlexDirection.RowReverse;
-            buttons.style.flexGrow = 1;
+            buttonsContainer = new VisualElement();
+            buttonsContainer.style.flexDirection = FlexDirection.RowReverse;
+            buttonsContainer.style.flexGrow = 1;
             toggle.style.marginBottom = 0;
             toggle.style.marginTop = 0;
             toggle.style.marginRight = 0;
-            toggle.Add(buttons);
+            toggle.Add(buttonsContainer);
             Add(foldout);
 
             style.backgroundColor = new Color(0f, 0f, 0f, .2f);
             style.marginBottom = 4;
 
-            if (target is MonoBehaviour || target is ScriptableObject) buttons.Add(CreateEditScriptButton());
+            if (target is MonoBehaviour || target is ScriptableObject) buttonsContainer.Add(CreateEditScriptButton());
 
-            buttons.Add(CreateFindReferencesInSceneButton());
+            buttonsContainer.Add(CreateFindReferencesInSceneButton());
 
             if (target is not Component)
             {
                 if (target is not GameObject go || !go.scene.isLoaded)
                 {
-                    buttons.Add(CreateFindReferencesInProjectButton());
+                    buttonsContainer.Add(CreateFindReferencesInProjectButton());
                 }
 
                 if (target is ScriptableObject)
                 {
                     CreateMenuItemObjects();
-                    buttons.Add(_copyComponentMenuItem);
-                    buttons.Add(_pasteComponentValuesMenuItem);
+                    buttonsContainer.Add(_copyComponentMenuItem);
+                    buttonsContainer.Add(_pasteComponentValuesMenuItem);
                 }
             }
             else
@@ -57,8 +60,8 @@ namespace InspectorExtensions
                 }
 
                 CreateMenuItemObjects();
-                buttons.Add(_copyComponentMenuItem);
-                buttons.Add(_pasteComponentValuesMenuItem);
+                buttonsContainer.Add(_copyComponentMenuItem);
+                buttonsContainer.Add(_pasteComponentValuesMenuItem);
             }
 
             InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
