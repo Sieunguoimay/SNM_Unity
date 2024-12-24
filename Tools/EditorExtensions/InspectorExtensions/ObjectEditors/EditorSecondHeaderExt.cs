@@ -30,9 +30,11 @@ namespace InspectorExtensions
         {
             if (extensionElement.Target is Object target)
             {
+                IInspectorModeHelper inspectorModeHelper = null;
+                
                 if (target is MonoBehaviour)
                 {
-                    IInspectorModeHelper inspectorModeHelper = new InspectorModeHelper_DebugEditor(extensionElement);
+                    inspectorModeHelper = new InspectorModeHelper_DebugEditor(extensionElement);
 
                     if (!objectStates.ContainsKey(target))
                     {
@@ -44,12 +46,9 @@ namespace InspectorExtensions
 
                     inspectorModeHelper.SetDebugMode(objectStates[target].isDebugMode ? InspectorMode.Debug : InspectorMode.Normal);
                     inspectorModeHelper.OnModeChanged += OnDebugModeChanged;
-                    extensionElement.Insert(0, new EditorSecondHeaderVE(target, inspectorModeHelper));
                 }
-                else
-                {
-                    extensionElement.Insert(0, new EditorSecondHeaderVE(target));
-                }
+
+                extensionElement.Insert(0, new EditorSecondHeaderVE(target, inspectorModeHelper));
                 extensionElement.RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
             }
         }

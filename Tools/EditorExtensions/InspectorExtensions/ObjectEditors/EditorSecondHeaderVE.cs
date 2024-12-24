@@ -126,7 +126,14 @@ namespace InspectorExtensions
         {
             if (_editor != null)
             {
-                _editor.OnInspectorGUI();
+                try
+                {
+                    _editor.OnInspectorGUI();
+                }
+                catch (System.Exception)
+                {
+
+                }
             }
         }
     }
