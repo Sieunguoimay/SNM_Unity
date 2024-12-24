@@ -124,13 +124,23 @@ namespace InspectorExtensions
 
         public void Refresh()
         {
-            TryModify();
+            TryModify(false);
         }
 
-        private void TryModify()
+        public void TryModify() => TryModify(true);
+        private void TryModify(bool newSession)
         {
             if (InspectorWindow != null)
             {
+                if (newSession)
+                {
+
+                    foreach (var e in _inspectorExtensions)
+                    {
+                        e.CleanUp();
+                    }
+
+                }
                 InsertHeader(InspectorWindow.rootVisualElement);
                 InsertInspectorExtensions();
             }
@@ -138,11 +148,6 @@ namespace InspectorExtensions
 
         private void InsertInspectorExtensions()
         {
-            foreach (var e in _inspectorExtensions)
-            {
-                e.CleanUp();
-            }
-
             foreach (var e in _inspectorExtensionElements)
             {
                 e.parent?.Remove(e.element);
@@ -195,7 +200,7 @@ namespace InspectorExtensions
 
                     var targetEditor = editorElement.GetType().GetProperty("editor", BindingFlags).GetValue(editorElement) as Editor;
 
-                    var extensionElements = CreateInspectorExtensionElementsForObject(targetEditor.target, inspectorExts)
+                    var extensionElements = CreateInspectorExtensionElementsForObject(targetEditor, inspectorExts)
                         .OrderBy(e => e.Extension.Priority);
 
                     foreach (var element in extensionElements)
@@ -212,8 +217,9 @@ namespace InspectorExtensions
             }
         }
 
-        private static IEnumerable<InspectorExtensionElement> CreateInspectorExtensionElementsForObject(UnityEngine.Object target, IEnumerable<IInspectorExtension> inspectorExts)
+        private static IEnumerable<InspectorExtensionElement> CreateInspectorExtensionElementsForObject(UnityEditor.Editor editor, IEnumerable<IInspectorExtension> inspectorExts)
         {
+            var target = editor.target;
             var memberInfos = IterateMembers(target.GetType());
 
             var attributeExts = inspectorExts.Where(e => e.ExtensionType == ExtensionType.Attribute).ToArray();
@@ -226,7 +232,7 @@ namespace InspectorExtensions
 
             foreach (var mae in maes)
             {
-                var element = new InspectorExtensionElement_MemberInfo(target, mae.memberInfo, mae.attribute, mae.extension)
+                var element = new InspectorExtensionElement_MemberInfo(editor, mae.memberInfo, mae.attribute, mae.extension)
                 { name = mae.memberInfo.Name };
                 mae.extension.ModifyExtensionElement(element);
 
@@ -239,7 +245,7 @@ namespace InspectorExtensions
 
             foreach (var ext in exts)
             {
-                var element2 = new InspectorExtensionElement(target, null, ext) { name = target.GetType().Name };
+                var element2 = new InspectorExtensionElement(editor, null, ext) { name = editor.target.GetType().Name };
                 ext.ModifyExtensionElement(element2);
                 yield return element2;
             }

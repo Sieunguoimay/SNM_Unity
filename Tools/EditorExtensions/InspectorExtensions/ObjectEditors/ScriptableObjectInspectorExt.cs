@@ -19,10 +19,17 @@ namespace InspectorExtensions
         int IInspectorExtension.Priority => 0;
         bool IInspectorExtension.IsSupportedFor(object target) => target is ScriptableObject;
 
-        private static Dictionary<UnityEngine.Object, bool> foldoutStates = new();
+        private readonly Dictionary<UnityEngine.Object, ObjectData> objectStates = new();
+
+        public class ObjectData
+        {
+            public bool foldout;
+            public bool debug;
+        }
 
         void IInspectorExtension.CleanUp()
         {
+            objectStates.Clear();
         }
 
         void IInspectorExtension.ModifyExtensionElement(InspectorExtensionElement extensionElement)
@@ -37,7 +44,11 @@ namespace InspectorExtensions
                 var allAssets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(so)).Where(o => o != so).OrderBy(o => o?.name);
                 foreach (var asset in allAssets)
                 {
-                    var e = new SubSOInspectorElement(asset);
+                    if (!objectStates.ContainsKey(asset))
+                    {
+                        objectStates.Add(asset, new ObjectData());
+                    }
+                    var e = new SubSOInspectorElement(asset, objectStates);
                     extensionElement.Add(e);
                     toolbar.AddTarget(e);
                 }
@@ -179,16 +190,16 @@ namespace InspectorExtensions
         private class SubSOInspectorElement : VisualElement
         {
             private readonly UnityEngine.Object asset;
+            private readonly Dictionary<UnityEngine.Object, ObjectData> objectStates;
             private readonly Editor editor;
             private readonly IMGUIContainer imguiContainer;
             private readonly ObjectEditorHeader header;
             private readonly VisualElement body;
-            private readonly PropertyInfo inspectorMode;
-            private readonly UnityInspectorWindowHelper inspectorWindow;
 
-            public SubSOInspectorElement(UnityEngine.Object asset)
+            public SubSOInspectorElement(UnityEngine.Object asset, Dictionary<UnityEngine.Object, ObjectData> objectStates)
             {
                 this.asset = asset;
+                this.objectStates = objectStates;
                 if (asset == null) return;
                 editor = Editor.CreateEditor(asset);
                 imguiContainer = new IMGUIContainer()
@@ -197,32 +208,19 @@ namespace InspectorExtensions
                 };
                 body = new VisualElement();
 
-                inspectorMode = typeof(SerializedObject).GetProperty("inspectorMode", BindingFlags.NonPublic | BindingFlags.Instance);
 
-                Add(header = new ObjectEditorHeader(asset, OnFoldoutChanged, foldoutStates.ContainsKey(asset) ? foldoutStates[asset] : false));
+                Add(header = new ObjectEditorHeader(asset, OnFoldoutChanged, objectStates.ContainsKey(asset) ? objectStates[asset].foldout : false));
                 Add(body);
-                EditorSecondHeaderVE header2 = null;
-                body.Add(header2 = new EditorSecondHeaderVE(this.asset));
+                var inspectorModeHelper = new InspectorModeHelper(editor.serializedObject);
+                inspectorModeHelper.SetDebugMode(objectStates.ContainsKey(asset) && objectStates[asset].debug ? InspectorMode.Debug : InspectorMode.Normal);
+                inspectorModeHelper.OnModeChanged += OnInspectorModeChanged;
+                body.Add(new EditorSecondHeaderVE(asset, inspectorModeHelper));
                 body.Add(ModifyEditor(imguiContainer));
-
-                inspectorWindow = new UnityInspectorWindowHelper(InspectorExtensionInstaller.Instance.InspectorWindow);
-
-                ToggleButton2 inspectorModeToggleButton = null;
-                header2.ButtonsContainer.Add(inspectorModeToggleButton = new ToggleButton2(
-                    "Normal", "Debug", Color.cyan * .8f,
-                    () => (InspectorMode)inspectorMode.GetValue(editor.serializedObject) == InspectorMode.Debug,
-                    OnInspectorModeToggleButtonClicked,
-                    "InspectorExtensions_ToggleButton_InspectorMode"));
-
-                inspectorModeToggleButton.style.marginRight = 3;
-                inspectorModeToggleButton.style.paddingLeft = 3;
-                inspectorModeToggleButton.style.paddingRight = 3;
             }
 
-            private void OnInspectorModeToggleButtonClicked()
+            private void OnInspectorModeChanged(InspectorModeHelper helper)
             {
-                var newValue = (InspectorMode)inspectorMode.GetValue(editor.serializedObject) == InspectorMode.Normal ? InspectorMode.Debug : InspectorMode.Normal;
-                inspectorMode.SetValue(editor.serializedObject, newValue, null);
+                objectStates[asset].debug = helper.IsDebugMode();
             }
 
             private void OnFoldoutChanged(bool open)
@@ -241,7 +239,7 @@ namespace InspectorExtensions
                     header.Foldout.value = foldout;
                 }
 
-                foldoutStates[asset] = foldout;
+                objectStates[asset].foldout = foldout;
             }
 
             private VisualElement ModifyEditor(VisualElement visualElement)

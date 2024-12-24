@@ -1,6 +1,7 @@
 ﻿#if UNITY_EDITOR
 using System;
 using System.Reflection;
+using UnityEditor;
 using UnityEngine.UIElements;
 
 namespace InspectorExtensions
@@ -8,12 +9,20 @@ namespace InspectorExtensions
     public class InspectorExtensionElement : VisualElement
     {
         private readonly object target;
+        private readonly Editor editor;
         private readonly System.Attribute attribute;
         private readonly IInspectorExtension extension;
 
         public object Target => target;
+        public Editor Editor => editor;
         public System.Attribute Attribute => attribute;
         public IInspectorExtension Extension => extension;
+
+        public InspectorExtensionElement(Editor editor, Attribute attribute, IInspectorExtension extension)
+            : this(editor.target, attribute, extension)
+        {
+            this.editor = editor;
+        }
 
         public InspectorExtensionElement(object target, Attribute attribute, IInspectorExtension extension)
         {
@@ -27,6 +36,11 @@ namespace InspectorExtensions
     {
         private readonly MemberInfo memberInfo;
         public MemberInfo MemberInfo => memberInfo;
+
+        public InspectorExtensionElement_MemberInfo(Editor editor, MemberInfo memberInfo, Attribute attribute, IInspectorExtension extension)
+            : this(editor.target, memberInfo, attribute, extension)
+        {
+        }
 
         public InspectorExtensionElement_MemberInfo(object target, MemberInfo memberInfo, Attribute attribute, IInspectorExtension extension)
             : base(target, attribute, extension)

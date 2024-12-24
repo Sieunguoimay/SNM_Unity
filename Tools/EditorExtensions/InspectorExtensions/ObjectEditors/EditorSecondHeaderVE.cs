@@ -9,12 +9,57 @@ using UnityEngine.UIElements;
 
 namespace InspectorExtensions
 {
+    public class InspectorModeHelper
+    {
+        private readonly PropertyInfo inspectorMode;
+        private readonly SerializedObject serializedObject;
+        public event System.Action<InspectorModeHelper> OnModeChanged;
+
+        public InspectorModeHelper(SerializedObject serializedObject)
+        {
+            this.serializedObject = serializedObject;
+
+            inspectorMode = typeof(SerializedObject)
+                .GetProperty("inspectorMode", BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+
+        public void SetDebugMode(InspectorMode mode)
+        {
+            inspectorMode.SetValue(serializedObject, mode);
+            OnModeChanged?.Invoke(this);
+        }
+        public bool IsDebugMode()
+        {
+            return ((InspectorMode)inspectorMode.GetValue(serializedObject)) == InspectorMode.Debug;
+        }
+    }
     public class EditorSecondHeaderVE : VisualElement
     {
         private readonly Object target;
-
         private readonly VisualElement buttonsContainer;
-        public VisualElement ButtonsContainer => buttonsContainer;
+        private readonly InspectorModeHelper inspectorModeHelper;
+
+        public EditorSecondHeaderVE(Object target, InspectorModeHelper inspectorModeHelper)
+            : this(target)
+        {
+            this.inspectorModeHelper = inspectorModeHelper;
+
+            ToggleButton2 inspectorModeToggleButton = null;
+            buttonsContainer.Add(inspectorModeToggleButton = new ToggleButton2(
+                "Normal", "Debug", Color.cyan * .8f,
+                inspectorModeHelper.IsDebugMode,
+                OnInspectorModeToggleButtonClicked,
+                "InspectorExtensions_ToggleButton_InspectorMode"));
+
+            inspectorModeToggleButton.style.marginRight = 3;
+            inspectorModeToggleButton.style.paddingLeft = 3;
+            inspectorModeToggleButton.style.paddingRight = 3;
+        }
+
+        private void OnInspectorModeToggleButtonClicked()
+        {
+            inspectorModeHelper.SetDebugMode(inspectorModeHelper.IsDebugMode() ? InspectorMode.Normal : InspectorMode.Debug);
+        }
 
         public EditorSecondHeaderVE(Object target)
         {
