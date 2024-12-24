@@ -150,7 +150,10 @@ namespace InspectorExtensions
         {
             foreach (var e in _inspectorExtensionElements)
             {
-                e.parent?.Remove(e.element);
+                if (e.parent != null && e.parent.Contains(e.element))
+                {
+                    e.parent.Remove(e.element);
+                }
             }
 
             _inspectorExtensionElements.Clear();
@@ -200,7 +203,7 @@ namespace InspectorExtensions
 
                     var targetEditor = editorElement.GetType().GetProperty("editor", BindingFlags).GetValue(editorElement) as Editor;
 
-                    var extensionElements = CreateInspectorExtensionElementsForObject(targetEditor, inspectorExts)
+                    var extensionElements = CreateInspectorExtensionElementsForObject(targetEditor, editorElement, inspectorExts)
                         .OrderBy(e => e.Extension.Priority);
 
                     foreach (var element in extensionElements)
@@ -217,7 +220,7 @@ namespace InspectorExtensions
             }
         }
 
-        private static IEnumerable<InspectorExtensionElement> CreateInspectorExtensionElementsForObject(UnityEditor.Editor editor, IEnumerable<IInspectorExtension> inspectorExts)
+        private static IEnumerable<InspectorExtensionElement> CreateInspectorExtensionElementsForObject(UnityEditor.Editor editor, VisualElement editorVE, IEnumerable<IInspectorExtension> inspectorExts)
         {
             var target = editor.target;
             var memberInfos = IterateMembers(target.GetType());
@@ -245,7 +248,7 @@ namespace InspectorExtensions
 
             foreach (var ext in exts)
             {
-                var element2 = new InspectorExtensionElement(editor, null, ext) { name = editor.target.GetType().Name };
+                var element2 = new InspectorExtensionElement(editor, editorVE, null, ext) { name = editor.target.GetType().Name };
                 ext.ModifyExtensionElement(element2);
                 yield return element2;
             }

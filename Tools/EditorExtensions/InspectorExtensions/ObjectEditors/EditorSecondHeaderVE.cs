@@ -5,15 +5,145 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 namespace InspectorExtensions
 {
-    public class InspectorModeHelper
+    public interface IInspectorModeHelper : System.IDisposable
+    {
+        Object Target { get; }
+        event System.Action<IInspectorModeHelper> OnModeChanged;
+        void SetDebugMode(InspectorMode mode);
+        bool IsDebugMode();
+    }
+
+    public class InspectorModeHelper_DebugEditor : IInspectorModeHelper
+    {
+        private readonly InspectorExtensionElement extensionVE;
+        private IMGUIContainer _editorVE;
+        private InspectorElement _inspectorElement;
+        private readonly int index;
+        private Editor _editor;
+        private InspectorMode _mode;
+        Object IInspectorModeHelper.Target => extensionVE.Target as Object;
+        private System.Action<IInspectorModeHelper> _onModeChanged;
+
+        event System.Action<IInspectorModeHelper> IInspectorModeHelper.OnModeChanged
+        {
+            add => _onModeChanged += value;
+            remove => _onModeChanged -= value;
+        }
+
+        public InspectorModeHelper_DebugEditor(InspectorExtensionElement extensionVE)
+        {
+            this.extensionVE = extensionVE;
+            _inspectorElement = extensionVE.EditorVE.Q<InspectorElement>();
+            index = extensionVE.EditorVE.IndexOf(_inspectorElement);
+        }
+
+        void System.IDisposable.Dispose()
+        {
+            Cleanup();
+        }
+
+        private void Cleanup()
+        {
+            if (_inspectorElement != null)
+            {
+                AddToEditorVEAtInitialIndex(_inspectorElement);
+            }
+            if (_editor != null)
+            {
+                _editor = null;
+                Object.DestroyImmediate(_editor);
+            }
+            if (_editorVE != null)
+            {
+                _editorVE.RemoveFromHierarchy();
+                _editorVE = null;
+            }
+        }
+
+        bool IInspectorModeHelper.IsDebugMode()
+        {
+            return _mode == InspectorMode.Debug;
+        }
+
+        void IInspectorModeHelper.SetDebugMode(InspectorMode mode)
+        {
+            if (extensionVE != null && extensionVE.EditorVE != null)
+            {
+                if (mode == InspectorMode.Debug)
+                {
+                    _editor = Editor.CreateEditor(extensionVE.Target as Object);
+
+                    using IInspectorModeHelper helper = new InspectorModeHelper(_editor.serializedObject);
+                    helper.SetDebugMode(InspectorMode.Debug);
+
+                    _editorVE = new IMGUIContainer(OnIMGUI);
+                    AddToEditorVEAtInitialIndex(_editorVE);
+
+                    _editorVE.style.marginLeft = 20;
+                    _editorVE.style.marginRight = 5;
+                    _inspectorElement?.RemoveFromHierarchy();
+                }
+                else
+                {
+                    Cleanup();
+                }
+            }
+
+            _mode = mode;
+            _onModeChanged?.Invoke(this);
+        }
+
+        private void AddToEditorVEAtInitialIndex(VisualElement ve)
+        {
+            if (extensionVE == null || extensionVE.EditorVE == null || ve == null
+                || extensionVE.parent == null || extensionVE.EditorVE.parent == null)
+            {
+                return;
+            }
+            try
+            {
+                if (index >= 0 && index < extensionVE.EditorVE.childCount)
+                {
+                    extensionVE.EditorVE.Insert(index, ve);
+                }
+                else
+                {
+                    extensionVE.EditorVE.Add(ve);
+                }
+            }
+            catch (System.Exception)
+            {
+                Debug.Log("Error adding to EditorVE");
+            }
+        }
+
+        private void OnIMGUI()
+        {
+            if (_editor != null)
+            {
+                _editor.OnInspectorGUI();
+            }
+        }
+    }
+
+    public class InspectorModeHelper : IInspectorModeHelper
     {
         private readonly PropertyInfo inspectorMode;
         private readonly SerializedObject serializedObject;
-        public event System.Action<InspectorModeHelper> OnModeChanged;
+
+        Object IInspectorModeHelper.Target => serializedObject.targetObject;
+
+        private System.Action<IInspectorModeHelper> _onModeChanged;
+        event System.Action<IInspectorModeHelper> IInspectorModeHelper.OnModeChanged
+        {
+            add => _onModeChanged += value;
+            remove => _onModeChanged -= value;
+        }
 
         public InspectorModeHelper(SerializedObject serializedObject)
         {
@@ -23,48 +153,33 @@ namespace InspectorExtensions
                 .GetProperty("inspectorMode", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
-        public void SetDebugMode(InspectorMode mode)
+        void IInspectorModeHelper.SetDebugMode(InspectorMode mode)
         {
             inspectorMode.SetValue(serializedObject, mode);
-            OnModeChanged?.Invoke(this);
+            _onModeChanged?.Invoke(this);
         }
-        public bool IsDebugMode()
+
+        bool IInspectorModeHelper.IsDebugMode()
         {
             return ((InspectorMode)inspectorMode.GetValue(serializedObject)) == InspectorMode.Debug;
         }
+
+        void System.IDisposable.Dispose()
+        {
+        }
     }
+
+
     public class EditorSecondHeaderVE : VisualElement
     {
         private readonly Object target;
         private readonly VisualElement buttonsContainer;
-        private readonly InspectorModeHelper inspectorModeHelper;
+        private readonly IInspectorModeHelper inspectorModeHelper;
 
-        public EditorSecondHeaderVE(Object target, InspectorModeHelper inspectorModeHelper)
-            : this(target)
-        {
-            this.inspectorModeHelper = inspectorModeHelper;
-
-            ToggleButton2 inspectorModeToggleButton = null;
-            buttonsContainer.Add(inspectorModeToggleButton = new ToggleButton2(
-                "Normal", "Debug", Color.cyan * .8f,
-                inspectorModeHelper.IsDebugMode,
-                OnInspectorModeToggleButtonClicked,
-                "InspectorExtensions_ToggleButton_InspectorMode"));
-
-            inspectorModeToggleButton.style.marginRight = 3;
-            inspectorModeToggleButton.style.paddingLeft = 3;
-            inspectorModeToggleButton.style.paddingRight = 3;
-        }
-
-        private void OnInspectorModeToggleButtonClicked()
-        {
-            inspectorModeHelper.SetDebugMode(inspectorModeHelper.IsDebugMode() ? InspectorMode.Normal : InspectorMode.Debug);
-        }
-
-        public EditorSecondHeaderVE(Object target)
+        public EditorSecondHeaderVE(Object target, IInspectorModeHelper inspectorModeHelper = null)
         {
             this.target = target;
-
+            this.inspectorModeHelper = inspectorModeHelper;
             var foldout = new ReferencesFoldout(target);
             var toggle = foldout.Q<Toggle>();
             buttonsContainer = new VisualElement();
@@ -79,31 +194,26 @@ namespace InspectorExtensions
             style.backgroundColor = new Color(0f, 0f, 0f, .2f);
             style.marginBottom = 4;
 
-            if (target is MonoBehaviour || target is ScriptableObject) buttonsContainer.Add(CreateEditScriptButton());
-
+            if (target is MonoBehaviour || target is ScriptableObject)
+                buttonsContainer.Add(CreateEditScriptButton());
             buttonsContainer.Add(CreateFindReferencesInSceneButton());
+            if (target is not Component && (target is not GameObject go || !go.scene.isLoaded))
+                buttonsContainer.Add(CreateFindReferencesInProjectButton());
 
-            if (target is not Component)
+            if (inspectorModeHelper != null)
             {
-                if (target is not GameObject go || !go.scene.isLoaded)
-                {
-                    buttonsContainer.Add(CreateFindReferencesInProjectButton());
-                }
-
-                if (target is ScriptableObject)
-                {
-                    CreateMenuItemObjects();
-                    buttonsContainer.Add(_copyComponentMenuItem);
-                    buttonsContainer.Add(_pasteComponentValuesMenuItem);
-                }
+                buttonsContainer.Add(CreateDebugButton());
             }
-            else
-            {
-                if (target is Transform)
-                {
-                    return;
-                }
 
+            if (target is ScriptableObject)
+            {
+                CreateMenuItemObjects();
+                buttonsContainer.Add(_copyComponentMenuItem);
+                buttonsContainer.Add(_pasteComponentValuesMenuItem);
+            }
+
+            if (target is Component && target is not Transform)
+            {
                 CreateMenuItemObjects();
                 buttonsContainer.Add(_copyComponentMenuItem);
                 buttonsContainer.Add(_pasteComponentValuesMenuItem);
@@ -112,11 +222,47 @@ namespace InspectorExtensions
             InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
 
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
+            // RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
+        }
+
+        public void TriggerOnAttachToPanel(VisualElement parent)
+        {
+            _parent = parent;
+            _parent.RegisterCallback<MouseEnterEvent>(OnMouseEnter);
+            _parent.RegisterCallback<MouseLeaveEvent>(OnMouseLeave);
         }
 
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
         {
             InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
+            if (_parent != null)
+            {
+                _parent.UnregisterCallback<MouseEnterEvent>(OnMouseEnter);
+                _parent.UnregisterCallback<MouseLeaveEvent>(OnMouseLeave);
+            }
+
+            if (inspectorModeHelper != null)
+            {
+                inspectorModeHelper.Dispose();
+            }
+        }
+
+        private void OnMouseEnter(MouseEnterEvent evt)
+        {
+            // style.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            // style.borderBottomWidth = 1;
+            // style.borderBottomColor = new Color(0f, 0f, 0f, .2f);
+        }
+
+        private void OnMouseLeave(MouseLeaveEvent evt)
+        {
+            // style.backgroundColor = new Color(0f, 0f, 0f, .2f);
+            // style.borderBottomWidth = 0;
+        }
+
+        private void OnInspectorModeToggleButtonClicked()
+        {
+            inspectorModeHelper.SetDebugMode(inspectorModeHelper.IsDebugMode() ? InspectorMode.Normal : InspectorMode.Debug);
         }
 
         private void OnRepaint(MouseEnterEvent evt)
@@ -129,6 +275,22 @@ namespace InspectorExtensions
             _copyComponentMenuItem?.Refresh();
             _pasteComponentValuesMenuItem?.Refresh();
             _pasteComponentAsNewMenuItem?.Refresh();
+        }
+
+        private VisualElement CreateDebugButton()
+        {
+            ToggleButton2 inspectorModeToggleButton = null;
+            inspectorModeToggleButton = new ToggleButton2(
+                "Normal", "Debug", Color.cyan * .8f,
+                inspectorModeHelper.IsDebugMode,
+                OnInspectorModeToggleButtonClicked,
+                "InspectorExtensions_ToggleButton_InspectorMode");
+
+            inspectorModeToggleButton.style.marginRight = 3;
+            inspectorModeToggleButton.style.marginBottom = 0;
+            inspectorModeToggleButton.style.paddingLeft = 3;
+            inspectorModeToggleButton.style.paddingRight = 3;
+            return inspectorModeToggleButton;
         }
 
         private VisualElement CreateEditScriptButton()
@@ -157,8 +319,13 @@ namespace InspectorExtensions
         {
             var button = new Button(OnFindReferencesInSceneClicked)
             {
-                text = "Find References in Scene"
+                tooltip = "Find References in Scene",
+                text = "Scene",
+                iconImage = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_Search Icon").image)
             };
+            var image = button.Q<Image>();
+            image.style.height = 17;
+            image.style.width = 17;
             button.style.marginTop = 0;
             button.style.marginBottom = 0;
             button.style.paddingLeft = 6;
@@ -174,10 +341,16 @@ namespace InspectorExtensions
 
         private VisualElement CreateFindReferencesInProjectButton()
         {
+            Background background = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_Search Icon").image);
             var button = new Button(OnFindReferencesInProjectClicked)
             {
-                text = "Find References in Project"
+                tooltip = "Find References in Project",
+                text = "Project",
+                iconImage = background
             };
+            var image = button.Q<Image>();
+            image.style.height = 17;
+            image.style.width = 17;
             button.style.marginTop = 0;
             button.style.marginBottom = 0;
             button.style.paddingLeft = 6;
@@ -223,6 +396,7 @@ namespace InspectorExtensions
         private MenuItemButton _copyComponentMenuItem;
         private MenuItemButton _pasteComponentValuesMenuItem;
         private MenuItemButton _pasteComponentAsNewMenuItem;
+        private VisualElement _parent;
 
         private void CreateMenuItemObjects()
         {

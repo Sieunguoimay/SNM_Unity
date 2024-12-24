@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace InspectorExtensions
 {
@@ -15,7 +16,7 @@ namespace InspectorExtensions
 
         private class ObjectData
         {
-            public InspectorModeHelper inspectorModeHelper;
+            public bool isDebugMode;
         }
 
         bool IInspectorExtension.IsSupportedFor(object target)
@@ -29,20 +30,46 @@ namespace InspectorExtensions
         {
             if (extensionElement.Target is Object target)
             {
-                if (!objectStates.ContainsKey(target))
+                if (target is MonoBehaviour)
                 {
-                    var inspectorModeHelper = new InspectorModeHelper(extensionElement.Editor.serializedObject);
-                    objectStates.Add(target, new ObjectData()
+                    IInspectorModeHelper inspectorModeHelper = new InspectorModeHelper_DebugEditor(extensionElement);
+
+                    if (!objectStates.ContainsKey(target))
                     {
-                        inspectorModeHelper = inspectorModeHelper,
-                    });
+                        objectStates.Add(target, new ObjectData()
+                        {
+                            isDebugMode = inspectorModeHelper.IsDebugMode(),
+                        });
+                    }
+
+                    inspectorModeHelper.SetDebugMode(objectStates[target].isDebugMode ? InspectorMode.Debug : InspectorMode.Normal);
+                    inspectorModeHelper.OnModeChanged += OnDebugModeChanged;
+                    extensionElement.Insert(0, new EditorSecondHeaderVE(target, inspectorModeHelper));
                 }
-                extensionElement.Add(new EditorSecondHeaderVE(target, objectStates[target].inspectorModeHelper));
+                else
+                {
+                    extensionElement.Insert(0, new EditorSecondHeaderVE(target));
+                }
+                extensionElement.RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
             }
+        }
+
+        private void OnAttachToPanel(AttachToPanelEvent evt)
+        {
+            if (evt.currentTarget is VisualElement ve)
+            {
+                ve.Q<EditorSecondHeaderVE>().TriggerOnAttachToPanel(ve.parent.parent);
+            }
+        }
+
+        private void OnDebugModeChanged(IInspectorModeHelper helper)
+        {
+            objectStates[helper.Target].isDebugMode = helper.IsDebugMode();
         }
 
         void IInspectorExtension.CleanUp()
         {
+            objectStates.Clear();
         }
     }
 }

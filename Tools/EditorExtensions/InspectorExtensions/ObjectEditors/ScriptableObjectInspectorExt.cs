@@ -212,13 +212,15 @@ namespace InspectorExtensions
                 Add(header = new ObjectEditorHeader(asset, OnFoldoutChanged, objectStates.ContainsKey(asset) ? objectStates[asset].foldout : false));
                 Add(body);
                 var inspectorModeHelper = new InspectorModeHelper(editor.serializedObject);
-                inspectorModeHelper.SetDebugMode(objectStates.ContainsKey(asset) && objectStates[asset].debug ? InspectorMode.Debug : InspectorMode.Normal);
-                inspectorModeHelper.OnModeChanged += OnInspectorModeChanged;
-                body.Add(new EditorSecondHeaderVE(asset, inspectorModeHelper));
+                ((IInspectorModeHelper)inspectorModeHelper).SetDebugMode(objectStates.ContainsKey(asset) && objectStates[asset].debug ? InspectorMode.Debug : InspectorMode.Normal);
+                ((IInspectorModeHelper)inspectorModeHelper).OnModeChanged += OnInspectorModeChanged;
+                EditorSecondHeaderVE headerVE;
+                body.Add(headerVE = new EditorSecondHeaderVE(asset, inspectorModeHelper));
                 body.Add(ModifyEditor(imguiContainer));
+                headerVE.TriggerOnAttachToPanel(this);
             }
 
-            private void OnInspectorModeChanged(InspectorModeHelper helper)
+            private void OnInspectorModeChanged(IInspectorModeHelper helper)
             {
                 objectStates[asset].debug = helper.IsDebugMode();
             }

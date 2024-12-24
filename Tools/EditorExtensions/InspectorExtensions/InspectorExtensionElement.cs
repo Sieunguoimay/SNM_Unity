@@ -10,6 +10,7 @@ namespace InspectorExtensions
     {
         private readonly object target;
         private readonly Editor editor;
+        private readonly VisualElement editorVE;
         private readonly System.Attribute attribute;
         private readonly IInspectorExtension extension;
 
@@ -17,6 +18,13 @@ namespace InspectorExtensions
         public Editor Editor => editor;
         public System.Attribute Attribute => attribute;
         public IInspectorExtension Extension => extension;
+        public VisualElement EditorVE => editorVE;
+
+        public InspectorExtensionElement(Editor editor, VisualElement editorVE, Attribute attribute, IInspectorExtension extension)
+            : this(editor, attribute, extension)
+        {
+            this.editorVE = editorVE;
+        }
 
         public InspectorExtensionElement(Editor editor, Attribute attribute, IInspectorExtension extension)
             : this(editor.target, attribute, extension)

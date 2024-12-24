@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 using UnityEditor.UIElements;
 #endif
@@ -23,7 +24,8 @@ namespace InspectorExtensions
         private class ReferenceEditorVE : VisualElement
         {
             private Editor _editor;
-            
+            private readonly SerializedProperty property;
+
             public ReferenceEditorVE(SerializedProperty property)
             {
                 _editor = Editor.CreateEditor(property.objectReferenceValue);
@@ -32,7 +34,7 @@ namespace InspectorExtensions
                 SetupBorders(dropDown);
                 Add(dropDown);
 
-                var imguiContainer = new IMGUIContainer(() => UpdateEditor(property)?.OnInspectorGUI());
+                var imguiContainer = new IMGUIContainer(OnIMGUI);
                 imguiContainer.style.marginTop = 2f;
                 dropDown.Add(imguiContainer);
 
@@ -40,6 +42,12 @@ namespace InspectorExtensions
                 propField.style.position = Position.Absolute;
                 propField.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
                 Add(propField);
+                this.property = property;
+            }
+
+            private void OnIMGUI()
+            {
+                UpdateEditor(property)?.OnInspectorGUI();
             }
 
             private Editor UpdateEditor(SerializedProperty property)
