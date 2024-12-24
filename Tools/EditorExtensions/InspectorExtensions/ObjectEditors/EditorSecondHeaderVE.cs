@@ -116,9 +116,9 @@ namespace InspectorExtensions
                     extensionVE.EditorVE.Add(ve);
                 }
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
-                Debug.Log("Error adding to EditorVE");
+                Debug.Log($"Error adding to EditorVE {ex.Message}");
             }
         }
 
@@ -132,7 +132,6 @@ namespace InspectorExtensions
                 }
                 catch (System.Exception)
                 {
-
                 }
             }
         }

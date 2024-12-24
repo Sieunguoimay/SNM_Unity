@@ -13,9 +13,7 @@ namespace InspectorExtensions
     public class InspectorExtensionHeaderVE : VisualElement, IDisposable
     {
         private readonly IExtensionElementProvider _extensionElementProvider;
-        private readonly ToggleButton toggleButton;
-        private readonly ToggleButton inspectorModeToggleButton;
-        private readonly HistoryBrowserVE historyBrowser;
+        private readonly ToggleButton toggleButton; private readonly HistoryBrowserVE historyBrowser;
         private readonly UnityInspectorWindowHelper inspectorWindow;
 
         public InspectorExtensionHeaderVE(IExtensionElementProvider extensionElementProvider)
@@ -49,31 +47,36 @@ namespace InspectorExtensions
                 inspectorWindow = new UnityInspectorWindowHelper(window);
                 if (inspectorWindow != null)
                 {
-                    Add(inspectorModeToggleButton = new ToggleButton(
-                        "Debug", "Normal", Color.cyan * .8f, Color.black * .3f,
+                    ToggleButton2 inspectorModeToggleButton;
+                    Add(inspectorModeToggleButton = new ToggleButton2(
+                        "Normal", "Debug", Color.cyan * .8f,
                         () => inspectorWindow.GetInspectorMode() == InspectorMode.Debug,
                         OnInspectorModeToggleButtonClicked,
                         "InspectorExtensions_ToggleButton_InspectorMode"));
                     inspectorModeToggleButton.style.marginRight = 3;
-                    inspectorModeToggleButton.style.paddingLeft = 3;
-                    inspectorModeToggleButton.style.paddingRight = 3;
+                    // inspectorModeToggleButton.style.paddingLeft = 3;
+                    // inspectorModeToggleButton.style.paddingRight = 3;
+                    inspectorModeToggleButton.style.marginTop = 0;
+                    inspectorModeToggleButton.style.marginLeft = 0;
+                    inspectorModeToggleButton.style.marginBottom = 0;
                 }
             }
-
-            var space = new VisualElement();
-            space.style.flexGrow = 1;
-            Add(space);
-
-            Add(historyBrowser = new());
 
             var pingButton = new Button(() => EditorGUIUtility.PingObject(Selection.activeObject))
             {
                 text = "Ping"
             };
             pingButton.style.marginTop = 0;
+            pingButton.style.marginRight = 1;
             pingButton.style.marginLeft = 0;
             pingButton.style.marginBottom = 0;
             Add(pingButton);
+
+            var space = new VisualElement();
+            space.style.flexGrow = 1;
+            Add(space);
+
+            Add(historyBrowser = new());
 
             _extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
             _extensionElementProvider.OnExtensionElementsChanged += OnExtensionElementsChanged;
