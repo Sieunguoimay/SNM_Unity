@@ -20,7 +20,7 @@ namespace InspectorExtensions
             extensionElement.Add(new ReferencesFoldout(extensionElement.Target as UnityEngine.Object));
         }
 
-        void IInspectorExtension.CleanUp()
+        void IInspectorExtension.CleanUpStaticData()
         {
         }
         

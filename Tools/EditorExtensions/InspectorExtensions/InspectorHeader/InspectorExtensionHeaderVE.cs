@@ -13,13 +13,17 @@ namespace InspectorExtensions
     public class InspectorExtensionHeaderVE : VisualElement, IDisposable
     {
         private readonly IExtensionElementProvider _extensionElementProvider;
-        private readonly ToggleButton toggleButton; private readonly HistoryBrowserVE historyBrowser;
-        private readonly UnityInspectorWindowHelper inspectorWindow;
+        private readonly IRefreshHandler refreshHandler;
+        private readonly ToggleButton toggleButton;
+        private readonly HistoryBrowserVE historyBrowser;
+        private readonly InspectorWindowHelper inspectorWindowHelper;
+        private readonly Button pingButton;
+        private readonly ToggleButton2 inspectorModeToggleButton;
 
-        public InspectorExtensionHeaderVE(IExtensionElementProvider extensionElementProvider)
+        public InspectorExtensionHeaderVE(IExtensionElementProvider extensionElementProvider, EditorWindow window, IRefreshHandler refreshHandler)
         {
             _extensionElementProvider = extensionElementProvider;
-
+            this.refreshHandler = refreshHandler;
             style.flexDirection = FlexDirection.RowReverse;
             style.borderBottomWidth = 1;
             style.borderBottomColor = new Color(.1f, .1f, .1f, 1f);
@@ -36,33 +40,32 @@ namespace InspectorExtensions
                 "ON", "OFF", Color.green, Color.black,
                 null,
                 UpdateExtensionElementsVisible,
-                "InspectorExtensions_ToggleButton_Status")
+                "InspectorExtensions_ToggleButton_Status",
+                window)
             {
                 tooltip = GetTooltipText()
             });
+            toggleButton.style.height = 20;
 
-            var window = InspectorExtensionInstaller.Instance.InspectorWindow;
             if (window != null)
             {
-                inspectorWindow = new UnityInspectorWindowHelper(window);
-                if (inspectorWindow != null)
+                inspectorWindowHelper = new InspectorWindowHelper(window);
+                if (inspectorWindowHelper != null)
                 {
-                    ToggleButton2 inspectorModeToggleButton;
                     Add(inspectorModeToggleButton = new ToggleButton2(
                         "Normal", "Debug", Color.cyan * .8f,
-                        () => inspectorWindow.GetInspectorMode() == InspectorMode.Debug,
+                        () => inspectorWindowHelper.GetInspectorMode() == InspectorMode.Debug,
                         OnInspectorModeToggleButtonClicked,
-                        "InspectorExtensions_ToggleButton_InspectorMode"));
+                        "InspectorExtensions_ToggleButton_InspectorMode",
+                        window));
                     inspectorModeToggleButton.style.marginRight = 3;
-                    // inspectorModeToggleButton.style.paddingLeft = 3;
-                    // inspectorModeToggleButton.style.paddingRight = 3;
                     inspectorModeToggleButton.style.marginTop = 0;
                     inspectorModeToggleButton.style.marginLeft = 0;
                     inspectorModeToggleButton.style.marginBottom = 0;
                 }
             }
 
-            var pingButton = new Button(() => EditorGUIUtility.PingObject(Selection.activeObject))
+            pingButton = new Button(OnPingButtonClicked)
             {
                 text = "Ping"
             };
@@ -82,22 +85,37 @@ namespace InspectorExtensions
             _extensionElementProvider.OnExtensionElementsChanged += OnExtensionElementsChanged;
 
             UpdateExtensionElementsVisible();
+            RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
         }
 
-        private void OnInspectorModeToggleButtonClicked()
+        private void OnPingButtonClicked()
         {
-            inspectorWindow.SetInspectorMode(inspectorWindow.GetInspectorMode() == InspectorMode.Normal ? InspectorMode.Debug : InspectorMode.Normal);
-            InspectorExtensionInstaller.Instance.Refresh();
+            foreach (var o in inspectorWindowHelper.GetInspectedObjects())
+            {
+                EditorGUIUtility.PingObject(o);
+            }
+        }
+
+        private void OnDetachFromPanel(DetachFromPanelEvent evt)
+        {
+            Dispose();
         }
 
         public void Dispose()
         {
             _extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
+            historyBrowser.Dispose();
+        }
+
+        private void OnInspectorModeToggleButtonClicked()
+        {
+            inspectorWindowHelper.SetInspectorMode(inspectorWindowHelper.GetInspectorMode() == InspectorMode.Normal ? InspectorMode.Debug : InspectorMode.Normal);
+            refreshHandler.Refresh();
         }
 
         private string GetTooltipText()
         {
-            return "No tooltip!";//Inspector Extensions for: \n" + string.Join("\n", InspectorExtensionInstaller.Instance.InspectorExtensions.Select(e => $"{e.TargetType.Name}"));
+            return "Toggle the all Inspector Extensions";//Inspector Extensions for: \n" + string.Join("\n", InspectorExtensionInstaller.Instance.InspectorExtensions.Select(e => $"{e.TargetType.Name}"));
         }
 
         private void OnRefreshButtonClicked(ClickEvent evt)
@@ -105,16 +123,20 @@ namespace InspectorExtensions
             var menu = new GenericMenu();
             menu.AddItem(new GUIContent("Refresh"), false, () =>
             {
-                InspectorExtensionInstaller.Instance.Refresh();
+                refreshHandler.Refresh();
             });
-            menu.AddItem(new GUIContent($"Open script {nameof(InspectorExtensionEntryPoint)}"), false, () =>
+
+            foreach (var (path, script) in GetScriptsToOpen())
             {
-                AssetDatabase.OpenAsset(
-                    AssetDatabase.FindAssets($"t:MonoScript {nameof(InspectorExtensionEntryPoint)}")
-                    .Select(AssetDatabase.GUIDToAssetPath)
-                    .Select(AssetDatabase.LoadAssetAtPath<MonoScript>)
-                    .FirstOrDefault());
-            });
+                menu.AddItem(new GUIContent($"{path}"), false, _e =>
+                {
+                    AssetDatabase.OpenAsset(
+                        AssetDatabase.FindAssets($"t:MonoScript {_e}")
+                        .Select(AssetDatabase.GUIDToAssetPath)
+                        .Select(AssetDatabase.LoadAssetAtPath<MonoScript>)
+                        .FirstOrDefault());
+                }, script);
+            }
 
             var extraMenuItems = historyBrowser.GetMenuItems();
 
@@ -138,12 +160,23 @@ namespace InspectorExtensions
             menu.ShowAsContext();
         }
 
+        private static IEnumerable<(string path, string script)> GetScriptsToOpen()
+        {
+            yield return ($"Open script {nameof(InspectorExtensionEntryPoint)}.cs", nameof(InspectorExtensionEntryPoint));
+            yield return ($"Open script {nameof(InspectorExtensionHeaderVE)}.cs", nameof(InspectorExtensionHeaderVE));
+
+            foreach (var e in InspectorExtensionInstaller.Instance.InspectorExtensions)
+            {
+                yield return ($"Open Extension Scripts/{e.GetType().Name}.cs", e.GetType().Name);
+            }
+        }
+
         private void UpdateExtensionElementsVisible()
         {
             if (_extensionElementProvider == null) return;
 
             var status = toggleButton.Status;
-            foreach (var e in _extensionElementProvider.GetExtensionElements())
+            foreach (var e in _extensionElementProvider.GetExtensionElements().Concat(new VisualElement[] { pingButton, inspectorModeToggleButton }))
             {
                 e.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
             }

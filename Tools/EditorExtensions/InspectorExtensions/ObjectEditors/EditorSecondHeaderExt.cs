@@ -12,7 +12,7 @@ namespace InspectorExtensions
         ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Top;
         int IInspectorExtension.Priority => 0;
 
-        private readonly Dictionary<UnityEngine.Object, ObjectData> objectStates = new();
+        private readonly Dictionary<Object, ObjectData> objectStates = new();
 
         private class ObjectData
         {
@@ -31,7 +31,7 @@ namespace InspectorExtensions
             if (extensionElement.Target is Object target)
             {
                 IInspectorModeHelper inspectorModeHelper = null;
-                
+
                 if (target is MonoBehaviour)
                 {
                     inspectorModeHelper = new InspectorModeHelper_DebugEditor(extensionElement);
@@ -48,7 +48,7 @@ namespace InspectorExtensions
                     inspectorModeHelper.OnModeChanged += OnDebugModeChanged;
                 }
 
-                extensionElement.Insert(0, new EditorSecondHeaderVE(target, inspectorModeHelper));
+                extensionElement.Insert(0, new EditorSecondHeaderVE(target, extensionElement.InspectorWindow, extensionElement.RefreshHandler, inspectorModeHelper));
                 extensionElement.RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
             }
         }
@@ -66,7 +66,7 @@ namespace InspectorExtensions
             objectStates[helper.Target].isDebugMode = helper.IsDebugMode();
         }
 
-        void IInspectorExtension.CleanUp()
+        void IInspectorExtension.CleanUpStaticData()
         {
             objectStates.Clear();
         }

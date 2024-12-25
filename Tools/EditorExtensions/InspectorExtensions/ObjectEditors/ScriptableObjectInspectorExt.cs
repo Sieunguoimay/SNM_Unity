@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -27,7 +26,7 @@ namespace InspectorExtensions
             public bool debug;
         }
 
-        void IInspectorExtension.CleanUp()
+        void IInspectorExtension.CleanUpStaticData()
         {
             objectStates.Clear();
         }
@@ -38,7 +37,7 @@ namespace InspectorExtensions
             {
                 extensionElement.style.marginTop = 15;
 
-                var toolbar = new Toolbar(so);
+                var toolbar = new Toolbar(so, extensionElement.RefreshHandler);
                 extensionElement.Add(toolbar);
 
                 var allAssets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(so)).Where(o => o != so).OrderBy(o => o?.name);
@@ -48,19 +47,21 @@ namespace InspectorExtensions
                     {
                         objectStates.Add(asset, new ObjectData());
                     }
-                    var e = new SubSOInspectorElement(asset, objectStates);
+                    var e = new SubSOInspectorElement(asset, objectStates, extensionElement.InspectorWindow, extensionElement.RefreshHandler);
                     extensionElement.Add(e);
                     toolbar.AddTarget(e);
                 }
 
-                extensionElement.Add(new CreateObjectButton());
+                extensionElement.Add(new CreateObjectButton(extensionElement.RefreshHandler));
             }
         }
 
         private class CreateObjectButton : VisualElement
         {
             private readonly Button _button = new() { text = "Add ScriptableObject" };
-            public CreateObjectButton()
+            private readonly IRefreshHandler refreshHandler;
+
+            public CreateObjectButton(IRefreshHandler refreshHandler)
             {
                 Add(_button);
 
@@ -76,6 +77,7 @@ namespace InspectorExtensions
                 style.alignItems = Align.Center;
 
                 _button.RegisterCallback<ClickEvent>(OnButtonClicked);
+                this.refreshHandler = refreshHandler;
             }
 
             private void OnButtonClicked(ClickEvent evt)
@@ -83,7 +85,7 @@ namespace InspectorExtensions
                 var window = EditorWindow.GetWindow<Tools.ScriptableObjectAssetCreator>();
                 window.SetAssetCreatedCallback(() => { window.Close(); });
                 window.ShowModalUtility();
-                InspectorExtensionInstaller.Instance.Refresh();
+                refreshHandler.Refresh();
             }
         }
 
@@ -93,12 +95,13 @@ namespace InspectorExtensions
             private bool _foldoutState = false;
             private readonly Button _button;
             private readonly UnityEngine.Object _target;
+            private readonly IRefreshHandler refreshHandler;
             private readonly int allSubAssetsCount;
 
-            public Toolbar(UnityEngine.Object target)
+            public Toolbar(UnityEngine.Object target, IRefreshHandler refreshHandler)
             {
                 _target = target;
-
+                this.refreshHandler = refreshHandler;
                 allSubAssetsCount = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(_target))
                     .Where(a => !AssetDatabase.IsMainAsset(a))
                     .ToArray().Length;
@@ -145,7 +148,7 @@ namespace InspectorExtensions
                         AssetDatabase.SaveAssets();
                         AssetDatabase.Refresh();
 
-                        InspectorExtensionInstaller.Instance.Refresh();
+                        refreshHandler.Refresh();
                     });
                 }
 
@@ -160,7 +163,7 @@ namespace InspectorExtensions
                         AssetDatabase.SaveAssets();
                         AssetDatabase.Refresh();
 
-                        InspectorExtensionInstaller.Instance.Refresh();
+                        refreshHandler.Refresh();
                     });
                 }
                 menu.ShowAsContext();
@@ -196,7 +199,7 @@ namespace InspectorExtensions
             private readonly ObjectEditorHeader header;
             private readonly VisualElement body;
 
-            public SubSOInspectorElement(UnityEngine.Object asset, Dictionary<UnityEngine.Object, ObjectData> objectStates)
+            public SubSOInspectorElement(UnityEngine.Object asset, Dictionary<UnityEngine.Object, ObjectData> objectStates, EditorWindow inspectorWindow, IRefreshHandler refreshHandler)
             {
                 this.asset = asset;
                 this.objectStates = objectStates;
@@ -209,13 +212,19 @@ namespace InspectorExtensions
                 body = new VisualElement();
 
 
-                Add(header = new ObjectEditorHeader(asset, OnFoldoutChanged, objectStates.ContainsKey(asset) ? objectStates[asset].foldout : false));
+                Add(header = new ObjectEditorHeader(
+                    asset,
+                    OnFoldoutChanged,
+                    objectStates.ContainsKey(asset) && objectStates[asset].foldout,
+                    refreshHandler));
+
                 Add(body);
-                var inspectorModeHelper = new InspectorModeHelper(editor.serializedObject);
-                ((IInspectorModeHelper)inspectorModeHelper).SetDebugMode(objectStates.ContainsKey(asset) && objectStates[asset].debug ? InspectorMode.Debug : InspectorMode.Normal);
-                ((IInspectorModeHelper)inspectorModeHelper).OnModeChanged += OnInspectorModeChanged;
+
+                IInspectorModeHelper inspectorModeHelper = new InspectorModeHelper(editor.serializedObject);
+                inspectorModeHelper.SetDebugMode(objectStates.ContainsKey(asset) && objectStates[asset].debug ? InspectorMode.Debug : InspectorMode.Normal);
+                inspectorModeHelper.OnModeChanged += OnInspectorModeChanged;
                 EditorSecondHeaderVE headerVE;
-                body.Add(headerVE = new EditorSecondHeaderVE(asset, inspectorModeHelper));
+                body.Add(headerVE = new EditorSecondHeaderVE(asset, inspectorWindow, refreshHandler, inspectorModeHelper));
                 body.Add(ModifyEditor(imguiContainer));
                 headerVE.TriggerOnAttachToPanel(this);
             }
@@ -263,12 +272,14 @@ namespace InspectorExtensions
         private class ObjectEditorHeader : VisualElement
         {
             private readonly Action<bool> _foldoutCallback;
+            private readonly IRefreshHandler refreshHandler;
+
             public Foldout Foldout { get; private set; }
 
-            public ObjectEditorHeader(UnityEngine.Object obj, Action<bool> foldoutCallback, bool defaultValue)
+            public ObjectEditorHeader(UnityEngine.Object obj, Action<bool> foldoutCallback, bool defaultValue, IRefreshHandler refreshHandler)
             {
                 _foldoutCallback = foldoutCallback;
-
+                this.refreshHandler = refreshHandler;
                 style.display = DisplayStyle.Flex;
                 style.flexDirection = FlexDirection.Row;
                 style.paddingLeft = 0;
@@ -345,7 +356,7 @@ namespace InspectorExtensions
                             AssetDatabase.SaveAssets();
                             AssetDatabase.Refresh();
 
-                            InspectorExtensionInstaller.Instance.Refresh();
+                            refreshHandler.Refresh();
                         });
                     }
 
@@ -355,7 +366,7 @@ namespace InspectorExtensions
                         AssetDatabase.SaveAssets();
                         AssetDatabase.Refresh();
 
-                        InspectorExtensionInstaller.Instance.Refresh();
+                        refreshHandler.Refresh();
                     });
                     menu.ShowAsContext();
                 });

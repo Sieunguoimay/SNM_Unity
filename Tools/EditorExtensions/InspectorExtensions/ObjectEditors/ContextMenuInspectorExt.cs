@@ -27,7 +27,7 @@ namespace InspectorExtensions
             extensionElement.Add(button);
         }
 
-        void IInspectorExtension.CleanUp()
+        void IInspectorExtension.CleanUpStaticData()
         {
         }
     }

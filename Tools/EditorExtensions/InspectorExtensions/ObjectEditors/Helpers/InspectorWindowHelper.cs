@@ -6,14 +6,15 @@ using System;
 
 namespace InspectorExtensions
 {
-    public class UnityInspectorWindowHelper
+    public class InspectorWindowHelper
     {
         private readonly EditorWindow inspectorWindow;
         private readonly Type inspectorType;
+        private readonly BindingFlags flags;
         private readonly PropertyInfo fieldInfo_InspectorMode;
         private readonly MethodInfo methodInfo_Repaint;
 
-        public UnityInspectorWindowHelper(EditorWindow inspectorWindow)
+        public InspectorWindowHelper(EditorWindow inspectorWindow)
         {
             this.inspectorWindow = inspectorWindow;
             inspectorType = typeof(Editor).Assembly.GetType("UnityEditor.InspectorWindow");
@@ -23,7 +24,7 @@ namespace InspectorExtensions
                 return;
             }
 
-            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+            flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
 
             fieldInfo_InspectorMode = inspectorType.GetProperty("inspectorMode", flags);
             methodInfo_Repaint = inspectorType.GetMethod("Repaint", flags);
@@ -38,6 +39,11 @@ namespace InspectorExtensions
         {
             fieldInfo_InspectorMode.SetValue(inspectorWindow, mode);
             methodInfo_Repaint?.Invoke(inspectorWindow, null);
+        }
+
+        public UnityEngine.Object[] GetInspectedObjects()
+        {
+            return (UnityEngine.Object[])inspectorType.GetMethod("GetInspectedObjects", flags).Invoke(inspectorWindow, null);
         }
     }
 }

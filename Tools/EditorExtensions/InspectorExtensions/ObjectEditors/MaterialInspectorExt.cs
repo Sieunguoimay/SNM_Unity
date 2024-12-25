@@ -16,7 +16,7 @@ namespace InspectorExtensions
         int IInspectorExtension.Priority => 0;
         bool IInspectorExtension.IsSupportedFor(object target) => target is Material;
 
-        void IInspectorExtension.CleanUp()
+        void IInspectorExtension.CleanUpStaticData()
         {
         }
 

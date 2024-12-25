@@ -11,7 +11,7 @@ namespace InspectorExtensions
         int Priority { get; }
         bool IsSupportedFor(object target);
         void ModifyExtensionElement(InspectorExtensionElement extensionElement);
-        void CleanUp();
+        void CleanUpStaticData();
     }
 
     public enum ExtensionType

@@ -16,7 +16,7 @@ namespace InspectorExtensions
         bool IInspectorExtension.IsSupportedFor(object target) => target is IMGUIMethodAttribute;
 
 
-        void IInspectorExtension.CleanUp()
+        void IInspectorExtension.CleanUpStaticData()
         {
         }
 

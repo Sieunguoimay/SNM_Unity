@@ -105,21 +105,30 @@ namespace InspectorExtensions
             {
                 return;
             }
-            try
+
+            if (index >= 0 && index < extensionVE.EditorVE.childCount)
             {
-                if (index >= 0 && index < extensionVE.EditorVE.childCount)
+                try
                 {
                     extensionVE.EditorVE.Insert(index, ve);
                 }
-                else
+                catch (System.Exception ex)
+                {
+                    Debug.Log($"Error adding to EditorVE {ex.Message}");
+                }
+            }
+            else
+            {
+                try
                 {
                     extensionVE.EditorVE.Add(ve);
                 }
+                catch (System.Exception ex)
+                {
+                    Debug.Log($"Error adding to EditorVE {ex.Message}");
+                }
             }
-            catch (System.Exception ex)
-            {
-                Debug.Log($"Error adding to EditorVE {ex.Message}");
-            }
+
         }
 
         private void OnIMGUI()
@@ -179,12 +188,16 @@ namespace InspectorExtensions
     public class EditorSecondHeaderVE : VisualElement
     {
         private readonly Object target;
+        private readonly EditorWindow inspectorWindow;
+        private readonly IRefreshHandler refreshHandler;
         private readonly VisualElement buttonsContainer;
         private readonly IInspectorModeHelper inspectorModeHelper;
 
-        public EditorSecondHeaderVE(Object target, IInspectorModeHelper inspectorModeHelper = null)
+        public EditorSecondHeaderVE(Object target, EditorWindow inspectorWindow, IRefreshHandler refreshHandler, IInspectorModeHelper inspectorModeHelper = null)
         {
             this.target = target;
+            this.inspectorWindow = inspectorWindow;
+            this.refreshHandler = refreshHandler;
             this.inspectorModeHelper = inspectorModeHelper;
             var foldout = new ReferencesFoldout(target);
             var toggle = foldout.Q<Toggle>();
@@ -225,7 +238,7 @@ namespace InspectorExtensions
                 buttonsContainer.Add(_pasteComponentValuesMenuItem);
             }
 
-            InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
+            inspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
 
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
             // RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
@@ -240,7 +253,7 @@ namespace InspectorExtensions
 
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
         {
-            InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
+            inspectorWindow.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
             if (_parent != null)
             {
                 _parent.UnregisterCallback<MouseEnterEvent>(OnMouseEnter);
@@ -290,7 +303,8 @@ namespace InspectorExtensions
                 "Normal", "Debug", Color.cyan * .8f,
                 inspectorModeHelper.IsDebugMode,
                 OnInspectorModeToggleButtonClicked,
-                "InspectorExtensions_ToggleButton_InspectorMode");
+                "InspectorExtensions_ToggleButton_InspectorMode",
+                inspectorWindow);
 
             inspectorModeToggleButton.style.marginRight = 3;
             inspectorModeToggleButton.style.marginBottom = 0;
@@ -408,15 +422,15 @@ namespace InspectorExtensions
         {
             if (target is ScriptableObject scriptableObject)
             {
-                _copyComponentMenuItem = new MenuItemButton(new FakeMenuItemObject_ScriptableObject_Copy(scriptableObject), "Copy");
+                _copyComponentMenuItem = new MenuItemButton(new FakeMenuItemObject_ScriptableObject_Copy(scriptableObject, refreshHandler), "Copy");
                 _pasteComponentValuesMenuItem = new MenuItemButton(new FakeMenuItemObject_ScriptableObject_Paste(scriptableObject), "Paste");
             }
             else
             {
 
-                _copyComponentMenuItem = new MenuItemButton(new MenuItemObject("CONTEXT/Component/Copy Component", target), "Copy");
-                _pasteComponentValuesMenuItem = new MenuItemButton(new MenuItemObject("CONTEXT/Component/Paste Component Values", target), "Paste");
-                _pasteComponentAsNewMenuItem = new MenuItemButton(new MenuItemObject("CONTEXT/Component/Paste Component As New", target), "Paste Component As New");
+                _copyComponentMenuItem = new MenuItemButton(new MenuItemObject("CONTEXT/Component/Copy Component", target, refreshHandler), "Copy");
+                _pasteComponentValuesMenuItem = new MenuItemButton(new MenuItemObject("CONTEXT/Component/Paste Component Values", target, refreshHandler), "Paste");
+                _pasteComponentAsNewMenuItem = new MenuItemButton(new MenuItemObject("CONTEXT/Component/Paste Component As New", target, refreshHandler), "Paste Component As New");
             }
         }
 
@@ -528,16 +542,18 @@ namespace InspectorExtensions
         public class FakeMenuItemObject_ScriptableObject_Copy : IMenuItemObject
         {
             private readonly ScriptableObject target;
+            private readonly IRefreshHandler refreshHandler;
 
-            public FakeMenuItemObject_ScriptableObject_Copy(ScriptableObject target)
+            public FakeMenuItemObject_ScriptableObject_Copy(ScriptableObject target, IRefreshHandler refreshHandler)
             {
                 this.target = target;
+                this.refreshHandler = refreshHandler;
             }
 
             void IMenuItemObject.Execute()
             {
                 ScriptableObjectInspectorExt.CopiedObject = target;
-                InspectorExtensionInstaller.Instance.Refresh();
+                refreshHandler.Refresh();
             }
 
             bool IMenuItemObject.IsEnabled()
@@ -550,11 +566,13 @@ namespace InspectorExtensions
         {
             private readonly string menuItemPath;
             private readonly Object context;
+            private readonly IRefreshHandler refreshHandler;
 
-            public MenuItemObject(string menuItemPath, UnityEngine.Object context)
+            public MenuItemObject(string menuItemPath, UnityEngine.Object context, IRefreshHandler refreshHandler)
             {
                 this.menuItemPath = menuItemPath;
                 this.context = context;
+                this.refreshHandler = refreshHandler;
             }
 
             bool IMenuItemObject.IsEnabled()
@@ -565,7 +583,7 @@ namespace InspectorExtensions
             void IMenuItemObject.Execute()
             {
                 EditorApplicationHelper.ExecuteMenuItem(menuItemPath, context);
-                InspectorExtensionInstaller.Instance.Refresh();
+                refreshHandler.Refresh();
             }
         }
     }

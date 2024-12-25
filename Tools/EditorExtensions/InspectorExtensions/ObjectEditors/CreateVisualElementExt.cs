@@ -10,7 +10,7 @@ namespace InspectorExtensions
         ExtensionPosition IInspectorExtension.Position => ExtensionPosition.Bottom;
         int IInspectorExtension.Priority => 0;
         bool IInspectorExtension.IsSupportedFor(object target) => target is CreateVisualElementAttribute;
-        void IInspectorExtension.CleanUp()
+        void IInspectorExtension.CleanUpStaticData()
         {
         }
 

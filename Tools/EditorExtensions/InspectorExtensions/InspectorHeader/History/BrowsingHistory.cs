@@ -1,5 +1,4 @@
 #if UNITY_EDITOR
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,11 +35,11 @@ namespace InspectorExtensions
         private const string HISTORY_KEY = "InspectorHistoryTracker_History";
         private const string CURRENT_INDEX_KEY = "InspectorHistoryTracker_CurrentIndex";
         private const string IS_ENABLED_KEY = "InspectorHistoryTracker_IsEnabled";
-        private const string IS_DEBUG_ENABLED_KEY = "InspectorHistoryTracker_IsDebugEnabled";
 
         private readonly List<int> navigation = new();
         private readonly List<ObjectInfo> history = new();
 
+        private UnityEngine.Object _cachedSelectedObject;
         private bool _skipUpdateNavigation = false;
         private Action<HistoryBrowsingData> _onHistoryChanged;
 
@@ -57,31 +56,36 @@ namespace InspectorExtensions
         }
 
         public bool IsDebugEnabled => InspectorExtensionInstaller.Instance.DebugEnabled;
-        
+
         public HistoryBrowsingData()
         {
-            Selection.selectionChanged -= OnSelectionChanged;
-            Selection.selectionChanged += OnSelectionChanged;
+            // Selection.selectionChanged -= OnSelectionChanged;
+            // Selection.selectionChanged += OnSelectionChanged;
             LoadHistory();
             UpdateNavigation();
         }
 
-        public void Dispose()
+        void IDisposable.Dispose()
         {
             SaveHistory();
-            Selection.selectionChanged -= OnSelectionChanged;
+            // Selection.selectionChanged -= OnSelectionChanged;
             Cleanup();
         }
 
-        private void OnSelectionChanged()
-        {
-            if (!IsEnabled) return;
+        // private void OnSelectionChanged()
+        // {
+        //     if (_cachedSelectedObject != Selection.activeObject)
+        //     {
+        //         _cachedSelectedObject = Selection.activeObject;
 
-            if (!_skipUpdateNavigation)
-            {
-                UpdateNavigation();
-            }
-        }
+        //         if (!IsEnabled) return;
+
+        //         if (!_skipUpdateNavigation)
+        //         {
+        //             UpdateNavigation();
+        //         }
+        //     }
+        // }
 
         private void UpdateNavigation()
         {
@@ -115,7 +119,6 @@ namespace InspectorExtensions
             SaveHistory();
         }
 
-
         private ObjectInfo TryGetHistory(int index)
         {
             if (index >= 0 && index < history.Count)
@@ -134,6 +137,7 @@ namespace InspectorExtensions
                     return i;
                 }
             }
+
             history.Add(data);
 
             if (history.Count > MAX_HISTORY)
@@ -157,7 +161,6 @@ namespace InspectorExtensions
         {
             history.Clear();
             navigation.Clear();
-            CurrentNavIndex = -1;
         }
 
         private string GetNavigationDisplay(int index)
@@ -183,6 +186,7 @@ namespace InspectorExtensions
             add { _onHistoryChanged += value; }
             remove { _onHistoryChanged -= value; }
         }
+
         void IHistoryBrowser.SetEnabled(bool enabled)
         {
             IsEnabled = enabled;
@@ -195,9 +199,13 @@ namespace InspectorExtensions
             if (newIndex >= 0 && newIndex < navigation.Count)
             {
                 CurrentNavIndex = newIndex;
+
+                var obj = ObjectInfoHelper.LoadObject(history[navigation[CurrentNavIndex]], _ => _skipUpdateNavigation = _);
+
                 _skipUpdateNavigation = true;
-                Selection.activeObject = ObjectInfoHelper.LoadObject(history[navigation[CurrentNavIndex]], _ => _skipUpdateNavigation = _);
+                Selection.activeObject = obj;
                 _skipUpdateNavigation = false;
+
                 _onHistoryChanged?.Invoke(this);
             }
         }
@@ -205,7 +213,8 @@ namespace InspectorExtensions
         void IHistoryBrowser.ClearHistory()
         {
             Cleanup();
-            _onHistoryChanged?.Invoke(this);
+            CurrentNavIndex = -1;
+            UpdateNavigation();
             SaveHistory();
         }
         #endregion
@@ -245,7 +254,6 @@ namespace InspectorExtensions
             return "NULL";
         }
         #endregion
-
 
         private void SaveHistory()
         {

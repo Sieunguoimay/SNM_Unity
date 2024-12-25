@@ -8,7 +8,7 @@ namespace InspectorExtensions
     {
         static InspectorExtensionEntryPoint()
         {
-            InspectorExtensionInstaller.Instance.Teardown();
+            // InspectorExtensionInstaller.Instance.Teardown();
 
             InspectorExtensionInstaller.Instance.InjectExtensions(
                 // new MaterialInspectorExt(),

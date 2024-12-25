@@ -10,6 +10,7 @@ namespace InspectorExtensions
     public class ToggleButton : Label
     {
         private readonly string saveKey;
+        private readonly EditorWindow window;
         private readonly string textOn;
         private readonly string textOff;
         private readonly Color colorOn = Color.green;
@@ -23,7 +24,7 @@ namespace InspectorExtensions
         public bool Status => StatusInternal;
         private readonly Action onClicked;
 
-        public ToggleButton(string textOn, string textOff, Color colorOn, Color colorOff, Func<bool> status, Action onClicked, string saveKey)
+        public ToggleButton(string textOn, string textOff, Color colorOn, Color colorOff, Func<bool> status, Action onClicked, string saveKey, EditorWindow window)
         {
             this.textOn = textOn;
             this.textOff = textOff;
@@ -31,6 +32,7 @@ namespace InspectorExtensions
             this.colorOff = colorOff;
             this.onClicked = onClicked;
             this.saveKey = saveKey;
+            this.window = window;
             this.status = status;
             SetInternalStatus(status?.Invoke() ?? StatusInternal);
             // text = StatusInternal ? this.textOn : this.textOff;
@@ -52,13 +54,13 @@ namespace InspectorExtensions
                 style.backgroundColor = color;
             });
 
-            InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
+            window.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
         }
 
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
         {
-            InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
+            window.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
         }
 
         private void OnRepaint(MouseEnterEvent evt)
@@ -82,10 +84,9 @@ namespace InspectorExtensions
     public class ToggleButton2 : Button
     {
         private readonly string saveKey;
+        private readonly EditorWindow window;
         private readonly string textOn;
         private readonly string textOff;
-        private readonly Color colorOn = Color.green;
-        private readonly Color colorOff = Color.green;
         private readonly Func<bool> status;
         private bool StatusInternal
         {
@@ -95,26 +96,25 @@ namespace InspectorExtensions
         public bool Status => StatusInternal;
         private readonly Action onClicked;
 
-        public ToggleButton2(string textOn, string textOff, Color colorOn, Func<bool> status, Action onClicked, string saveKey)
+        public ToggleButton2(string textOn, string textOff, Color colorOn, Func<bool> status, Action onClicked, string saveKey, EditorWindow window)
         {
             this.textOn = textOn;
             this.textOff = textOff;
-            this.colorOn = colorOn;
-            this.colorOff = style.backgroundColor.value;
             this.onClicked = onClicked;
             this.saveKey = saveKey;
+            this.window = window;
             this.status = status;
             SetInternalStatus(status?.Invoke() ?? StatusInternal);
             style.unityTextAlign = TextAnchor.MiddleCenter;
             RegisterCallback<ClickEvent>(OnClick, TrickleDown.TrickleDown);
 
-            InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
+            window.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
         }
 
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
         {
-            InspectorExtensionInstaller.Instance.InspectorWindow.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
+            window.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
         }
 
         private void OnRepaint(MouseEnterEvent evt)

@@ -17,7 +17,7 @@ namespace InspectorExtensions
         int IInspectorExtension.Priority => 0;
         bool IInspectorExtension.IsSupportedFor(object target) => target is AnimationClip;
 
-        void IInspectorExtension.CleanUp()
+        void IInspectorExtension.CleanUpStaticData()
         {
         }
 
