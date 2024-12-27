@@ -205,10 +205,7 @@ namespace InspectorExtensions
                 this.objectStates = objectStates;
                 if (asset == null) return;
                 editor = Editor.CreateEditor(asset);
-                imguiContainer = new IMGUIContainer()
-                {
-                    onGUIHandler = editor.OnInspectorGUI
-                };
+                imguiContainer = new IMGUIContainer(OnIMGUI);
                 body = new VisualElement();
 
 
@@ -227,6 +224,27 @@ namespace InspectorExtensions
                 body.Add(headerVE = new EditorSecondHeaderVE(asset, inspectorWindow, refreshHandler, inspectorModeHelper));
                 body.Add(ModifyEditor(imguiContainer));
                 headerVE.TriggerOnAttachToPanel(this);
+
+                RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
+            }
+
+            private void OnDetachFromPanel(DetachFromPanelEvent evt)
+            {
+                if (editor != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(editor);
+                }
+            }
+
+            private void OnIMGUI()
+            {
+                try
+                {
+                    editor.OnInspectorGUI();
+                }
+                catch (Exception)
+                {
+                }
             }
 
             private void OnInspectorModeChanged(IInspectorModeHelper helper)
