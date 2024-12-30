@@ -65,15 +65,27 @@ namespace InspectorExtensions
                 }
             }
 
-            pingButton = new Button(OnPingButtonClicked)
-            {
-                text = "Ping"
-            };
+            pingButton = new Button(OnPingButtonClicked) { text = "Ping" };
             pingButton.style.marginTop = 0;
             pingButton.style.marginRight = 1;
             pingButton.style.marginLeft = 0;
             pingButton.style.marginBottom = 0;
             Add(pingButton);
+
+            if (inspectorWindowHelper != null)
+            {
+                var inspectedObjects = inspectorWindowHelper.GetInspectedObjects();
+                if (inspectedObjects != null && inspectedObjects.Length == 1 && inspectedObjects[0] is GameObject go && !string.IsNullOrEmpty(AssetDatabase.GetAssetPath(go)))
+                {
+                    Button prefabHierarchyButton;
+                    Add(prefabHierarchyButton = new(OnHierachyButtonClicked)
+                    {
+                        iconImage = EditorGUIUtility.IconContent("icon dropdown@2x").image as Texture2D,
+                        text = $"{go.name}",
+                        tooltip = $"{AssetDatabase.GetAssetPath(go)}"
+                    });
+                }
+            }
 
             var space = new VisualElement();
             space.style.flexGrow = 1;
@@ -86,6 +98,38 @@ namespace InspectorExtensions
 
             UpdateExtensionElementsVisible();
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
+        }
+
+        private void OnHierachyButtonClicked()
+        {
+            var menu = new GenericMenu();
+            if (inspectorWindowHelper != null)
+            {
+                var inspectedObjects = inspectorWindowHelper.GetInspectedObjects();
+                if (inspectedObjects.Length > 0 && inspectedObjects[0] is GameObject go)
+                {
+                    foreach (var p in GetHierarchy(go.name, go.transform.root.gameObject))
+                    {
+                        menu.AddItem(new GUIContent(p.path.Replace("/", "\u2215")), p.go == go, z =>
+                        {
+                            Selection.activeObject = z as UnityEngine.Object;
+                        }, p.go);
+                    }
+                }
+            }
+            menu.ShowAsContext();
+        }
+
+        private IEnumerable<(string path, GameObject go)> GetHierarchy(string rootPath, GameObject root)
+        {
+            yield return (rootPath, root);
+            foreach (Transform c in root.transform)
+            {
+                foreach (var p in GetHierarchy(rootPath + "/" + c.name, c.gameObject))
+                {
+                    yield return p;
+                }
+            }
         }
 
         private void OnPingButtonClicked()

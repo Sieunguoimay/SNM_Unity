@@ -5,7 +5,6 @@ using UnityEngine.UIElements;
 using System.Linq;
 using System.Collections.Generic;
 using System;
-using Unity.EditorCoroutines.Editor;
 using System.Collections;
 
 namespace InspectorExtensions
@@ -17,8 +16,6 @@ namespace InspectorExtensions
 
         private readonly List<InspectorExtensionManager> inspectorExtensionManagers = new();
         private readonly List<IInspectorExtension> _inspectorExtensions = new();
-
-        private EditorCoroutine _nextFrameCoroutine;
 
         public bool DebugEnabled
         {
@@ -60,11 +57,8 @@ namespace InspectorExtensions
             EditorApplication.playModeStateChanged -= OnEditorPlaymodeChanged;
             EditorApplication.playModeStateChanged += OnEditorPlaymodeChanged;
 
-            if (_nextFrameCoroutine != null)
-            {
-                EditorCoroutineUtility.StopCoroutine(_nextFrameCoroutine);
-            }
-            _nextFrameCoroutine = EditorCoroutineUtility.StartCoroutine(WaitForNextFrame(OnOneFrameAfterLoad), this);
+            EditorApplication.delayCall -= OnOneFrameAfterLoad;
+            EditorApplication.delayCall += OnOneFrameAfterLoad;
 
             if (DebugEnabled)
             {

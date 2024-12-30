@@ -17,13 +17,12 @@ namespace InspectorExtensions
                 new ContextMenuInspectorExt(),
                 // new RevealReferenceEditorExt(),
                 new ScriptableObjectInspectorExt(),
-                new CreateVisualElementExt(),    
+                new CreateVisualElementExt(),
                 new EditorSecondHeaderExt()
-                // new AnimationClipInspectorExt()
+            // new AnimationClipInspectorExt()
             );
 
             InspectorExtensionInstaller.Instance.Setup();
-
         }
     }
 }
