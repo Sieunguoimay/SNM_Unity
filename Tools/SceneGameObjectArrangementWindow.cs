@@ -2,7 +2,7 @@
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-namespace Tools
+namespace SNMTools
 {
 
     [EditorWindowTitle(title = "SceneGameObjectArrangementWindow")]

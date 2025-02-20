@@ -82,7 +82,7 @@ namespace InspectorExtensions
 
             private void OnButtonClicked(ClickEvent evt)
             {
-                var window = EditorWindow.GetWindow<Tools.ScriptableObjectAssetCreator>();
+                var window = EditorWindow.GetWindow<SNMTools.ScriptableObjectAssetCreator>();
                 window.SetAssetCreatedCallback(() => { window.Close(); });
                 window.ShowModalUtility();
                 refreshHandler.Refresh();

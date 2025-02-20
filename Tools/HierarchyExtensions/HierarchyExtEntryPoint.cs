@@ -24,7 +24,7 @@ namespace HierarchyExtensions
                 var style = new GUIStyle(GUI.skin.button);
                 if (GUI.Button(selectionRect, new GUIContent("+", "Create Not Empty"), style))
                 {
-                    new Tools.CreateGameObjectWithComponent(
+                    new SNMTools.CreateGameObjectWithComponent(
                         new UnityEditor.IMGUI.Controls.AdvancedDropdownState(), obj as GameObject)
                         .Show(new Rect(selectionRect.x, selectionRect.y, 0, 0));
                 }

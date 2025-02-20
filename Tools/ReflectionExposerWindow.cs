@@ -4,7 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
-namespace Tools
+namespace SNMTools
 {
     public class ReflectionExposerWindow : EditorWindow
     {

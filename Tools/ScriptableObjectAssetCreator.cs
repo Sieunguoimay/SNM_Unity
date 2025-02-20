@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
-namespace Tools
+namespace SNMTools
 {
 
     [EditorWindowTitle(title = "ScriptableObjectAssetCreator")]

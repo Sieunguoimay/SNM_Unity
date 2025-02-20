@@ -214,6 +214,7 @@ namespace InspectorExtensions
 
             if (target is MonoBehaviour || target is ScriptableObject)
                 buttonsContainer.Add(CreateEditScriptButton());
+            buttonsContainer.Add(CreateOpenInWindowButton());
             buttonsContainer.Add(CreateFindReferencesInSceneButton());
             if (target is not Component && (target is not GameObject go || !go.scene.isLoaded))
                 buttonsContainer.Add(CreateFindReferencesInProjectButton());
@@ -324,6 +325,19 @@ namespace InspectorExtensions
             return button;
         }
 
+        private VisualElement CreateOpenInWindowButton()
+        {
+            var button = new Button(() =>
+            {
+                EditorPopupWindow.Open(target);
+            })
+            {
+                tooltip = "Open in Window",
+                text = "Window",
+            };
+            return button;
+        }
+
         private void OnEditScriptButtonClicked()
         {
             if (target != null)
@@ -340,11 +354,15 @@ namespace InspectorExtensions
             {
                 tooltip = "Find References in Scene",
                 text = "Scene",
+#if UNITY_2023_2_OR_NEWER
                 iconImage = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_Search Icon").image)
+#endif
             };
+#if UNITY_2023_2_OR_NEWER
             var image = button.Q<Image>();
             image.style.height = 17;
             image.style.width = 17;
+#endif
             button.style.marginTop = 0;
             button.style.marginBottom = 0;
             button.style.paddingLeft = 6;
@@ -365,11 +383,15 @@ namespace InspectorExtensions
             {
                 tooltip = "Find References in Project",
                 text = "Project",
+#if UNITY_2023_2_OR_NEWER
                 iconImage = background
+#endif
             };
+#if UNITY_2023_2_OR_NEWER
             var image = button.Q<Image>();
             image.style.height = 17;
             image.style.width = 17;
+#endif
             button.style.marginTop = 0;
             button.style.marginBottom = 0;
             button.style.paddingLeft = 6;
@@ -583,6 +605,49 @@ namespace InspectorExtensions
             {
                 EditorApplicationHelper.ExecuteMenuItem(menuItemPath, context);
                 refreshHandler.Refresh();
+            }
+        }
+
+        private class EditorPopupWindow : EditorWindow, IRefreshHandler
+        {
+            [SerializeField] private Object target;
+            [SerializeField] private Editor editor;
+
+            private static Object _target;
+
+            public static void Open(Object target)
+            {
+                _target = target;
+                var window = GetWindow<EditorPopupWindow>();
+                window.ShowPopup();
+            }
+
+            public void CreateGUI()
+            {
+                target = _target;
+                if (target == null) return;
+
+                editor = Editor.CreateEditor(target);
+                if (editor == null) return;
+
+                ScrollView scrollView;
+                rootVisualElement.Add(scrollView = new());
+                scrollView.style.flexGrow = 1;
+
+                scrollView.Add(new EditorSecondHeaderVE(target, this, this, new InspectorModeHelper(editor.serializedObject)));
+
+                IMGUIContainer editorVE;
+                scrollView.Add(editorVE = new IMGUIContainer(() =>
+                {
+                    editor.OnInspectorGUI();
+                }));
+
+                editorVE.style.marginLeft = 10f;
+                editorVE.style.marginRight = 5f;
+            }
+
+            void IRefreshHandler.Refresh()
+            {
             }
         }
     }

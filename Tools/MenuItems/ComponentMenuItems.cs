@@ -2,7 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools
+namespace SNMTools
 {
     public static class ComponentMenuItems
     {

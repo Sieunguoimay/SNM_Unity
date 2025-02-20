@@ -103,7 +103,7 @@ public class StringSelectorDrawer : PropertyDrawer
 
         if (show)
         {
-            Tools.SearchWindow.Show(_strings, result =>
+            SNMTools.SearchWindow.Show(_strings, result =>
             {
                 property.serializedObject.Update();
                 property.stringValue = result;
