@@ -1,4 +1,4 @@
-namespace SNM.Structures
+namespace SNM.DataStructures
 {
     public interface IAutoRemoveList : ITrackedList
     {

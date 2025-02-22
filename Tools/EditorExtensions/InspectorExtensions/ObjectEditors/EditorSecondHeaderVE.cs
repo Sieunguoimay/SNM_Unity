@@ -334,7 +334,11 @@ namespace InspectorExtensions
             {
                 tooltip = "Open in Window",
                 text = "Window",
+#if UNITY_2023_2_OR_NEWER
+                iconImage = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_ScaleTool").image)
+#endif
             };
+            button.style.paddingLeft = 6;
             return button;
         }
 
@@ -630,11 +634,33 @@ namespace InspectorExtensions
                 editor = Editor.CreateEditor(target);
                 if (editor == null) return;
 
+                titleContent = new GUIContent(target.name);
+
+                VisualElement horizontal;
+                rootVisualElement.Add(horizontal = new());
+                horizontal.style.flexDirection = FlexDirection.Row;
+
                 ScrollView scrollView;
                 rootVisualElement.Add(scrollView = new());
                 scrollView.style.flexGrow = 1;
 
                 scrollView.Add(new EditorSecondHeaderVE(target, this, this, new InspectorModeHelper(editor.serializedObject)));
+
+                VisualElement space;
+                horizontal.Add(space = new());
+                space.style.flexGrow = 1;
+
+                horizontal.Add(new Button(() =>
+                {
+                    EditorGUIUtility.PingObject(target);
+                })
+                { text = "Ping" });
+
+                horizontal.Add(new Button(() =>
+                {
+                    Selection.activeObject = target;
+                })
+                { text = "Select" });
 
                 IMGUIContainer editorVE;
                 scrollView.Add(editorVE = new IMGUIContainer(() =>

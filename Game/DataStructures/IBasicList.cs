@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SNM.Structures
+namespace SNM.DataStructures
 {
     public interface IBasicList<T>
     {

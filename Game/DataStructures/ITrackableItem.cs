@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace SNM.Structures
+namespace SNM.DataStructures
 {
     public interface IListTrackingItem<TList> where TList : ITrackedList
     {

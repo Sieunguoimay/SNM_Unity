@@ -1,6 +1,11 @@
 using UnityEngine;
 
-public class Area : MonoBehaviour
+public interface IArea
+{
+    Vector3 GetRandomPosInArea();
+}
+
+public class Area : MonoBehaviour, IArea
 {
     [SerializeField] private Bounds bounds;
     [SerializeField] private Color gizmosColor = Color.white;
