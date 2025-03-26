@@ -80,7 +80,9 @@ namespace InspectorExtensions
                     Button prefabHierarchyButton;
                     Add(prefabHierarchyButton = new(OnHierachyButtonClicked)
                     {
+#if UNITY_2023_2_OR_NEWER
                         iconImage = EditorGUIUtility.IconContent("icon dropdown@2x").image as Texture2D,
+#endif
                         text = $"{go.name}",
                         tooltip = $"{AssetDatabase.GetAssetPath(go)}"
                     });

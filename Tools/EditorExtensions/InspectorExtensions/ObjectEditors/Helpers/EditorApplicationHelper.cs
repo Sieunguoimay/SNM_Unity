@@ -7,11 +7,15 @@ public static class EditorApplicationHelper
 {
     public static bool GetEnabledWithContext(string menuItemPath, UnityEngine.Object target = null)
     {
+#if UNITY_2023_2_OR_NEWER
         var type = typeof(UnityEditor.Menu);
         var method_GetEnabledWithContext = type.GetMethod("GetEnabledWithContext", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public);
         var result_GetEnabledWithContext = (bool)method_GetEnabledWithContext.Invoke(null, new object[] { menuItemPath, new UnityEngine.Object[] { target } });
 
         return result_GetEnabledWithContext;
+#else
+        return false;
+#endif
     }
 
     public static void ExecuteMenuItem(string menuItemPath, UnityEngine.Object target = null)

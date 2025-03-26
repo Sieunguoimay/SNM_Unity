@@ -112,7 +112,7 @@ namespace InspectorExtensions
                 var assetGUID = AssetDatabase.AssetPathToGUID(objectInfo.path);
                 return allAssets.FirstOrDefault(a =>
                 {
-                    if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(a, out var guid, out var localId))
+                    if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(a, out var guid, out long localId))
                     {
                         return guid == assetGUID && localId.ToString() == objectInfo.localId;
                     }

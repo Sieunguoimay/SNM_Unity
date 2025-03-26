@@ -665,6 +665,7 @@ namespace InspectorExtensions
                 IMGUIContainer editorVE;
                 scrollView.Add(editorVE = new IMGUIContainer(() =>
                 {
+                    if (editor == null || editor.serializedObject == null || editor.serializedObject.targetObject == null) return;
                     editor.OnInspectorGUI();
                 }));
 
