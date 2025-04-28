@@ -1,8 +1,5 @@
 using System;
 using System.Collections;
-#if UNITY_EDITOR
-using Unity.EditorCoroutines.Editor;
-#endif
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -112,29 +109,4 @@ public class FiniteTimePlayer : MonoBehaviour
     {
         public Vector2 range;
     }
-
-
-#if UNITY_EDITOR
-
-    private EditorCoroutine _editorCoroutine;
-
-    [ContextMenu("TestPlay")]
-    private void TestPlay()
-    {
-        if (_editorCoroutine != null)
-        {
-            EditorCoroutineUtility.StopCoroutine(_editorCoroutine);
-        }
-
-        if (!Application.isPlaying)
-        {
-            _editorCoroutine = EditorCoroutineUtility.StartCoroutine(Timing(selfDuration), this);
-            return;
-        }
-    }
-    [ContextMenu("PlayWithSelfDuration")]
-    private void TestPlayWithSelfDuration() => PlayWithSelfDuration();
-
-#endif
-
 }
