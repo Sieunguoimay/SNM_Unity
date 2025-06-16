@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace AnimationInstancing_v2
+namespace SNM_Unity.AnimationInstancing
 {
-    public class BoneAndMesh
+    public class BoneAndMeshSetup
     {
         public static Mesh PrepareMeshVertexData(Mesh sharedMesh,
             Transform[] allBones, Renderer render, Transform root, int bonePerVertex)

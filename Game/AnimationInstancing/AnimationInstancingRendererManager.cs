@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace AnimationInstancing_v2
+namespace SNM_Unity.AnimationInstancing
 {
     public class AnimationInstancingRendererManager : MonoBehaviour
     {
@@ -14,7 +14,7 @@ namespace AnimationInstancing_v2
                 if (_destroyed) return null;
                 if (_instance == null)
                 {
-                    _instance = new GameObject("#AnimationInstancingRendererManager")
+                    _instance = new GameObject("[Singleton]AnimationInstancingRendererManager")
                         .AddComponent<AnimationInstancingRendererManager>();
                 }
                 return _instance;
@@ -63,14 +63,14 @@ namespace AnimationInstancing_v2
                     var block = materialBlockList[j];
                     Debug.Assert(block != null);
 
-                    var blockUnit = block.clonedMaterialBlocks[aniTextureIndex];
-
+                    var blockUnit = block.RenderMaterialBlocks[aniTextureIndex];
                     var instanceIndex = blockUnit.NextInstanceIndex();
+                    var topPackage = blockUnit.TopPackage;
 
-                    blockUnit.TopPackage.worldMatrixArray[instanceIndex] = instanceRenderer.RootTransform.localToWorldMatrix;
-                    blockUnit.TopPackage.frameIndexArray[instanceIndex] = instanceAnimator.FrameIndex;
-                    blockUnit.TopPackage.preFrameIndexArray[instanceIndex] = instanceAnimator.PreFrameIndex;
-                    blockUnit.TopPackage.transitionProgressArray[instanceIndex] = instanceAnimator.TransitionProgress;
+                    topPackage.worldMatrixArray[instanceIndex] = instanceRenderer.RootTransform.localToWorldMatrix;
+                    topPackage.frameIndexArray[instanceIndex] = instanceAnimator.FrameIndex;
+                    topPackage.preFrameIndexArray[instanceIndex] = instanceAnimator.PreFrameIndex;
+                    topPackage.transitionProgressArray[instanceIndex] = instanceAnimator.TransitionProgress;
                 }
             }
         }
@@ -81,16 +81,16 @@ namespace AnimationInstancing_v2
             foreach (var obj in VertexCacheDic)
             {
                 var vertexCache = obj.Value;
-                foreach (var blockItem in vertexCache.InstanceBlockDic)
+                foreach (var renderMatBlockGroup in vertexCache.renderMaterialBlockGroupsDic)
                 {
-                    var block = blockItem.Value;
-                    for (var i = 0; i < block.clonedMaterialBlocks.Length; i++)
+                    var blockGroup = renderMatBlockGroup.Value;
+                    for (var i = 0; i < blockGroup.RenderMaterialBlocks.Count; i++)
                     {
-                        var blockUnit = block.clonedMaterialBlocks[i];
+                        var blockUnit = blockGroup.RenderMaterialBlocks[i];
 
-                        for (var j = 0; j < blockUnit.PackageStack.Count; j++)
+                        for (var j = 0; j < blockUnit.PackageStackCount; j++)
                         {
-                            var package = blockUnit.PackageStack[j];
+                            var package = blockUnit.GetPackage(j);
 
 #if UNITY_EDITOR
                             blockUnit.totalInstancingCount = package.instancingCount;
@@ -98,8 +98,7 @@ namespace AnimationInstancing_v2
 
                             if (package.instancingCount > 0)
                             {
-                                DrawMeshInstanced(vertexCache, package,
-                                    blockUnit.clonedMaterials, i);
+                                DrawMeshInstanced(vertexCache, package, blockUnit.Materials, i);
 
                                 package.instancingCount = 0;
                             }

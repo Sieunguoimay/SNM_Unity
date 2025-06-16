@@ -1,10 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace AnimationInstancing_v2
+namespace SNM_Unity.AnimationInstancing
 {
     public partial class AnimationInstancingRenderer
     {
@@ -183,7 +182,7 @@ namespace AnimationInstancing_v2
                 foreach (var lod in renderer._lodInfoList)
                 {
                     Add(new VertexCacheListVE(lod.vertexCacheList, renderer.RootTransform));
-                    Add(new MaterialBlockListVE(lod.materialBlockList));
+                    Add(new MaterialBlockListVE(lod.materialBlockGroups));
                 }
             }
         }
@@ -222,7 +221,7 @@ namespace AnimationInstancing_v2
                     value = vc.mesh,
                     label = $"Mesh"
                 });
-                Add(new MaterialBlockListVE(vc.InstanceBlockDic.Values)
+                Add(new MaterialBlockListVE(vc.renderMaterialBlockGroupsDic.Values)
                 { text = "MaterialBlocks", value = false });
                 this.root = root;
             }
@@ -238,16 +237,16 @@ namespace AnimationInstancing_v2
 
         private class MaterialBlockListVE : Foldout
         {
-            public MaterialBlockListVE(IEnumerable<MaterialBlock> materialBlockList)
+            public MaterialBlockListVE(IEnumerable<RenderMaterialBlockGroup> materialBlockList)
             {
                 text = "Material Blocks";
 
                 foreach (var mb in materialBlockList)
                 {
-                    Add(new Label($"sharedMaterials ({mb.sharedMaterials.Length}). clonedMaterialBlocks ({mb.clonedMaterialBlocks.Length})"));
-                    for (int i = 0; i < mb.clonedMaterialBlocks.Length; i++)
+                    Add(new Label($"sharedMaterials ({mb.OriginalSharedMaterials.Count}). clonedMaterialBlocks ({mb.RenderMaterialBlocks.Count})"));
+                    for (int i = 0; i < mb.RenderMaterialBlocks.Count; i++)
                     {
-                        var cmb = mb.clonedMaterialBlocks[i];
+                        var cmb = mb.RenderMaterialBlocks[i];
                         Add(new Label($"- ClonedBlock {i} instance Count: {cmb.totalInstancingCount}"));
                     }
                 }

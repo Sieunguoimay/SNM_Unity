@@ -1,33 +1,34 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace AnimationInstancing_v2
+namespace SNM_Unity.AnimationInstancing
 {
-    public class ClonedMaterialBlock
+    public class RenderMaterialBlock
     {
-        public Material[] clonedMaterials;
+        private readonly List<InstancingPackage> packageStack = new() { new(1) };
+
+        private int _topPackageIndex = 0;
+
+        public Material[] Materials { get; }
 #if UNITY_EDITOR
         public int totalInstancingCount;
 #endif
-        public int instanceCountPerPackage;
-        private readonly List<InstancingPackage> packageStack;
+        public int InstanceCountPerPackage { get; }
 
-        private int _topPackageIndex = 0;
-        public IReadOnlyList<InstancingPackage> PackageStack => packageStack;
         public InstancingPackage TopPackage => packageStack[_topPackageIndex];
+        public int PackageStackCount => packageStack.Count;
 
-        public ClonedMaterialBlock(Material[] clonedMaterials)
+        public RenderMaterialBlock(Material[] materials)
         {
-            this.clonedMaterials = clonedMaterials;
-            packageStack = new List<InstancingPackage>() { new(1) };
-            instanceCountPerPackage = InstancingPackage.InstancingPackageSize;
+            Materials = materials;
+            InstanceCountPerPackage = InstancingPackage.InstancingPackageSize;
         }
 
         public int NextInstanceIndex()
         {
             Debug.Assert(_topPackageIndex < packageStack.Count);
 
-            if (TopPackage.instancingCount >= instanceCountPerPackage)
+            if (TopPackage.instancingCount >= InstanceCountPerPackage)
             {
                 _topPackageIndex++;
 
@@ -51,6 +52,11 @@ namespace AnimationInstancing_v2
         public void ResetStack()
         {
             _topPackageIndex = 0;
+        }
+
+        public InstancingPackage GetPackage(int index)
+        {
+            return packageStack[index];
         }
     }
 }

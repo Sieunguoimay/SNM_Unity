@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace AnimationInstancing_v2
+namespace SNM_Unity.AnimationInstancing
 {
     public partial class AnimationInstancingRenderer : MonoBehaviour
     {
@@ -16,7 +16,7 @@ namespace AnimationInstancing_v2
 
         [NonSerialized] private LodInfo[] _lodInfoList;
         [NonSerialized] private AnimationInstancingAnimator _instancingAnimator;
-        public IReadOnlyList<MaterialBlock> MaterialBlockList => _lodInfoList[0].materialBlockList;
+        public IReadOnlyList<RenderMaterialBlockGroup> MaterialBlockList => _lodInfoList[0].materialBlockGroups;
         public Transform RootTransform => root;
         public AnimationInstancingAnimator InstancingAnimator => _instancingAnimator;
         public AnimationInstancingData InstancingData => instancingData;
@@ -63,7 +63,7 @@ namespace AnimationInstancing_v2
             for (int lodIndex = 0; lodIndex != lodInfoList.Length; ++lodIndex)
             {
                 var lod = lodInfoList[lodIndex];
-                var materialBlocks = new List<MaterialBlock>();
+                var materialBlockGroups = new List<RenderMaterialBlockGroup>();
                 var vertexCaches = new List<VertexCache>();
                 for (int smrIndex = 0; smrIndex != lod.skinnedMeshRenderers.Length; ++smrIndex)
                 {
@@ -71,7 +71,7 @@ namespace AnimationInstancing_v2
                     if (sharedMesh == null) continue;
                     var renderer = lod.skinnedMeshRenderers[smrIndex];
 
-                    renderer.enabled = !AddToVertexCachePool(materialBlocks, vertexCaches, allBones,
+                    renderer.enabled = !AddToVertexCachePool(materialBlockGroups, vertexCaches, allBones,
                         textureData, renderingConfig, sharedMesh, renderer);
                 }
 
@@ -82,10 +82,10 @@ namespace AnimationInstancing_v2
 
                     var renderer = lod.meshRenderers[mrIndex];
 
-                    renderer.enabled = !AddToVertexCachePool(materialBlocks, vertexCaches, allBones,
+                    renderer.enabled = !AddToVertexCachePool(materialBlockGroups, vertexCaches, allBones,
                         textureData, renderingConfig, sharedMesh, renderer);
                 }
-                lod.materialBlockList = materialBlocks.ToArray();
+                lod.materialBlockGroups = materialBlockGroups.ToArray();
 #if UNITY_EDITOR
                 lod.vertexCacheList = vertexCaches.ToArray();
 #endif
@@ -95,7 +95,7 @@ namespace AnimationInstancing_v2
         }
 
         private bool AddToVertexCachePool(
-            List<MaterialBlock> materialBlocks,
+            List<RenderMaterialBlockGroup> materialBlockGroups,
             List<VertexCache> vertexCaches,
             Transform[] allBones,
             AnimationTextureData textureData,
@@ -108,7 +108,7 @@ namespace AnimationInstancing_v2
 
             if (!AnimationInstancingRendererManager.VertexCacheDic.TryGetValue(key, out var vertexCache))
             {
-                var mesh = BoneAndMesh.PrepareMeshVertexData(sharedMesh, allBones, renderer,
+                var mesh = BoneAndMeshSetup.PrepareMeshVertexData(sharedMesh, allBones, renderer,
                     RootTransform, GetBonePerVertex());
 
                 if (mesh == null) return false;//don't add this renderer to vertexcache
@@ -121,18 +121,18 @@ namespace AnimationInstancing_v2
             var sharedMaterials = renderer.sharedMaterials;
             var identify = RuntimeHelper.GetIdentify(sharedMaterials);
 
-            if (!vertexCache.InstanceBlockDic.TryGetValue(identify, out MaterialBlock matBlock))
+            if (!vertexCache.renderMaterialBlockGroupsDic.TryGetValue(identify, out RenderMaterialBlockGroup matBlockGroup))
             {
-                var clonedMaterials = MaterialBlock.CloneMaterialsWithTextures(
-                    sharedMaterials, sharedMesh.subMeshCount, textureData);
+                var clonedMaterialBlocks = CreateMaterialsBlocksForMeshes(sharedMaterials, sharedMesh.subMeshCount, textureData);
+                var renderBlocks = clonedMaterialBlocks.Select(materialsBlock => new RenderMaterialBlock(materialsBlock));
 
-                matBlock = new MaterialBlock(clonedMaterials, sharedMaterials);
-                vertexCache.InstanceBlockDic.Add(identify, matBlock);
+                matBlockGroup = new RenderMaterialBlockGroup(renderBlocks, sharedMaterials);
+                vertexCache.renderMaterialBlockGroupsDic.Add(identify, matBlockGroup);
             }
 
             vertexCaches.Add(vertexCache);
 #if UNITY_EDITOR
-            materialBlocks.Add(matBlock);
+            materialBlockGroups.Add(matBlockGroup);
 #endif
             return true;
         }
@@ -178,7 +178,7 @@ namespace AnimationInstancing_v2
                         meshRenderers = listMeshRenderer.ToArray(),
                         meshFilters = listMeshRenderer.Select(mr => mr.GetComponent<MeshFilter>()).ToArray(),
                         // vertexCacheList = new VertexCache[n],
-                        materialBlockList = new MaterialBlock[n],
+                        materialBlockGroups = new RenderMaterialBlockGroup[n],
                     };
                 }
             }
@@ -195,7 +195,7 @@ namespace AnimationInstancing_v2
                         meshRenderers = mrs,
                         meshFilters = mfs,
                         // vertexCacheList = new VertexCache[n],
-                        materialBlockList = new MaterialBlock[n]
+                        materialBlockGroups = new RenderMaterialBlockGroup[n]
                     }
                 };
             }
@@ -249,13 +249,48 @@ namespace AnimationInstancing_v2
             }
         }
 
+        public static IEnumerable<Material[]> CreateMaterialsBlocksForMeshes(
+            Material[] materials, int count, AnimationTextureData textureData)
+        {
+            for (var textureIndex = 0; textureIndex < count; textureIndex++)
+            {
+                var copyMaterials = new Material[count];
+
+                for (int i = 0; i != count; ++i)
+                {
+                    copyMaterials[i] = new Material(materials[i]);
+#if UNITY_5_6_OR_NEWER
+                    copyMaterials[i].enableInstancing = true;
+#endif
+                    // if (useInstancing)
+                    copyMaterials[i].EnableKeyword("SKINNED_INSTANCING_ON");
+                    // else
+                    //     copyMaterials[i].DisableKeyword("SKINNED_INSTANCING_ON");
+
+                    copyMaterials[i].EnableKeyword("USE_CONSTANT_BUFFER");
+                    copyMaterials[i].DisableKeyword("USE_COMPUTE_BUFFER");
+
+                    if (textureData != null)
+                    {
+                        copyMaterials[i].SetTexture("_boneTexture", textureData.bakedBoneTextures[textureIndex]);
+                        copyMaterials[i].SetInt("_boneTextureWidth", textureData.bakedBoneTextures[textureIndex].width);
+                        copyMaterials[i].SetInt("_boneTextureHeight", textureData.bakedBoneTextures[textureIndex].height);
+                        copyMaterials[i].SetInt("_boneTextureBlockWidth", textureData.textureBlockWidth);
+                        copyMaterials[i].SetInt("_boneTextureBlockHeight", textureData.textureBlockHeight);
+                    }
+                }
+
+                yield return copyMaterials;
+            }
+        }
+
         private class LodInfo
         {
             public int lodLevel;
             public SkinnedMeshRenderer[] skinnedMeshRenderers;
             public MeshRenderer[] meshRenderers;
             public MeshFilter[] meshFilters;
-            public MaterialBlock[] materialBlockList;
+            public RenderMaterialBlockGroup[] materialBlockGroups;
 #if UNITY_EDITOR
             public VertexCache[] vertexCacheList;
 #endif

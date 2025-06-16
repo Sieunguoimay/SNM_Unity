@@ -3,11 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Search;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace AnimationInstancing_v2
+namespace SNM_Unity.AnimationInstancing
 {
     public class AnimationBakerWindow : EditorWindow
     {
