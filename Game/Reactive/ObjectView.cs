@@ -2,7 +2,7 @@ using InspectorExtensions;
 using Reflection;
 using UnityEngine;
 
-namespace Views
+namespace Snm.Framework.Reactive
 {
     public class ObjectView<TObject> : MonoBehaviour where TObject : class
     {

@@ -1,8 +1,8 @@
 using System;
 
-namespace Views
+namespace Snm.Framework.Reactive
 {
-    public class VariableBoolObject : IBoolWithSetter
+    public class VariableBool : IBoolWithSet
     {
         private bool _value = false;
 
@@ -10,7 +10,7 @@ namespace Views
 
         public event Action<IBool> OnValueChanged;
         
-        public VariableBoolObject(bool value)
+        public VariableBool(bool value)
         {
             _value = value;
         }

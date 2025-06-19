@@ -1,5 +1,5 @@
 using System;
-using SNM.Layout;
+using Snm.Layout;
 using UnityEngine;
 using UnityEngine.Events;
 

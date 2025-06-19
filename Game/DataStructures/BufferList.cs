@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace SNM.DataStructures
+namespace Snm.DataStructures
 {
     public class BufferList<T> : IReadOnlyList<T>
     {

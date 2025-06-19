@@ -1,6 +1,6 @@
 using System;
 
-namespace Views
+namespace Snm.Framework.Reactive
 {
     public interface IBool
     {

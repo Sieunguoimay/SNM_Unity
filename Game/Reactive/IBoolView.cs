@@ -2,7 +2,7 @@ using System;
 using Reflection;
 using UnityEngine;
 
-namespace Views
+namespace Snm.Framework.Reactive
 {
     public class IBoolView : ObjectView<IBool>
     {

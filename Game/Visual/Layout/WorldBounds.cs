@@ -1,5 +1,5 @@
 using UnityEngine;
-namespace SNM.Layout
+namespace Snm.Layout
 {
     public interface IWorldBounds
     {

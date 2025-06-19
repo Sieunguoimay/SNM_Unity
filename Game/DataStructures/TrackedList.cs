@@ -1,4 +1,4 @@
-namespace SNM.DataStructures
+namespace Snm.DataStructures
 {
     public class TrackedList<T, TList> : 
         BasicList<T>, IBasicList<T>,

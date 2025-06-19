@@ -1,4 +1,4 @@
-namespace SNM.DataStructures
+namespace Snm.DataStructures
 {
     public class AutoRemoveList<T> :
         TrackedList<T, IAutoRemoveList>, IBasicList<T>,

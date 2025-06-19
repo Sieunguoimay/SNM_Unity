@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SNM.Camera
+namespace Snm.Camera
 {
     public class CameraWidthConstraint : MonoBehaviour
     {

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SNM.Layout
+namespace Snm.Layout
 {
     public class GridLayout : MonoBehaviour
     {
