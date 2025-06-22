@@ -4,7 +4,7 @@ namespace Snm.LifecycleStructureFramework
 {
     public interface ILifecycleUnitDefinition
     {
-        ILifecycleUnit CreateLifecycleUnit();
+        ILifecycleUnit CreateLifecycleUnit(IDepedencyResolver resolver);
         IReadOnlyList<ILifecycleUnitReference> UnitReferences { get; }
     }
 }

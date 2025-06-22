@@ -9,7 +9,7 @@ namespace Snm.Framework.Reactive
         public bool Value => _value;
 
         public event Action<IBool> OnValueChanged;
-        
+
         public VariableBool(bool value)
         {
             _value = value;
@@ -17,8 +17,11 @@ namespace Snm.Framework.Reactive
 
         public void SetValue(bool value)
         {
-            _value = value;
-            OnValueChanged?.Invoke(this);
+            if (_value != value)
+            {
+                _value = value;
+                OnValueChanged?.Invoke(this);
+            }
         }
     }
 }

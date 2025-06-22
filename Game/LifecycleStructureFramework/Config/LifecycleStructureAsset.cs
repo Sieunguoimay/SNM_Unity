@@ -1,4 +1,6 @@
 using System.Linq;
+using GrabAndToss.Infrastructure;
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -19,12 +21,11 @@ namespace Snm.LifecycleStructureFramework
         [ContextMenu("Test Build Structure")]
         private void TestBuildStructure()
         {
-            using var structure = LifecycleStructureBuilder.BuildStructure(this);
-            Debug.Log("Test BuildStructure. Structure contains " + structure.UnitRegistry.Count + " lifecycle units.");
-            foreach (var entry in structure.UnitRegistry)
-            {
-                Debug.Log("Unit: " + entry.Key.GetType().Name + " - " + entry.Value.GetType().Name);
-            }
+            var simpleResolver = new SimpleDependencyResolver();
+
+            simpleResolver.AddInstance<IViewFactory>(new ViewFactory_Empty());
+
+            using var structure = LifecycleStructureBuilder.BuildStructure(this, simpleResolver);
         }
 
         [ContextMenu("CollectAllAssetsInFolder")]

@@ -6,18 +6,19 @@ namespace Snm.LifecycleStructureFramework
 {
     public static class LifecycleStructureBuilder
     {
-        public static LifecycleStructure BuildStructure(LifecycleStructureAsset systemAsset)
+        public static LifecycleStructure BuildStructure(LifecycleStructureAsset systemAsset, IDepedencyResolver resolver)
         {
-            return new LifecycleStructure(BuildStructureToDictionary(systemAsset.UnitAssets));
+            return new LifecycleStructure(BuildStructureToDictionary(systemAsset.UnitAssets, resolver));
         }
 
-        public static Dictionary<ILifecycleUnitDefinition, ILifecycleUnit> BuildStructureToDictionary(ILifecycleUnitDefinition[] assets)
+        public static Dictionary<ILifecycleUnitDefinition, ILifecycleUnit> BuildStructureToDictionary(
+            ILifecycleUnitDefinition[] assets, IDepedencyResolver resolver)
         {
             var dictionary = new Dictionary<ILifecycleUnitDefinition, ILifecycleUnit>();
 
             foreach (var asset in assets)
             {
-                var element = asset.CreateLifecycleUnit();
+                var element = asset.CreateLifecycleUnit(resolver);
                 dictionary.Add(asset, element);
             }
 
