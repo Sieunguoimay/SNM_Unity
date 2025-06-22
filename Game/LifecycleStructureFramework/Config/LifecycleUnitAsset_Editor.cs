@@ -49,7 +49,7 @@ namespace Snm.LifecycleStructureFramework
             var result = false;
 
             var isValidRuntimeType = entry.Editor_TargetType != null && typeof(ILifecycleUnit).IsAssignableFrom(entry.Editor_TargetType);
-            var isValidAssetType = entry.Asset != null && entry.Asset.IsAssetFor(entry.Editor_TargetType);
+            var isValidAssetType = entry.Asset != null;
             var isValid = isValidAssetType && isValidRuntimeType;
 
             var errorText = "";
