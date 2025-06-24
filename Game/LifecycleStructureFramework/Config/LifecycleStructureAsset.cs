@@ -21,11 +21,11 @@ namespace Snm.LifecycleStructureFramework
         [ContextMenu("Test Build Structure")]
         private void TestBuildStructure()
         {
-            var simpleResolver = new SimpleDependencyResolver();
-
-            simpleResolver.AddInstance<IViewFactory>(new ViewFactory_Empty());
-
-            using var structure = LifecycleStructureBuilder.BuildStructure(this, simpleResolver);
+            using var structure = LifecycleStructureBuilder.BuildStructure(
+                systemAsset: this,
+                resolver: new SimpleDependencyResolver(new() {
+                    { typeof(IViewFactory), new ViewFactory_Empty() }
+                }));
         }
 
         [ContextMenu("CollectAllAssetsInFolder")]
