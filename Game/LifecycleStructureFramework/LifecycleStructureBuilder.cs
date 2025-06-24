@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using UnityEngine;
 
 namespace Snm.LifecycleStructureFramework
 {
@@ -29,9 +30,16 @@ namespace Snm.LifecycleStructureFramework
                 var references = asset.UnitReferences;
                 foreach (var reference in references)
                 {
-                    var referenceElement = dictionary[reference.Asset];
-                    var fieldName = reference.InjectId;
-                    InjectDependencies(unit, referenceElement, unitType, fieldName);
+                    if (dictionary.ContainsKey(reference.Asset))
+                    {
+                        var referenceElement = dictionary[reference.Asset];
+                        var fieldName = reference.InjectId;
+                        InjectDependencies(unit, referenceElement, unitType, fieldName);
+                    }
+                    else
+                    {
+                        Debug.LogError($"Failed to find Reference {reference.Asset} for {asset}", asset as UnityEngine.Object);
+                    }
                 }
             }
 
