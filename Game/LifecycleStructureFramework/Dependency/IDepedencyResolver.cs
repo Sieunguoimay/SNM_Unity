@@ -1,4 +1,4 @@
-namespace Snm.LifecycleStructureFramework
+namespace Snm.SystemStructureFramework
 {
     public interface IDepedencyResolver
     {

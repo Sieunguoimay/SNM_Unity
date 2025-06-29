@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Snm.LifecycleStructureFramework
+namespace Snm.SystemStructureFramework
 {
     public class SimpleDependencyResolver : IDepedencyResolver
     {
@@ -38,8 +38,7 @@ namespace Snm.LifecycleStructureFramework
                 return (T)instance;
             }
 
-            Debug.LogError($"Failed to resolve for type {typeof(T).Name}");
-            return default;
+            throw new Exception($"Failed to resolve for type {typeof(T).Name}");
         }
     }
 }

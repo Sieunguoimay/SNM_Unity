@@ -1,31 +1,29 @@
-using System;
 using System.Linq;
-using GrabAndToss.Infrastructure;
 using Snm.GrabAndToss.ViewSystem;
-
-
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
 using UnityEngine;
+using UnityEngine.Serialization;
 
-namespace Snm.LifecycleStructureFramework
+namespace Snm.SystemStructureFramework
 {
    
-    public class LifecycleStructureAsset : ScriptableObject
+    public class SystemStructureAsset : ScriptableObject
     {
-        [SerializeField] private LifecycleUnitAsset[] unitAssets;
+        [FormerlySerializedAs("unitAssets")]
+        [SerializeField] private StructureElementDefinitionAsset[] elementDefinitionAssets;
 #if UNITY_EDITOR
         [SerializeField] private UnityEngine.Object[] selectedFolders;
 #endif
 
-        public LifecycleUnitAsset[] UnitAssets => unitAssets;
+        public StructureElementDefinitionAsset[] ElementDefinitionAssets => elementDefinitionAssets;
 
 #if UNITY_EDITOR
         [ContextMenu("Test Build Structure")]
         private void TestBuildStructure()
         {
-            using var structure = LifecycleStructureBuilder.BuildStructure(
+            using var structure = SystemStructureBuilder.BuildStructure(
                 systemAsset: this,
                 resolver: new SimpleDependencyResolver(new() {
                     { typeof(IViewSpawnService), new ViewSpawnService_Mock() }
@@ -35,12 +33,12 @@ namespace Snm.LifecycleStructureFramework
         [ContextMenu("CollectAllAssetsInFolder")]
         private void CollectAllAssetsInFolder()
         {
-            unitAssets = selectedFolders
+            elementDefinitionAssets = selectedFolders
                 .Select(f => AssetDatabase.GetAssetPath(f))
-                .SelectMany(folder => AssetDatabase.FindAssets($"t:{nameof(LifecycleUnitAsset)}", new[] { folder }))
+                .SelectMany(folder => AssetDatabase.FindAssets($"t:{nameof(StructureElementDefinitionAsset)}", new[] { folder }))
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
-                .OfType<LifecycleUnitAsset>()
+                .OfType<StructureElementDefinitionAsset>()
                 .ToArray();
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssetIfDirty(this);

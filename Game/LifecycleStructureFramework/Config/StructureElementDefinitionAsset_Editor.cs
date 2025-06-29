@@ -7,15 +7,15 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
-namespace Snm.LifecycleStructureFramework
+namespace Snm.SystemStructureFramework
 {
-    [CustomEditor(typeof(LifecycleUnitAsset), true)]
-    public class LifecycleUnitAsset_Editor : Editor
+    [CustomEditor(typeof(StructureElementDefinitionAsset), true)]
+    public class StructureElementDefinitionAsset_Editor : Editor
     {
         private void OnEnable()
         {
-            var unitAsset = (LifecycleUnitAsset)target;
-            var att = target.GetType().GetCustomAttribute<LifecycleUnitAssetForAttribute>();
+            var unitAsset = (StructureElementDefinitionAsset)target;
+            var att = target.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
 
             if (att != null && att.LifecycleUnitType != null)
             {
@@ -29,7 +29,7 @@ namespace Snm.LifecycleStructureFramework
 
             EditorGUILayout.LabelField("Lifecycle Units", EditorStyles.boldLabel);
 
-            var unitAsset = (LifecycleUnitAsset)target;
+            var unitAsset = (StructureElementDefinitionAsset)target;
 
             var anyChanged = false;
 
@@ -44,12 +44,12 @@ namespace Snm.LifecycleStructureFramework
             }
         }
 
-        private bool DrawElementReferenceEntry(LifecycleUnitReferenceEntry entry)
+        private bool DrawElementReferenceEntry(StructureElementReferenceEntry entry)
         {
             var result = false;
 
             var isValidRuntimeType = entry.Editor_TargetType != null;
-            var isValidAssetType = entry.Asset != null && entry.Editor_TargetType.IsAssignableFrom(entry.Editor_SelectedForType);
+            var isValidAssetType = entry.DefinitionAsset != null && entry.Editor_TargetType.IsAssignableFrom(entry.Editor_SelectedForType);
             var isValid = isValidAssetType && isValidRuntimeType;
 
             var errorText = "";
@@ -64,8 +64,8 @@ namespace Snm.LifecycleStructureFramework
 
             var color = GUI.color;
             GUI.color = isValid ? color : Color.red;
-            var newAsset = (LifecycleUnitAsset)EditorGUILayout.ObjectField(FormatFieldName(entry.InjectId) + errorText, entry.Asset, typeof(LifecycleUnitAsset), false);
-            if (newAsset != entry.Asset)
+            var newAsset = (StructureElementDefinitionAsset)EditorGUILayout.ObjectField(FormatFieldName(entry.InjectId) + errorText, entry.DefinitionAsset, typeof(StructureElementDefinitionAsset), false);
+            if (newAsset != entry.DefinitionAsset)
             {
                 entry.SetAsset(newAsset);
                 result = true;
@@ -74,31 +74,36 @@ namespace Snm.LifecycleStructureFramework
             return result;
         }
 
-        private void UpdateReferenceEntries(LifecycleUnitAsset unitAsset, Type unitType)
+        private void UpdateReferenceEntries(StructureElementDefinitionAsset unitAsset, Type unitType)
         {
             var fields = GetReferenceFields(unitType);
+
             var newEntries = fields
-                .Select(field => new LifecycleUnitReferenceEntry(
+                .Select(field => new StructureElementReferenceEntry(
                     injectId: field.Name,
-                    asset: unitAsset.UnitReferences.FirstOrDefault(ef => ef.InjectId == field.Name)?.Asset,
+                    asset: unitAsset.UnitReferences.FirstOrDefault(ef => ef.InjectId == field.Name)?.DefinitionAsset,
                     targetType: field.FieldType))
                 .ToArray();
+
             unitAsset.SetUnitReferences(newEntries);
         }
 
         private static IEnumerable<FieldInfo> GetReferenceFields(Type type)
         {
             var currentType = type;
+
             while (currentType != null)
             {
                 var fields = currentType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
                 foreach (var field in fields)
                 {
-                    if (field.GetCustomAttribute<UnitReferenceAttribute>() != null)
+                    if (field.GetCustomAttribute<StructureElementReferenceAttribute>() != null)
                     {
                         yield return field;
                     }
                 }
+
                 currentType = currentType.BaseType;
             }
         }
