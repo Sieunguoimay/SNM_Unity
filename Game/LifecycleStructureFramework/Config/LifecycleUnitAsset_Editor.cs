@@ -48,8 +48,8 @@ namespace Snm.LifecycleStructureFramework
         {
             var result = false;
 
-            var isValidRuntimeType = entry.Editor_TargetType != null && typeof(ILifecycleUnit).IsAssignableFrom(entry.Editor_TargetType);
-            var isValidAssetType = entry.Asset != null;
+            var isValidRuntimeType = entry.Editor_TargetType != null;
+            var isValidAssetType = entry.Asset != null && entry.Editor_TargetType.IsAssignableFrom(entry.Editor_SelectedForType);
             var isValid = isValidAssetType && isValidRuntimeType;
 
             var errorText = "";

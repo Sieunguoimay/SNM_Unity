@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Snm.LifecycleStructureFramework
 {
@@ -19,12 +20,26 @@ namespace Snm.LifecycleStructureFramework
 
         public void AddInstance<T>(T instance)
         {
-            instances.Add(typeof(T), instance);
+            var type = typeof(T);
+            if (instances.ContainsKey(type))
+            {
+                Debug.LogError($"Failed to AddInstance. Type {type.Name} is already exist in the list.");
+            }
+            else
+            {
+                instances.Add(typeof(T), instance);
+            }
         }
 
         public T Resolve<T>()
         {
-            return (T)instances[typeof(T)];
+            if (instances.TryGetValue(typeof(T), out var instance))
+            {
+                return (T)instance;
+            }
+
+            Debug.LogError($"Failed to resolve for type {typeof(T).Name}");
+            return default;
         }
     }
 }

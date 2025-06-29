@@ -1,5 +1,8 @@
+using System;
 using System.Linq;
 using GrabAndToss.Infrastructure;
+using Snm.GrabAndToss.ViewSystem;
+
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -8,11 +11,12 @@ using UnityEngine;
 
 namespace Snm.LifecycleStructureFramework
 {
+   
     public class LifecycleStructureAsset : ScriptableObject
     {
         [SerializeField] private LifecycleUnitAsset[] unitAssets;
 #if UNITY_EDITOR
-        [SerializeField] private Object selectedFolder;
+        [SerializeField] private UnityEngine.Object[] selectedFolders;
 #endif
 
         public LifecycleUnitAsset[] UnitAssets => unitAssets;
@@ -24,15 +28,16 @@ namespace Snm.LifecycleStructureFramework
             using var structure = LifecycleStructureBuilder.BuildStructure(
                 systemAsset: this,
                 resolver: new SimpleDependencyResolver(new() {
-                    { typeof(IViewFactory), new ViewFactory_Empty() }
+                    { typeof(IViewSpawnService), new ViewSpawnService_Mock() }
                 }));
         }
 
         [ContextMenu("CollectAllAssetsInFolder")]
         private void CollectAllAssetsInFolder()
         {
-            var folder = AssetDatabase.GetAssetPath(selectedFolder);
-            unitAssets = AssetDatabase.FindAssets($"t:{nameof(LifecycleUnitAsset)}", new[] { folder })
+            unitAssets = selectedFolders
+                .Select(f => AssetDatabase.GetAssetPath(f))
+                .SelectMany(folder => AssetDatabase.FindAssets($"t:{nameof(LifecycleUnitAsset)}", new[] { folder }))
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
                 .OfType<LifecycleUnitAsset>()

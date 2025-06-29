@@ -6,7 +6,6 @@ namespace Snm.LifecycleStructureFramework
 
     public abstract class LifecycleUnitAsset : ScriptableObject, ILifecycleUnitDefinition
     {
-        [HideInInspector]
         [SerializeField] private LifecycleUnitReferenceEntry[] unitReferences = new LifecycleUnitReferenceEntry[0];
 
         IReadOnlyList<ILifecycleUnitReference> ILifecycleUnitDefinition.UnitReferences => unitReferences;

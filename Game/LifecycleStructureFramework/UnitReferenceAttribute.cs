@@ -6,5 +6,11 @@ namespace Snm.LifecycleStructureFramework
     public class UnitReferenceAttribute : Attribute
     {
 
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+    public class ExternalUnitReferenceAttribute : Attribute
+    {
     }
 }

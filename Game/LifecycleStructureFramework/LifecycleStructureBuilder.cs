@@ -13,7 +13,8 @@ namespace Snm.LifecycleStructureFramework
         }
 
         public static Dictionary<ILifecycleUnitDefinition, ILifecycleUnit> BuildStructureToDictionary(
-            ILifecycleUnitDefinition[] assets, IDepedencyResolver resolver)
+            ILifecycleUnitDefinition[] assets,
+            IDepedencyResolver resolver)
         {
             var dictionary = new Dictionary<ILifecycleUnitDefinition, ILifecycleUnit>();
 
