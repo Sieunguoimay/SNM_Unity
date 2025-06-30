@@ -33,7 +33,7 @@ namespace Snm.SystemStructureFramework
 
             var anyChanged = false;
 
-            foreach (var reference in unitAsset.UnitReferences)
+            foreach (var reference in unitAsset.Editor_ElementReferences)
             {
                 anyChanged |= DrawElementReferenceEntry(reference);
             }
@@ -49,7 +49,10 @@ namespace Snm.SystemStructureFramework
             var result = false;
 
             var isValidRuntimeType = entry.Editor_TargetType != null;
-            var isValidAssetType = entry.DefinitionAsset != null && entry.Editor_TargetType.IsAssignableFrom(entry.Editor_SelectedForType);
+            var isValidAssetType = entry.DefinitionAsset != null
+                && entry.Editor_SelectedForType != null
+                && entry.Editor_TargetType.IsAssignableFrom(entry.Editor_SelectedForType)
+                || entry.Editor_SelectedForType == null;
             var isValid = isValidAssetType && isValidRuntimeType;
 
             var errorText = "";
@@ -81,11 +84,11 @@ namespace Snm.SystemStructureFramework
             var newEntries = fields
                 .Select(field => new StructureElementReferenceEntry(
                     injectId: field.Name,
-                    asset: unitAsset.UnitReferences.FirstOrDefault(ef => ef.InjectId == field.Name)?.DefinitionAsset,
+                    asset: unitAsset.Editor_ElementReferences.FirstOrDefault(ef => ef.InjectId == field.Name)?.DefinitionAsset,
                     targetType: field.FieldType))
                 .ToArray();
 
-            unitAsset.SetUnitReferences(newEntries);
+            unitAsset.Editor_SetElementReferences(newEntries);
         }
 
         private static IEnumerable<FieldInfo> GetReferenceFields(Type type)

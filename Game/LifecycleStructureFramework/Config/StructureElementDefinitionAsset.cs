@@ -1,23 +1,27 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Snm.SystemStructureFramework
 {
 
     public abstract class StructureElementDefinitionAsset : ScriptableObject, IStructureElementDefinition
     {
-        [SerializeField] private StructureElementReferenceEntry[] unitReferences = new StructureElementReferenceEntry[0];
+        [FormerlySerializedAs("unitReferences")]
+        [SerializeField] private StructureElementReferenceEntry[] elementReferences = new StructureElementReferenceEntry[0];
 
-        IReadOnlyList<IStructureElementReference> IStructureElementDefinition.UnitReferences => unitReferences;
+        IReadOnlyList<IStructureElementReference> IStructureElementDefinition.ElementReferences => elementReferences;
 
-        public IReadOnlyList<StructureElementReferenceEntry> UnitReferences => unitReferences;
+#if UNITY_EDITOR
+        public IReadOnlyList<StructureElementReferenceEntry> Editor_ElementReferences => elementReferences;
 
-        public void SetUnitReferences(StructureElementReferenceEntry[] referenceEntries)
+        public void Editor_SetElementReferences(StructureElementReferenceEntry[] referenceEntries)
         {
-            unitReferences = referenceEntries;
+            elementReferences = referenceEntries;
         }
+#endif
 
-        public IStructureElement CreateLifecycleUnit(IDepedencyResolver resolver)
+        IStructureElement IStructureElementDefinition.CreateLifecycleUnit(IDepedencyResolver resolver)
         {
             return CreateLifecyleUnit_Override(resolver);
         }

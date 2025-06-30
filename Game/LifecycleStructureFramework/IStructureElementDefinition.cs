@@ -5,6 +5,6 @@ namespace Snm.SystemStructureFramework
     public interface IStructureElementDefinition
     {
         IStructureElement CreateLifecycleUnit(IDepedencyResolver resolver);
-        IReadOnlyList<IStructureElementReference> UnitReferences { get; }
+        IReadOnlyList<IStructureElementReference> ElementReferences { get; }
     }
 }

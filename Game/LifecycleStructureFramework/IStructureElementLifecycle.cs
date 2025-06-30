@@ -1,10 +1,5 @@
 namespace Snm.SystemStructureFramework
 {
-    public interface IStructureElement
-    {
-
-    }
-
     public interface IStructureElementLifecycle : IStructureElement
     {
         void Initialize();

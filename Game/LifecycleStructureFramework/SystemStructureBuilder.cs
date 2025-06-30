@@ -14,7 +14,7 @@ namespace Snm.SystemStructureFramework
 
             foreach (var definition in definitions)
             {
-                var element = definition.CreateLifecycleUnit(resolver);
+                var element = ((IStructureElementDefinition)definition).CreateLifecycleUnit(resolver);
                 dictionary.Add(definition, element);
             }
 
@@ -22,7 +22,7 @@ namespace Snm.SystemStructureFramework
             {
                 var unit = dictionary[definition];
                 var unitType = unit.GetType();
-                var references = definition.UnitReferences;
+                var references = definition.ElementReferences;
                 foreach (var reference in references)
                 {
                     if (dictionary.ContainsKey(reference.Definition))
