@@ -9,12 +9,12 @@ using UnityEngine;
 
 namespace Snm.SystemStructureFramework
 {
-    [CustomEditor(typeof(StructureElementDefinitionAsset), true)]
-    public class StructureElementDefinitionAsset_Editor : Editor
+    [CustomEditor(typeof(StructureElementAsset), true)]
+    public class StructureElementAsset_Editor : Editor
     {
         private void OnEnable()
         {
-            var unitAsset = (StructureElementDefinitionAsset)target;
+            var unitAsset = (StructureElementAsset)target;
             var att = target.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
 
             if (att != null && att.LifecycleUnitType != null)
@@ -29,7 +29,7 @@ namespace Snm.SystemStructureFramework
 
             EditorGUILayout.LabelField("Lifecycle Units", EditorStyles.boldLabel);
 
-            var unitAsset = (StructureElementDefinitionAsset)target;
+            var unitAsset = (StructureElementAsset)target;
 
             var anyChanged = false;
 
@@ -67,7 +67,7 @@ namespace Snm.SystemStructureFramework
 
             var color = GUI.color;
             GUI.color = isValid ? color : Color.red;
-            var newAsset = (StructureElementDefinitionAsset)EditorGUILayout.ObjectField(FormatFieldName(entry.InjectId) + errorText, entry.DefinitionAsset, typeof(StructureElementDefinitionAsset), false);
+            var newAsset = (StructureElementAsset)EditorGUILayout.ObjectField(FormatFieldName(entry.InjectId) + errorText, entry.DefinitionAsset, typeof(StructureElementAsset), false);
             if (newAsset != entry.DefinitionAsset)
             {
                 entry.SetAsset(newAsset);
@@ -77,7 +77,7 @@ namespace Snm.SystemStructureFramework
             return result;
         }
 
-        private void UpdateReferenceEntries(StructureElementDefinitionAsset unitAsset, Type unitType)
+        private void UpdateReferenceEntries(StructureElementAsset unitAsset, Type unitType)
         {
             var fields = GetReferenceFields(unitType);
 
@@ -101,7 +101,7 @@ namespace Snm.SystemStructureFramework
 
                 foreach (var field in fields)
                 {
-                    if (field.GetCustomAttribute<StructureElementReferenceAttribute>() != null)
+                    if (field.GetCustomAttribute<ElementReferenceAttribute>() != null)
                     {
                         yield return field;
                     }

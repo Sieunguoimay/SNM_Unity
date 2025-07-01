@@ -11,7 +11,7 @@ namespace Snm.SystemStructureFramework
     {
         [SerializeField] private string injectId;
         [FormerlySerializedAs("asset")]
-        [SerializeField] private StructureElementDefinitionAsset definitionAsset;
+        [SerializeField] private StructureElementAsset definitionAsset;
 
 #if UNITY_EDITOR
         private readonly Type editor_TargetType;
@@ -20,7 +20,7 @@ namespace Snm.SystemStructureFramework
         string IStructureElementReference.InjectId => injectId;
         IStructureElementDefinition IStructureElementReference.Definition => definitionAsset;
 
-        public StructureElementDefinitionAsset DefinitionAsset => definitionAsset;
+        public StructureElementAsset DefinitionAsset => definitionAsset;
         public string InjectId => injectId;
 
 #if UNITY_EDITOR
@@ -30,7 +30,7 @@ namespace Snm.SystemStructureFramework
         public StructureElementReferenceEntry() { }
 
 #if UNITY_EDITOR
-        public StructureElementReferenceEntry(string injectId, StructureElementDefinitionAsset asset, Type targetType)
+        public StructureElementReferenceEntry(string injectId, StructureElementAsset asset, Type targetType)
             : this(injectId, asset)
         {
             editor_TargetType = targetType;
@@ -41,13 +41,13 @@ namespace Snm.SystemStructureFramework
         }
 #endif
 
-        public StructureElementReferenceEntry(string injectId, StructureElementDefinitionAsset asset)
+        public StructureElementReferenceEntry(string injectId, StructureElementAsset asset)
         {
             this.injectId = injectId;
             this.definitionAsset = asset;
         }
 
-        public void SetAsset(StructureElementDefinitionAsset asset)
+        public void SetAsset(StructureElementAsset asset)
         {
             this.definitionAsset = asset;
         }

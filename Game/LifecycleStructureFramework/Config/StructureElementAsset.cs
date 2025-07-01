@@ -5,7 +5,7 @@ using UnityEngine.Serialization;
 namespace Snm.SystemStructureFramework
 {
 
-    public abstract class StructureElementDefinitionAsset : ScriptableObject, IStructureElementDefinition
+    public abstract class StructureElementAsset : ScriptableObject, IStructureElementDefinition
     {
         [FormerlySerializedAs("unitReferences")]
         [SerializeField] private StructureElementReferenceEntry[] elementReferences = new StructureElementReferenceEntry[0];

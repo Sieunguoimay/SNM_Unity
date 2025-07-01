@@ -12,12 +12,12 @@ namespace Snm.SystemStructureFramework
     public class SystemStructureAsset : ScriptableObject
     {
         [FormerlySerializedAs("unitAssets")]
-        [SerializeField] private StructureElementDefinitionAsset[] elementDefinitionAssets;
+        [SerializeField] private StructureElementAsset[] elementDefinitionAssets;
 #if UNITY_EDITOR
-        [SerializeField] private UnityEngine.Object[] selectedFolders;
+        [SerializeField] private Object[] selectedFolders;
 #endif
 
-        public StructureElementDefinitionAsset[] ElementDefinitionAssets => elementDefinitionAssets;
+        public StructureElementAsset[] ElementDefinitionAssets => elementDefinitionAssets;
 
 #if UNITY_EDITOR
         [ContextMenu("Test Build Structure")]
@@ -35,10 +35,10 @@ namespace Snm.SystemStructureFramework
         {
             elementDefinitionAssets = selectedFolders
                 .Select(f => AssetDatabase.GetAssetPath(f))
-                .SelectMany(folder => AssetDatabase.FindAssets($"t:{nameof(StructureElementDefinitionAsset)}", new[] { folder }))
+                .SelectMany(folder => AssetDatabase.FindAssets($"t:{nameof(StructureElementAsset)}", new[] { folder }))
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
-                .OfType<StructureElementDefinitionAsset>()
+                .OfType<StructureElementAsset>()
                 .ToArray();
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssetIfDirty(this);

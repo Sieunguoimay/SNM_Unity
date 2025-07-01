@@ -3,7 +3,7 @@ using System;
 namespace Snm.SystemStructureFramework
 {
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
-    public class StructureElementReferenceAttribute : Attribute
+    public class ElementReferenceAttribute : Attribute
     {
     }
 }
