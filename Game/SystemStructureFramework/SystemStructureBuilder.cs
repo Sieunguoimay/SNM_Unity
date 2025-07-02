@@ -10,7 +10,7 @@ namespace Snm.SystemStructureFramework
         public static SystemStructure BuildStructure(SystemStructureAsset systemAsset, IDepedencyResolver resolver)
         {
             var dictionary = new Dictionary<IStructureElementDefinition, IStructureElement>();
-            var definitions = systemAsset.ElementDefinitionAssets;
+            var definitions = systemAsset.ElementAssets;
 
             foreach (var definition in definitions)
             {

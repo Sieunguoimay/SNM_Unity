@@ -5,45 +5,55 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Snm.SystemStructureFramework
 {
     [CustomEditor(typeof(StructureElementAsset), true)]
     public class StructureElementAsset_Editor : Editor
     {
-        private void OnEnable()
+        /*        private void OnEnable()
+                {
+                    var unitAsset = (StructureElementAsset)target;
+                    var att = target.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
+
+                    if (att != null && att.LifecycleUnitType != null)
+                    {
+                        UpdateReferenceEntries(unitAsset, att.LifecycleUnitType);
+                    }
+                }
+        */
+        public override VisualElement CreateInspectorGUI()
         {
-            var unitAsset = (StructureElementAsset)target;
-            var att = target.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
-
-            if (att != null && att.LifecycleUnitType != null)
-            {
-                UpdateReferenceEntries(unitAsset, att.LifecycleUnitType);
-            }
+            var root = new VisualElement();
+            var defaultInspector = base.CreateInspectorGUI();
+            root.Add(defaultInspector);
+            return root;
         }
+        /*
+                public override void OnInspectorGUI()
+                {
+                    DrawDefaultInspector();
 
-        public override void OnInspectorGUI()
-        {
-            DrawDefaultInspector();
+                    EditorGUILayout.LabelField("Lifecycle Units", EditorStyles.boldLabel);
 
-            EditorGUILayout.LabelField("Lifecycle Units", EditorStyles.boldLabel);
+                    var unitAsset = (StructureElementAsset)target;
 
-            var unitAsset = (StructureElementAsset)target;
+                    var anyChanged = false;
 
-            var anyChanged = false;
+                    foreach (var reference in unitAsset.Editor_ElementReferences)
+                    {
+                        anyChanged |= DrawElementReferenceEntry(reference);
+                    }
 
-            foreach (var reference in unitAsset.Editor_ElementReferences)
-            {
-                anyChanged |= DrawElementReferenceEntry(reference);
-            }
-
-            if (anyChanged)
-            {
-                EditorUtility.SetDirty(unitAsset);
-            }
-        }
-
+                    if (anyChanged)
+                    {
+                        EditorUtility.SetDirty(unitAsset);
+                    }
+                }
+        */
         private bool DrawElementReferenceEntry(StructureElementReferenceEntry entry)
         {
             var result = false;

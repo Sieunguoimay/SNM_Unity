@@ -1,25 +1,21 @@
+#if UNITY_EDITOR
 using System.Linq;
 using Snm.GrabAndToss.ViewSystem;
+using UnityEngine;
+using System.Collections;
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
-using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Snm.SystemStructureFramework
 {
-   
-    public class SystemStructureAsset : ScriptableObject
+
+    public partial class SystemStructureAsset
     {
-        [FormerlySerializedAs("unitAssets")]
-        [SerializeField] private StructureElementAsset[] elementDefinitionAssets;
 #if UNITY_EDITOR
         [SerializeField] private Object[] selectedFolders;
 #endif
-
-        public StructureElementAsset[] ElementDefinitionAssets => elementDefinitionAssets;
-
-#if UNITY_EDITOR
         [ContextMenu("Test Build Structure")]
         private void TestBuildStructure()
         {
@@ -33,16 +29,27 @@ namespace Snm.SystemStructureFramework
         [ContextMenu("CollectAllAssetsInFolder")]
         private void CollectAllAssetsInFolder()
         {
-            elementDefinitionAssets = selectedFolders
-                .Select(f => AssetDatabase.GetAssetPath(f))
-                .SelectMany(folder => AssetDatabase.FindAssets($"t:{nameof(StructureElementAsset)}", new[] { folder }))
+            var folderPaths = selectedFolders.Select(f => AssetDatabase.GetAssetPath(f)).ToArray();
+            var otherStructures = AssetDatabase.FindAssets($"t:{nameof(SystemStructureAsset)}", folderPaths)
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
+                .OfType<SystemStructureAsset>()
+                .Where(s => s != this)
+                .ToArray();
+            elementAssets = AssetDatabase.FindAssets($"t:{nameof(StructureElementAsset)}", folderPaths)
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
                 .OfType<StructureElementAsset>()
+                .Where(e => !otherStructures.Any(s => s.ElementAssets.Contains(e)))
                 .ToArray();
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssetIfDirty(this);
         }
-#endif
+
+        public bool IsElementOfThisStructure(StructureElementAsset elementAsset)
+        {
+            return elementAsset != null && elementAssets.Contains(elementAsset);
+        }
     }
 }
+#endif
