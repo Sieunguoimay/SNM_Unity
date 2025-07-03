@@ -25,15 +25,15 @@ namespace Snm.SystemStructureFramework
                 var references = definition.ElementReferences;
                 foreach (var reference in references)
                 {
-                    if (dictionary.ContainsKey(reference.Definition))
+                    if (dictionary.ContainsKey(reference.ReferenceAsset))
                     {
-                        var referenceElement = dictionary[reference.Definition];
+                        var referenceElement = dictionary[reference.ReferenceAsset];
                         var fieldName = reference.InjectId;
                         InjectDependencies(unit, referenceElement, unitType, fieldName);
                     }
                     else
                     {
-                        Debug.LogError($"Failed to find Reference {reference.Definition} for {definition}", definition as UnityEngine.Object);
+                        Debug.LogError($"Failed to find Reference {reference.ReferenceAsset} for {definition}", definition as UnityEngine.Object);
                     }
                 }
             }

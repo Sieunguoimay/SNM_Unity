@@ -10,18 +10,20 @@ namespace Snm.SystemStructureFramework
     public class StructureElementReferenceEntry : IStructureElementReference
     {
         [SerializeField] private string injectId;
-        [FormerlySerializedAs("asset")]
-        [SerializeField] private StructureElementAsset definitionAsset;
+        [FormerlySerializedAs("definitionAsset")]
+        [SerializeField] private StructureElementAsset referenceAsset;
 
 #if UNITY_EDITOR
         private readonly Type editor_TargetType;
         private readonly Type editor_SelectedForType;
 #endif
         string IStructureElementReference.InjectId => injectId;
-        IStructureElementDefinition IStructureElementReference.Definition => definitionAsset;
+        IStructureElementDefinition IStructureElementReference.ReferenceAsset => referenceAsset;
 
-        public StructureElementAsset DefinitionAsset => definitionAsset;
+        public StructureElementAsset DefinitionAsset => referenceAsset;
         public string InjectId => injectId;
+
+        public event Action<StructureElementReferenceEntry> OnDefinitionAssetChanged;
 
 #if UNITY_EDITOR
         public Type Editor_TargetType => editor_TargetType;
@@ -36,20 +38,21 @@ namespace Snm.SystemStructureFramework
             editor_TargetType = targetType;
             if (asset != null)
             {
-                editor_SelectedForType = asset.GetType().GetCustomAttribute<StructureElementAssetForAttribute>()?.LifecycleUnitType;
+                editor_SelectedForType = asset.GetType().GetCustomAttribute<StructureElementAssetForAttribute>()?.ElementType;
             }
         }
 #endif
 
-        public StructureElementReferenceEntry(string injectId, StructureElementAsset asset)
+        public StructureElementReferenceEntry(string injectId, StructureElementAsset referenceAsset)
         {
             this.injectId = injectId;
-            this.definitionAsset = asset;
+            this.referenceAsset = referenceAsset;
         }
 
         public void SetAsset(StructureElementAsset asset)
         {
-            this.definitionAsset = asset;
+            referenceAsset = asset;
+            OnDefinitionAssetChanged?.Invoke(this);
         }
     }
 }

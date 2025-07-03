@@ -8,11 +8,11 @@ namespace Snm.SystemStructureFramework
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
     public class StructureElementAssetForAttribute : Attribute
     {
-        public Type LifecycleUnitType { get; }
+        public Type ElementType { get; }
 
         public StructureElementAssetForAttribute(Type unitType)
         {
-            LifecycleUnitType = unitType;
+            ElementType = unitType;
         }
     }
 }

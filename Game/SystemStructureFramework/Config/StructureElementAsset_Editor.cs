@@ -14,23 +14,231 @@ namespace Snm.SystemStructureFramework
     [CustomEditor(typeof(StructureElementAsset), true)]
     public class StructureElementAsset_Editor : Editor
     {
-        /*        private void OnEnable()
-                {
-                    var unitAsset = (StructureElementAsset)target;
-                    var att = target.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
+        private StructureElementAssetVE _containerVE;
 
-                    if (att != null && att.LifecycleUnitType != null)
-                    {
-                        UpdateReferenceEntries(unitAsset, att.LifecycleUnitType);
-                    }
-                }
-        */
+        /*        private void OnEnable()
+{
+var unitAsset = (StructureElementAsset)target;
+var att = target.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
+
+if (att != null && att.LifecycleUnitType != null)
+{
+UpdateReferenceEntries(unitAsset, att.LifecycleUnitType);
+}
+}
+*/
+
+        private void OnEnable()
+        {
+            UpdateReferenceEntries();
+
+            Debug.Log("OnEnable");
+        }
+
+        private void OnDisable()
+        {
+            Debug.Log($"OnDisable {_containerVE}");
+
+            if (_containerVE != null)
+            {
+                _containerVE.Dispose();
+                _containerVE = null;
+            }
+        }
+
         public override VisualElement CreateInspectorGUI()
         {
+            Debug.Log("CreateInspectorGUI");
+            var elementAsset = (StructureElementAsset)target;
             var root = new VisualElement();
-            var defaultInspector = base.CreateInspectorGUI();
-            root.Add(defaultInspector);
+            var defaultInspector = CreateEditor(target);
+            root.Add(new IMGUIContainer(() =>
+            {
+                EditorGUI.BeginChangeCheck();
+                defaultInspector.OnInspectorGUI();
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Debug.Log("IMGUIContainer ChangeCheck");
+                    _containerVE.RefreshVE();
+                }
+            }));
+            root.Add(_containerVE = new StructureElementAssetVE(elementAsset));
             return root;
+        }
+
+        private void UpdateReferenceEntries()
+        {
+            var referenceFields = GetReferenceFields().ToArray();
+            var elementAsset = (StructureElementAsset)target;
+            var existingEntries = elementAsset.Editor_ElementReferences;
+
+            var newEntries = referenceFields
+                .Select(f =>
+                {
+                    var entry = existingEntries.FirstOrDefault(e => e.InjectId == f.Name);
+                    if (entry != null)
+                    {
+                        return entry;
+                    }
+                    return new StructureElementReferenceEntry(f.Name, null, f.FieldType);
+                })
+                .ToArray();
+
+            elementAsset.Editor_SetElementReferences(newEntries);
+
+            EditorUtility.SetDirty(elementAsset);
+        }
+
+        private IEnumerable<FieldInfo> GetReferenceFields()
+        {
+            var att = target.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
+            if (att != null)
+            {
+                return GetReferenceFields(att.ElementType);
+            }
+            return Enumerable.Empty<FieldInfo>();
+        }
+
+        private class StructureElementAssetVE : Foldout, IDisposable
+        {
+            private readonly StructureElementAsset elementAsset;
+            private IReadOnlyList<StructureElementReferenceEntry> _cachedReferenceList;
+
+            public StructureElementAssetVE(StructureElementAsset elementAsset)
+            {
+                text = "Element References";
+                Debug.Log($"{nameof(StructureElementAsset)} Created");
+                this.elementAsset = elementAsset;
+                UpdateReferenceList();
+            }
+
+            public void Dispose()
+            {
+                foreach (var eve in Children().OfType<StructureElementReferenceEntryVE>())
+                {
+                    eve.Dispose();
+                }
+
+                if (_cachedReferenceList != null)
+                {
+                    foreach (var r in _cachedReferenceList)
+                    {
+                        r.OnDefinitionAssetChanged -= AnyReference_OnDefinitionAssetChanged;
+                    }
+                    _cachedReferenceList = null;
+                }
+
+                Debug.Log($"{nameof(StructureElementAsset)} Disposed");
+            }
+
+            public void RefreshVE()
+            {
+                UpdateReferenceList();
+            }
+
+            private void UpdateReferenceList()
+            {
+                foreach (var eve in Children().OfType<StructureElementReferenceEntryVE>())
+                {
+                    eve.Dispose();
+                }
+                Clear();
+
+                if (_cachedReferenceList != null)
+                {
+                    foreach (var r in _cachedReferenceList)
+                    {
+                        r.OnDefinitionAssetChanged -= AnyReference_OnDefinitionAssetChanged;
+                    }
+                }
+
+                _cachedReferenceList = elementAsset.Editor_ElementReferences;
+
+                if (_cachedReferenceList != null)
+                {
+                    foreach (var r in _cachedReferenceList)
+                    {
+                        r.OnDefinitionAssetChanged += AnyReference_OnDefinitionAssetChanged;
+                    }
+
+                    foreach (var er in _cachedReferenceList)
+                    {
+                        Add(new StructureElementReferenceEntryVE(er));
+                    }
+                }
+            }
+
+            private void AnyReference_OnDefinitionAssetChanged(StructureElementReferenceEntry entry)
+            {
+                SaveElementAsset();
+            }
+
+            private void SaveElementAsset()
+            {
+                EditorUtility.SetDirty(elementAsset);
+                Debug.Log($"Saved {elementAsset.name}", elementAsset);
+            }
+        }
+
+        private class StructureElementReferenceEntryVE : ObjectField, IDisposable
+        {
+            private readonly StructureElementReferenceEntry entry;
+            private StructureElementAssetForAttribute _att;
+
+            public StructureElementReferenceEntryVE(StructureElementReferenceEntry entry)
+            {
+                this.entry = entry;
+                label = entry.InjectId;
+                value = entry.DefinitionAsset;
+                objectType = typeof(StructureElementAsset);
+                this.RegisterValueChangedCallback(ThisObjectField_OnValueChanged);
+                UpdateAttribute();
+            }
+
+            public void Dispose()
+            {
+                this.UnregisterValueChangedCallback(ThisObjectField_OnValueChanged);
+            }
+
+            private void ThisObjectField_OnValueChanged(ChangeEvent<UnityEngine.Object> evt)
+            {
+                if (evt.newValue is StructureElementAsset asset)
+                {
+                    entry.SetAsset(asset);
+                }
+                UpdateAttribute();
+            }
+
+            private void UpdateAttribute()
+            {
+                if (value != null)
+                {
+                    _att = value.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
+                }
+                else
+                {
+                    _att = null;
+                }
+                Validate();
+            }
+
+            private void Validate()
+            {
+                var isValid = false;
+                if (_att != null)
+                {
+                    if (entry.Editor_TargetType != null && entry.Editor_TargetType.IsAssignableFrom(_att.ElementType))
+                    {
+                        isValid = true;
+                    }
+                }
+                else
+                {
+                    isValid = true;
+                }
+
+                style.color = isValid ? Color.green : Color.red;
+            }
         }
         /*
                 public override void OnInspectorGUI()
