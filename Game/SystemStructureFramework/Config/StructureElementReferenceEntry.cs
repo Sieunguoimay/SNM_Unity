@@ -14,7 +14,7 @@ namespace Snm.SystemStructureFramework
         [SerializeField] private StructureElementAsset referenceAsset;
 
 #if UNITY_EDITOR
-        private readonly Type editor_TargetType;
+        private Type _editor_TargetType;
         private readonly Type editor_SelectedForType;
 #endif
         string IStructureElementReference.InjectId => injectId;
@@ -26,20 +26,15 @@ namespace Snm.SystemStructureFramework
         public event Action<StructureElementReferenceEntry> OnDefinitionAssetChanged;
 
 #if UNITY_EDITOR
-        public Type Editor_TargetType => editor_TargetType;
+        public Type Editor_TargetType => _editor_TargetType;
         public Type Editor_SelectedForType => editor_SelectedForType;
 #endif
         public StructureElementReferenceEntry() { }
 
 #if UNITY_EDITOR
-        public StructureElementReferenceEntry(string injectId, StructureElementAsset asset, Type targetType)
-            : this(injectId, asset)
+        public void SetTargetType(Type targetType)
         {
-            editor_TargetType = targetType;
-            if (asset != null)
-            {
-                editor_SelectedForType = asset.GetType().GetCustomAttribute<StructureElementAssetForAttribute>()?.ElementType;
-            }
+            _editor_TargetType = targetType;
         }
 #endif
 

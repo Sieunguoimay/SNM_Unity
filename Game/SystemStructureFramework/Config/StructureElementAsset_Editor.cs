@@ -16,18 +16,6 @@ namespace Snm.SystemStructureFramework
     {
         private StructureElementAssetVE _containerVE;
 
-        /*        private void OnEnable()
-{
-var unitAsset = (StructureElementAsset)target;
-var att = target.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
-
-if (att != null && att.LifecycleUnitType != null)
-{
-UpdateReferenceEntries(unitAsset, att.LifecycleUnitType);
-}
-}
-*/
-
         private void OnEnable()
         {
             UpdateReferenceEntries();
@@ -76,11 +64,12 @@ UpdateReferenceEntries(unitAsset, att.LifecycleUnitType);
                 .Select(f =>
                 {
                     var entry = existingEntries.FirstOrDefault(e => e.InjectId == f.Name);
-                    if (entry != null)
+                    if (entry == null)
                     {
-                        return entry;
+                        entry = new StructureElementReferenceEntry(f.Name, null);
                     }
-                    return new StructureElementReferenceEntry(f.Name, null, f.FieldType);
+                    entry.SetTargetType(f.FieldType);
+                    return entry;
                 })
                 .ToArray();
 
@@ -188,8 +177,9 @@ UpdateReferenceEntries(unitAsset, att.LifecycleUnitType);
             public StructureElementReferenceEntryVE(StructureElementReferenceEntry entry)
             {
                 this.entry = entry;
-                label = entry.InjectId;
+                label = FormatFieldName(entry.InjectId) + $" ({entry.Editor_TargetType.Name})";
                 value = entry.DefinitionAsset;
+                labelElement.style.width = new StyleLength(Length.Percent(40));
                 objectType = typeof(StructureElementAsset);
                 this.RegisterValueChangedCallback(ThisObjectField_OnValueChanged);
                 UpdateAttribute();
@@ -225,88 +215,23 @@ UpdateReferenceEntries(unitAsset, att.LifecycleUnitType);
             private void Validate()
             {
                 var isValid = false;
-                if (_att != null)
+                if (_att == null)
                 {
-                    if (entry.Editor_TargetType != null && entry.Editor_TargetType.IsAssignableFrom(_att.ElementType))
+                    if (value != null)
                     {
                         isValid = true;
                     }
                 }
                 else
                 {
-                    isValid = true;
-                }
-
-                style.color = isValid ? Color.green : Color.red;
-            }
-        }
-        /*
-                public override void OnInspectorGUI()
-                {
-                    DrawDefaultInspector();
-
-                    EditorGUILayout.LabelField("Lifecycle Units", EditorStyles.boldLabel);
-
-                    var unitAsset = (StructureElementAsset)target;
-
-                    var anyChanged = false;
-
-                    foreach (var reference in unitAsset.Editor_ElementReferences)
+                    if (entry.Editor_TargetType.IsAssignableFrom(_att.ElementType))
                     {
-                        anyChanged |= DrawElementReferenceEntry(reference);
-                    }
-
-                    if (anyChanged)
-                    {
-                        EditorUtility.SetDirty(unitAsset);
+                        isValid = true;
                     }
                 }
-        */
-        private bool DrawElementReferenceEntry(StructureElementReferenceEntry entry)
-        {
-            var result = false;
 
-            var isValidRuntimeType = entry.Editor_TargetType != null;
-            var isValidAssetType = entry.DefinitionAsset != null
-                && entry.Editor_SelectedForType != null
-                && entry.Editor_TargetType.IsAssignableFrom(entry.Editor_SelectedForType)
-                || entry.Editor_SelectedForType == null;
-            var isValid = isValidAssetType && isValidRuntimeType;
-
-            var errorText = "";
-            if (!isValidRuntimeType)
-            {
-                errorText = "(Invalid Runtime Type)";
+                labelElement.style.color = isValid ? Color.green : Color.red;
             }
-            else if (!isValidAssetType)
-            {
-                errorText = "(Invalid Asset Type)";
-            }
-
-            var color = GUI.color;
-            GUI.color = isValid ? color : Color.red;
-            var newAsset = (StructureElementAsset)EditorGUILayout.ObjectField(FormatFieldName(entry.InjectId) + errorText, entry.DefinitionAsset, typeof(StructureElementAsset), false);
-            if (newAsset != entry.DefinitionAsset)
-            {
-                entry.SetAsset(newAsset);
-                result = true;
-            }
-            GUI.color = color;
-            return result;
-        }
-
-        private void UpdateReferenceEntries(StructureElementAsset unitAsset, Type unitType)
-        {
-            var fields = GetReferenceFields(unitType);
-
-            var newEntries = fields
-                .Select(field => new StructureElementReferenceEntry(
-                    injectId: field.Name,
-                    asset: unitAsset.Editor_ElementReferences.FirstOrDefault(ef => ef.InjectId == field.Name)?.DefinitionAsset,
-                    targetType: field.FieldType))
-                .ToArray();
-
-            unitAsset.Editor_SetElementReferences(newEntries);
         }
 
         private static IEnumerable<FieldInfo> GetReferenceFields(Type type)
