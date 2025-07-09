@@ -1,112 +1,116 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public partial class AssetDependencyGraph
+namespace Snm.Tools.DependencyVisualize
 {
-    private class ObjectVisitingPath : VisualElement
+    public partial class AssetDependencyGraph
     {
-        private readonly List<Segment> _segments = new();
-        public Object Current => _segments.Count > 0 ? _segments[^1].target : null;
-        public Object Root => _segments.Count > 0 ? _segments[0].target : null;
-        public event System.Action<ObjectVisitingPath> OnCurrentChanged;
-        public bool Navigatable => _segments.Count > 1;
-        public ObjectVisitingPath()
+        private class ObjectVisitingPath : VisualElement
         {
-            style.flexDirection = FlexDirection.Row;
-            OnCurrentChanged += HandleCurrentSegmentChanged;
-        }
+            private readonly List<Segment> _segments = new();
+            public Object Current => _segments.Count > 0 ? _segments[^1].target : null;
+            public Object Root => _segments.Count > 0 ? _segments[0].target : null;
+            public event System.Action<ObjectVisitingPath> OnCurrentChanged;
+            public bool Navigatable => _segments.Count > 1;
 
-        private void HandleCurrentSegmentChanged(ObjectVisitingPath obj)
-        {
-            foreach (var s in _segments)
+            public ObjectVisitingPath()
             {
-                s.SetEnabled(true);
+                style.flexDirection = FlexDirection.Row;
+                OnCurrentChanged += HandleCurrentSegmentChanged;
             }
 
-            if (_segments.Count > 0)
+            private void HandleCurrentSegmentChanged(ObjectVisitingPath obj)
             {
-                _segments[^1].SetEnabled(false);
-            }
-        }
-
-        private Segment CreateSegment(Object target)
-        {
-            var segment = new Segment
-            {
-                text = target.name,
-                target = target,
-                focusable = false
-            };
-
-            //if (_defaultBgColor == null)
-            //{
-            //    _defaultBgColor = segment.style.backgroundColor;
-            //}
-
-            segment.style.marginLeft = 0;
-            segment.style.marginRight = 0;
-            segment.clicked += () =>
-            {
-                if (segment.target != Current)
+                foreach (var s in _segments)
                 {
-                    JumpTo(segment);
+                    s.SetEnabled(true);
                 }
-            };
-            return segment;
-        }
 
-        private void ClearTrain()
-        {
-            Clear();
-            _segments.Clear();
-        }
-        public void ClearStack()
-        {
-            ClearTrain();
-        }
-        public void Push(Object obj)
-        {
-            var segment = CreateSegment(obj);
-            _segments.Add(segment);
-            this.Add(segment);
-            OnCurrentChanged?.Invoke(this);
-        }
-        public bool Back()
-        {
-            if (_segments.Count > 1)
-            {
-                var segment = _segments.Last();
-                _segments.Remove(segment);
-                this.Remove(segment);
-                OnCurrentChanged?.Invoke(this);
-
-                return true;
+                if (_segments.Count > 0)
+                {
+                    _segments[^1].SetEnabled(false);
+                }
             }
-            return false;
-        }
 
-        private void JumpTo(Segment sm)
-        {
-            var index = _segments.IndexOf(sm);
-            if (index < _segments.Count - 1)
+            private Segment CreateSegment(Object target)
             {
-                var n = _segments.Count - (index + 1);
+                var segment = new Segment
+                {
+                    text = target.name,
+                    target = target,
+                    focusable = false
+                };
 
-                for (var i = 0; i < n; i++)
+                //if (_defaultBgColor == null)
+                //{
+                //    _defaultBgColor = segment.style.backgroundColor;
+                //}
+
+                segment.style.marginLeft = 0;
+                segment.style.marginRight = 0;
+                segment.clicked += () =>
+                {
+                    if (segment.target != Current)
+                    {
+                        JumpTo(segment);
+                    }
+                };
+                return segment;
+            }
+
+            private void ClearTrain()
+            {
+                Clear();
+                _segments.Clear();
+            }
+            public void ClearStack()
+            {
+                ClearTrain();
+            }
+            public void Push(Object obj)
+            {
+                var segment = CreateSegment(obj);
+                _segments.Add(segment);
+                this.Add(segment);
+                OnCurrentChanged?.Invoke(this);
+            }
+            public bool Back()
+            {
+                if (_segments.Count > 1)
                 {
                     var segment = _segments.Last();
-
                     _segments.Remove(segment);
                     this.Remove(segment);
+                    OnCurrentChanged?.Invoke(this);
+
+                    return true;
                 }
+                return false;
             }
-            OnCurrentChanged?.Invoke(this);
-        }
-        private class Segment : Button
-        {
-            public Object target;
+
+            private void JumpTo(Segment sm)
+            {
+                var index = _segments.IndexOf(sm);
+                if (index < _segments.Count - 1)
+                {
+                    var n = _segments.Count - (index + 1);
+
+                    for (var i = 0; i < n; i++)
+                    {
+                        var segment = _segments.Last();
+
+                        _segments.Remove(segment);
+                        this.Remove(segment);
+                    }
+                }
+                OnCurrentChanged?.Invoke(this);
+            }
+            private class Segment : Button
+            {
+                public Object target;
+            }
         }
     }
 }

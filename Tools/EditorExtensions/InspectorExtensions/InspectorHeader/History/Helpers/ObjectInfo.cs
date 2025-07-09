@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     [System.Serializable]
     public class ObjectInfo

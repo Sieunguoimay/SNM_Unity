@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace SNM_Unity.AnimationInstancing
+namespace Snm.AnimationInstancing
 {
     public class AnimationInstancingRendererManager : MonoBehaviour
     {

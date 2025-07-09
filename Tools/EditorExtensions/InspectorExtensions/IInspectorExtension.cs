@@ -1,8 +1,6 @@
 ﻿#if UNITY_EDITOR
 
-using System;
-
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public interface IInspectorExtension
     {

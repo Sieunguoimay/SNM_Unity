@@ -6,7 +6,8 @@ using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-namespace SNMTools
+
+namespace Snm.Tools
 {
     public class AssetUsageFinderWindow : EditorWindow
     {

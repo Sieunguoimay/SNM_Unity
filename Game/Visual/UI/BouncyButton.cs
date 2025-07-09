@@ -3,57 +3,61 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 
-public class BouncyButton : MonoBehaviour, IPointerClickHandler
+namespace Snm.Components.UI
 {
-    [SerializeField] private UnityEvent onClick;
 
-    private Vector3 _orignalScale;
-    private Coroutine _coroutine;
-    private bool _interactable = true;
-
-    private void Start()
+    public class BouncyButton : MonoBehaviour, IPointerClickHandler
     {
-        _orignalScale = transform.localScale;
-    }
+        [SerializeField] private UnityEvent onClick;
 
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        if (_coroutine != null)
+        private Vector3 _orignalScale;
+        private Coroutine _coroutine;
+        private bool _interactable = true;
+
+        private void Start()
         {
-            StopCoroutine(_coroutine);
-        }
-        _coroutine = StartCoroutine(BounceAnimation());
-
-        if (_interactable)
-        {
-            onClick?.Invoke();
-        }
-    }
-    
-    public void SetInteractable(bool interactable)
-    {
-        _interactable = interactable;
-    }
-
-    IEnumerator BounceAnimation()
-    {
-        var bounceDuration = .25f;
-        var elapsedTime = 0f;
-        var bounceAmplitude = .1f;
-
-        while (elapsedTime < bounceDuration)
-        {
-            var t = elapsedTime / bounceDuration;
-            t = Mathf.SmoothStep(0, 1, t);
-            var scale = Mathf.Sin(t * Mathf.PI) * bounceAmplitude;
-            transform.localScale = _orignalScale - Vector3.one * scale;
-
-            elapsedTime += Time.deltaTime;
-
-            yield return null;
+            _orignalScale = transform.localScale;
         }
 
-        transform.localScale = _orignalScale;
-        _coroutine = null;
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (_coroutine != null)
+            {
+                StopCoroutine(_coroutine);
+            }
+            _coroutine = StartCoroutine(BounceAnimation());
+
+            if (_interactable)
+            {
+                onClick?.Invoke();
+            }
+        }
+
+        public void SetInteractable(bool interactable)
+        {
+            _interactable = interactable;
+        }
+
+        IEnumerator BounceAnimation()
+        {
+            var bounceDuration = .25f;
+            var elapsedTime = 0f;
+            var bounceAmplitude = .1f;
+
+            while (elapsedTime < bounceDuration)
+            {
+                var t = elapsedTime / bounceDuration;
+                t = Mathf.SmoothStep(0, 1, t);
+                var scale = Mathf.Sin(t * Mathf.PI) * bounceAmplitude;
+                transform.localScale = _orignalScale - Vector3.one * scale;
+
+                elapsedTime += Time.deltaTime;
+
+                yield return null;
+            }
+
+            transform.localScale = _orignalScale;
+            _coroutine = null;
+        }
     }
 }

@@ -1,4 +1,5 @@
-using InspectorExtensions;
+using System;
+using Snm.Tools.InspectorExtra;
 using Reflection;
 using UnityEngine;
 
@@ -10,7 +11,7 @@ namespace Snm.Framework.Reactive
 
         [PropertyChangeEvent(nameof(OnObjectChanged))]
         public TObject Object => _object;
-        public event System.Action<ObjectView<TObject>> OnObjectChanged;
+        public event Action<ObjectView<TObject>> OnObjectChanged;
 
         [RevealNonSerialized]
         private bool HasObject => _object != null;

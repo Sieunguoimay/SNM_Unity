@@ -5,7 +5,7 @@ using UnityEditor;
 #endif
 using UnityEngine;
 
-namespace GameNodeHierarchy
+namespace Snm.Framework.NodeHierarchy
 {
     public class NodeSO : ScriptableObject, IGameNode
     {

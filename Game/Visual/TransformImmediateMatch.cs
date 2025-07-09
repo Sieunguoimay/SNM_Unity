@@ -1,37 +1,38 @@
 using System;
-using System.Collections;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-public class TransformImmediateMatch : MonoBehaviour
+namespace Snm.Components
 {
-    [FormerlySerializedAs("from")]
-    [SerializeField] private Transform from;
-    [SerializeField] private Transform to;
-    [SerializeField] private MatchType matchType = MatchType.All;
-
-    private void Update()
+    public class TransformImmediateMatch : MonoBehaviour
     {
-        if (matchType == MatchType.All)
-        {
-            to.SetPositionAndRotation(from.position, from.rotation);
-        }
-        if (matchType == MatchType.Position)
-        {
-            to.position = from.position;
-        }
-        if (matchType == MatchType.Rotation)
-        {
-            to.rotation = from.rotation;
-        }
-    }
+        [FormerlySerializedAs("from")]
+        [SerializeField] private Transform from;
+        [SerializeField] private Transform to;
+        [SerializeField] private MatchType matchType = MatchType.All;
 
-    [Flags]
-    private enum MatchType
-    {
-        All = 1,
-        Position = 2,
-        Rotation = 4
+        private void Update()
+        {
+            if (matchType == MatchType.All)
+            {
+                to.SetPositionAndRotation(from.position, from.rotation);
+            }
+            if (matchType == MatchType.Position)
+            {
+                to.position = from.position;
+            }
+            if (matchType == MatchType.Rotation)
+            {
+                to.rotation = from.rotation;
+            }
+        }
+
+        [Flags]
+        private enum MatchType
+        {
+            All = 1,
+            Position = 2,
+            Rotation = 4
+        }
     }
 }

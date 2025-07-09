@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SNM_Unity.AnimationInstancing
+namespace Snm.AnimationInstancing
 {
     public class InstancingPackage
     {

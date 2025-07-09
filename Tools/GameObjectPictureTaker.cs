@@ -1,10 +1,10 @@
 #if UNITY_EDITOR
-using System;
 using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-namespace Sieunguoimay.Tools
+
+namespace Snm.Tools
 {
     public static class GameObjectPictureTaker
     {
@@ -18,10 +18,10 @@ namespace Sieunguoimay.Tools
         [MenuItem("GameObject/TakeAPicture/GameView")]
         public static void TakeAPictureInGameView(MenuCommand mc)
         {
-            TakeAPictureCommand(mc, Camera.main);
+            TakeAPictureCommand(mc, UnityEngine.Camera.main);
         }
 
-        private static void TakeAPictureCommand(MenuCommand mc, Camera camera)
+        private static void TakeAPictureCommand(MenuCommand mc, UnityEngine.Camera camera)
         {
             var savePath = EditorUtility.SaveFilePanel("Save path", "Assets", "", "png");
             if (string.IsNullOrEmpty(savePath)) return;
@@ -54,7 +54,7 @@ namespace Sieunguoimay.Tools
             }
         }
 
-        private static void TakeAPictureAtTransformWithLayer(Camera srcCamera, string layerName, string savePath)
+        private static void TakeAPictureAtTransformWithLayer(UnityEngine.Camera srcCamera, string layerName, string savePath)
         {
 
             var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None)
@@ -66,7 +66,7 @@ namespace Sieunguoimay.Tools
                 l.l.cullingMask = cullingMask;
             }
 
-            var camera = new GameObject("Camera").AddComponent<Camera>();
+            var camera = new GameObject("Camera").AddComponent<UnityEngine.Camera>();
             camera.transform.SetPositionAndRotation(srcCamera.transform.position, srcCamera.transform.rotation);
             camera.fieldOfView = srcCamera.fieldOfView;
             camera.projectionMatrix = srcCamera.projectionMatrix;
@@ -87,7 +87,7 @@ namespace Sieunguoimay.Tools
             UnityEngine.Object.DestroyImmediate(camera.gameObject);
         }
 
-        private static void TakeAPictureByCamera(Camera camera, string savePath)
+        private static void TakeAPictureByCamera(UnityEngine.Camera camera, string savePath)
         {
             Debug.Log(camera.aspect);
             var rt = PrepareTheRenderTexture(camera.aspect);
@@ -179,7 +179,7 @@ namespace Sieunguoimay.Tools
                 UnityEngine.Object.Destroy(image);
             }
 
-            var title = "Picture_" + DateTime.Now.ToString("yyymmddhhmmss") + ".png";
+            // var title = "Picture_" + DateTime.Now.ToString("yyymmddhhmmss") + ".png";
 
             File.WriteAllBytes(path, bytes);
         }

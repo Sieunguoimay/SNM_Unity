@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Snm.Camera
+namespace Snm.Components.Camera
 {
     public class CameraDragMover : MonoBehaviour
     {

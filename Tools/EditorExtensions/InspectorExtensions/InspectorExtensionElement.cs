@@ -4,7 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine.UIElements;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public class InspectorExtensionElement : VisualElement
     {

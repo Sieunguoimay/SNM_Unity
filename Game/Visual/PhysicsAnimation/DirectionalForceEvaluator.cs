@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ForceAnim
+namespace Snm.Visual.PhysicsAnimation
 {
     public class DirectionalForceEvaluator : ForceEvaluator
     {

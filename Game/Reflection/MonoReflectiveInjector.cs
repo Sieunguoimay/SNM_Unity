@@ -1,4 +1,5 @@
 using System;
+using Snm.Tools;
 using UnityEngine;
 
 namespace Reflection
@@ -6,7 +7,7 @@ namespace Reflection
     [Obsolete]
     public class MonoReflectiveInjector : MonoBehaviour
     {
-        [ObjectSelector]
+        [TypeSelector]
         [SerializeField] private UnityEngine.Object source;
         [SerializeField] private bool selfInject = true;
         [SerializeField] private Entry[] entries = Array.Empty<Entry>();
@@ -47,7 +48,7 @@ namespace Reflection
         [Serializable]
         private class Entry
         {
-            [ObjectSelector]
+            [TypeSelector]
             public UnityEngine.Object destination;
             public ReflectiveFieldAssigner assigner;
         }

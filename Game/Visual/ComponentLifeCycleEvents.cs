@@ -2,35 +2,38 @@ using System;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class ComponentLifeCycleEvents : MonoBehaviour
+namespace Snm.Components
 {
-    [SerializeField] private UnityEvent onStart;
-    [SerializeField] private UnityEvent onEnable;
-    
-    public event Action<ComponentLifeCycleEvents> EnabledEvent;
-    public event Action<ComponentLifeCycleEvents> DisabledEvent;
-    public event Action<ComponentLifeCycleEvents> StartedEvent;
-    public event Action<ComponentLifeCycleEvents> DestroyedEvent;
-
-    private void OnEnable()
+    public class ComponentLifeCycleEvents : MonoBehaviour
     {
-        EnabledEvent?.Invoke(this);
-        onEnable?.Invoke();
-    }
+        [SerializeField] private UnityEvent onStart;
+        [SerializeField] private UnityEvent onEnable;
 
-    private void OnDisable()
-    {
-        DisabledEvent?.Invoke(this);
-    }
+        public event Action<ComponentLifeCycleEvents> EnabledEvent;
+        public event Action<ComponentLifeCycleEvents> DisabledEvent;
+        public event Action<ComponentLifeCycleEvents> StartedEvent;
+        public event Action<ComponentLifeCycleEvents> DestroyedEvent;
 
-    private void Start()
-    {
-        StartedEvent?.Invoke(this);
-        onStart?.Invoke();
-    }
+        private void OnEnable()
+        {
+            EnabledEvent?.Invoke(this);
+            onEnable?.Invoke();
+        }
 
-    private void OnDestroy()
-    {
-        DestroyedEvent?.Invoke(this);
+        private void OnDisable()
+        {
+            DisabledEvent?.Invoke(this);
+        }
+
+        private void Start()
+        {
+            StartedEvent?.Invoke(this);
+            onStart?.Invoke();
+        }
+
+        private void OnDestroy()
+        {
+            DestroyedEvent?.Invoke(this);
+        }
     }
 }

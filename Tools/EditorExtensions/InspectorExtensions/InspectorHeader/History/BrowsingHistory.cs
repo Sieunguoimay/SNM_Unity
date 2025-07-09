@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public interface IHistoryList
     {

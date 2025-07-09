@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace SNMTools
+namespace Snm.Tools
 {
     public class NamespaceModifyToolWindow : EditorWindow
     {

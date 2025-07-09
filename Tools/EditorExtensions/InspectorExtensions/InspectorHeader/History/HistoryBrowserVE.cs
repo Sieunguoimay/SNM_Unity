@@ -6,9 +6,9 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
-using static InspectorExtensions.InspectorExtensionHeaderVE;
+using static Snm.Tools.InspectorExtra.InspectorExtensionHeaderVE;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public class HistoryBrowserVE : VisualElement, IDisposable
     {

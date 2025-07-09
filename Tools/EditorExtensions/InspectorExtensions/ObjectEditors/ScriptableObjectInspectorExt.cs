@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public class ScriptableObjectInspectorExt : IInspectorExtension
     {
@@ -82,7 +82,7 @@ namespace InspectorExtensions
 
             private void OnButtonClicked(ClickEvent evt)
             {
-                var window = EditorWindow.GetWindow<SNMTools.ScriptableObjectAssetCreator>();
+                var window = EditorWindow.GetWindow<ScriptableObjectAssetCreator>();
                 window.SetAssetCreatedCallback(() => { window.Close(); });
                 window.ShowModalUtility();
                 refreshHandler.Refresh();

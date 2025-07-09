@@ -4,7 +4,7 @@ using UnityEngine.UIElements;
 using System;
 using System.Reflection;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public class ContextMenuInspectorExt : IInspectorExtension
     {

@@ -8,7 +8,7 @@ using System.Collections;
 using UnityEditor;
 #endif
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
 
     public partial class SystemStructureAsset

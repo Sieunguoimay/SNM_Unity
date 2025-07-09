@@ -3,85 +3,88 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class InfiniteTimePlayer : MonoBehaviour
+namespace Snm.Components.Timers
 {
-    [SerializeField]
-    [Tooltip("TimeFactor")]
-    private UnityEventFloat onFactorValue;
-
-    public event Action<InfiniteTimePlayer, float> OnTick;
-    public event Action<InfiniteTimePlayer> PlayingStatusChangedEvent;
-
-    private Coroutine _coroutine;
-    private float _currentTime = 0;
-    private bool _isPlaying = false;
-    private bool _isPaused = false;
-
-    public bool IsPlaying => _isPlaying;
-    public bool IsPaused => _isPaused;
-    public float CurrentTime => _currentTime;
-
-    public void Play()
+    public class InfiniteTimePlayer : MonoBehaviour
     {
-        _isPlaying = true;
-        StartTimeLoopCoroutine(0);
-        PlayingStatusChangedEvent?.Invoke(this);
-    }
+        [SerializeField]
+        [Tooltip("TimeFactor")]
+        private UnityEventFloat onFactorValue;
 
-    public void Pause()
-    {
-        _isPaused = true;
-        StopTimeLoopCoroutine();
-        PlayingStatusChangedEvent?.Invoke(this);
-    }
+        public event Action<InfiniteTimePlayer, float> OnTick;
+        public event Action<InfiniteTimePlayer> PlayingStatusChangedEvent;
 
-    public void Resume()
-    {
-        StartTimeLoopCoroutine(_currentTime);
-        _isPaused = false;
-        PlayingStatusChangedEvent?.Invoke(this);
-    }
+        private Coroutine _coroutine;
+        private float _currentTime = 0;
+        private bool _isPlaying = false;
+        private bool _isPaused = false;
 
-    public void Stop()
-    {
-        StopTimeLoopCoroutine();
-        _isPlaying = false;
-        PlayingStatusChangedEvent?.Invoke(this);
-    }
+        public bool IsPlaying => _isPlaying;
+        public bool IsPaused => _isPaused;
+        public float CurrentTime => _currentTime;
 
-    private void StartTimeLoopCoroutine(float startTime)
-    {
-        if (_coroutine != null)
+        public void Play()
         {
-            StopCoroutine(_coroutine);
+            _isPlaying = true;
+            StartTimeLoopCoroutine(0);
+            PlayingStatusChangedEvent?.Invoke(this);
         }
-        _coroutine = StartCoroutine(IE_TimeLoop(startTime));
-    }
 
-    private void StopTimeLoopCoroutine()
-    {
-        if (_coroutine != null)
+        public void Pause()
         {
-            StopCoroutine(_coroutine);
-            _coroutine = null;
+            _isPaused = true;
+            StopTimeLoopCoroutine();
+            PlayingStatusChangedEvent?.Invoke(this);
         }
-    }
 
-    private IEnumerator IE_TimeLoop(float startTime)
-    {
-        _currentTime = startTime;
-
-        while (true)
+        public void Resume()
         {
-            onFactorValue?.Invoke(_currentTime);
-            OnTick?.Invoke(this, _currentTime);
-
-            yield return null;
-
-            _currentTime += Time.deltaTime;
+            StartTimeLoopCoroutine(_currentTime);
+            _isPaused = false;
+            PlayingStatusChangedEvent?.Invoke(this);
         }
-    }
 
-    [Serializable]
-    private class UnityEventFloat : UnityEvent<float> { }
+        public void Stop()
+        {
+            StopTimeLoopCoroutine();
+            _isPlaying = false;
+            PlayingStatusChangedEvent?.Invoke(this);
+        }
+
+        private void StartTimeLoopCoroutine(float startTime)
+        {
+            if (_coroutine != null)
+            {
+                StopCoroutine(_coroutine);
+            }
+            _coroutine = StartCoroutine(IE_TimeLoop(startTime));
+        }
+
+        private void StopTimeLoopCoroutine()
+        {
+            if (_coroutine != null)
+            {
+                StopCoroutine(_coroutine);
+                _coroutine = null;
+            }
+        }
+
+        private IEnumerator IE_TimeLoop(float startTime)
+        {
+            _currentTime = startTime;
+
+            while (true)
+            {
+                onFactorValue?.Invoke(_currentTime);
+                OnTick?.Invoke(this, _currentTime);
+
+                yield return null;
+
+                _currentTime += Time.deltaTime;
+            }
+        }
+
+        [Serializable]
+        private class UnityEventFloat : UnityEvent<float> { }
+    }
 }

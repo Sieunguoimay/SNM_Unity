@@ -1,8 +1,7 @@
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.Serialization;
 
-namespace ForceAnim
+namespace Snm.Visual.PhysicsAnimation
 {
     public class ArrivalForceEvaluator : ForceEvaluator
     {

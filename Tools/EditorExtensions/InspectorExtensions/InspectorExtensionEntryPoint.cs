@@ -1,7 +1,7 @@
 ﻿#if UNITY_EDITOR
 using UnityEditor;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     [InitializeOnLoad]
     public class InspectorExtensionEntryPoint

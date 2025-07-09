@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
 
     public class SystemStructure : IDisposable

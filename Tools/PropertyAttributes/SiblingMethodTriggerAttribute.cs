@@ -3,20 +3,22 @@ using System.Reflection;
 using UnityEditor;
 #endif
 using UnityEngine;
-namespace PropertyExt
+
+namespace Snm.Tools
 {
-    public class MoreButtonAttribute : PropertyAttribute
+    public class SiblingMethodTriggerAttribute : PropertyAttribute
     {
-        public MoreButtonAttribute(string callbackMethod)
+        public SiblingMethodTriggerAttribute(string callbackMethod)
         {
-            SiblingName = callbackMethod;
+            SiblingMethod = callbackMethod;
         }
 
-        public string SiblingName { get; }
+        public string SiblingMethod { get; }
+
 #if UNITY_EDITOR
         public virtual void OnButtonClicked(SerializedProperty property)
         {
-            InvokeCallback(SiblingName, property);
+            InvokeCallback(SiblingMethod, property);
         }
 
         public static void InvokeCallback(string callbackMethod, SerializedProperty property)
@@ -38,15 +40,15 @@ namespace PropertyExt
         {
             var targetObject = property.serializedObject.targetObject as object;
             var fieldNames = property.propertyPath.Split('.');
-
-            FieldInfo fieldInfo = null;
-            for (int i = 0; i < fieldNames.Length - 1; i++)
+            for (var i = 0; i < fieldNames.Length - 1; i++)
             {
                 var fieldName = fieldNames[i];
+
+                FieldInfo fieldInfo;
                 if (fieldName.EndsWith("]"))
                 {
                     fieldInfo = targetObject.GetType().GetField(fieldName.Split('[')[0], BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    int index = int.Parse(fieldName.Split('[', ']')[1]);
+                    var index = int.Parse(fieldName.Split('[', ']')[1]);
                     var array = fieldInfo.GetValue(targetObject) as System.Array;
                     targetObject = array.GetValue(index);
                 }
@@ -65,8 +67,9 @@ namespace PropertyExt
     public class MoreButtonCallbackData
     {
         public object ImmediateObject { get; }
-        public UnityEngine.Object Context { get; }
-        public MoreButtonCallbackData(object immediateObject, UnityEngine.Object context)
+        public Object Context { get; }
+
+        public MoreButtonCallbackData(object immediateObject, Object context)
         {
             ImmediateObject = immediateObject;
             Context = context;
@@ -74,7 +77,7 @@ namespace PropertyExt
     }
 
 #if UNITY_EDITOR
-    [CustomPropertyDrawer(typeof(MoreButtonAttribute))]
+    [CustomPropertyDrawer(typeof(SiblingMethodTriggerAttribute))]
     public class MoreButtonDrawer : PropertyDrawer
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -85,11 +88,9 @@ namespace PropertyExt
             position.width = 20;
             if (GUI.Button(position, ".."))
             {
-                (attribute as MoreButtonAttribute)?.OnButtonClicked(property);
+                (attribute as SiblingMethodTriggerAttribute)?.OnButtonClicked(property);
             }
         }
-
     }
-
 #endif
 }

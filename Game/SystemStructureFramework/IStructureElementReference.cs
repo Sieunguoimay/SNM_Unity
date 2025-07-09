@@ -1,4 +1,4 @@
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
     public interface IStructureElementReference
     {

@@ -6,9 +6,8 @@ using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
-namespace SNMTools
+namespace Snm.Tools
 {
-
     public class CreateGameObjectWithComponent : AdvancedDropdown
     {
         public GameObject context;

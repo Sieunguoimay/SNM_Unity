@@ -1,14 +1,15 @@
 using System;
 using System.Linq;
 using Reflection;
+using Snm.Tools;
 using UnityEngine;
 
-namespace GameNodeHierarchy
+namespace Snm.Framework.NodeHierarchy
 {
     [Serializable]
     public partial class ChildNodeEntry
     {
-        [ObjectSelector(typeof(IGameNode), false)]
+        [TypeSelector(typeof(IGameNode), false)]
         [SerializeField]
         private UnityEngine.Object childNode;
 

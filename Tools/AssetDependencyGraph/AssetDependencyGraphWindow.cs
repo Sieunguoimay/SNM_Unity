@@ -1,23 +1,24 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine.UIElements;
 
-public class AssetDependencyGraphWindow : EditorWindow
+namespace Snm.Tools.DependencyVisualize
 {
-
-    [MenuItem("Tools/AssetDependencyGraphWindow")]
-    public static void Open()
+    public class AssetDependencyGraphWindow : EditorWindow
     {
-        var window = GetWindow<AssetDependencyGraphWindow>("AssetDependencyGraphWindow");
-        window.Show();
-    }
+        [MenuItem("Tools/AssetDependencyGraphWindow")]
+        public static void Open()
+        {
+            var window = GetWindow<AssetDependencyGraphWindow>("AssetDependencyGraphWindow");
+            window.Show();
+        }
 
-    private void CreateGUI()
-    {
-        var graph = new AssetDependencyGraph();
-        graph.StretchToParentSize();
-        rootVisualElement.Add(graph);
+        private void CreateGUI()
+        {
+            var graph = new AssetDependencyGraph();
+            graph.StretchToParentSize();
+            rootVisualElement.Add(graph);
+        }
     }
-
-}
 #endif
+}

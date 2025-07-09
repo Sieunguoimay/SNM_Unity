@@ -1,32 +1,35 @@
 using UnityEngine;
 
-public class PublicMonoBehaviour : MonoBehaviour
+namespace Snm.Components
 {
-    private static PublicMonoBehaviour _instance;
-    public static PublicMonoBehaviour Instance
+    public class PublicMonoBehaviour : MonoBehaviour
     {
-        get
+        private static PublicMonoBehaviour _instance;
+        public static PublicMonoBehaviour Instance
         {
-            if (_instance == null)
+            get
             {
-                if (_isDestroyed) return null;
+                if (_instance == null)
+                {
+                    if (_isDestroyed) return null;
 
-                _instance = new GameObject("[Singleton]" + nameof(PublicMonoBehaviour))
-                    .AddComponent<PublicMonoBehaviour>();
+                    _instance = new GameObject("[Singleton]" + nameof(PublicMonoBehaviour))
+                        .AddComponent<PublicMonoBehaviour>();
 
-                DontDestroyOnLoad(_instance.gameObject);
+                    DontDestroyOnLoad(_instance.gameObject);
+                }
+
+                return _instance;
             }
-
-            return _instance;
         }
-    }
 
-    private static bool _isDestroyed = false;
+        private static bool _isDestroyed = false;
 
-    void OnDestroy()
-    {
-        if (this != _instance) return;
+        void OnDestroy()
+        {
+            if (this != _instance) return;
 
-        _isDestroyed = true;
+            _isDestroyed = true;
+        }
     }
 }

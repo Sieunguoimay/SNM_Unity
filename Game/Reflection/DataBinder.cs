@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Snm.Tools;
 using UnityEngine;
 
 namespace Reflection
@@ -19,7 +20,7 @@ namespace Reflection
     public class DataBinder : MonoBehaviour
     {
         [SerializeField] private bool bindOnEnable;
-        [ObjectSelector]
+        [TypeSelector]
         [SerializeField] private UnityEngine.Object sourceObject;
         [SerializeField] private ReflectionEvent[] events;
         [SerializeField] private ReflectionConnect[] connections;
@@ -199,7 +200,7 @@ namespace Reflection
             [StringSelector(nameof(SourceGetMembers), true)]
             public string sourceMemberName;
 
-            [ObjectSelector]
+            [TypeSelector]
             public UnityEngine.Object targetObject;
 
             [StringSelector(nameof(TargetTypeSetMembers))]

@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace SNM_Unity.AnimationInstancing
+namespace Snm.AnimationInstancing
 {
     public partial class AnimationInstancingRenderer : MonoBehaviour
     {

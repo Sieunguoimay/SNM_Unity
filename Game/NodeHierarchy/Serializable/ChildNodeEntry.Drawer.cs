@@ -6,7 +6,7 @@ using Reflection;
 using UnityEditor;
 #endif
 
-namespace GameNodeHierarchy
+namespace Snm.Framework.NodeHierarchy
 {
     public partial class ChildNodeEntry
     {

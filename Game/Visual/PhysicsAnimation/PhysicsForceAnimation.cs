@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ForceAnim
+namespace Snm.Visual.PhysicsAnimation
 {
     public class PhysicsForceAnimation : MonoBehaviour, IForceAnimation
     {

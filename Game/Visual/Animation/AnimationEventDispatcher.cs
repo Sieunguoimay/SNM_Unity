@@ -2,17 +2,20 @@ using System;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class AnimationEventDispatcher: MonoBehaviour
+namespace Snm.Visual.Animation
 {
-    [SerializeField] private UnityEventString onStringEvent;
-
-    public event Action<AnimationEventDispatcher, string> StringEventDispatched;
-
-    public void DispatchStringEvent(string str)
+    public class AnimationEventDispatcher : MonoBehaviour
     {
-        onStringEvent?.Invoke(str);
-        StringEventDispatched?.Invoke(this, str);
-    }
+        [SerializeField] private UnityEventString onStringEvent;
 
-    [Serializable] private class UnityEventString : UnityEvent<string> { }
+        public event Action<AnimationEventDispatcher, string> StringEventDispatched;
+
+        public void DispatchStringEvent(string str)
+        {
+            onStringEvent?.Invoke(str);
+            StringEventDispatched?.Invoke(this, str);
+        }
+
+        [Serializable] private class UnityEventString : UnityEvent<string> { }
+    }
 }

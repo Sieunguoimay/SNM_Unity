@@ -1,13 +1,12 @@
 #if UNITY_EDITOR
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
-namespace SNMTools
+
+namespace Snm.Tools
 {
 
     [EditorWindowTitle(title = "ScriptableObjectAssetCreator")]

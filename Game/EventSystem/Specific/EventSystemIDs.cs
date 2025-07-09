@@ -1,4 +1,4 @@
-namespace IDs
+namespace Snm.Identification
 {
     [IDSpace]
     public class EventSystemIDs

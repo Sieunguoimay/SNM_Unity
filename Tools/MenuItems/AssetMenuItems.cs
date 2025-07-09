@@ -1,20 +1,23 @@
 #if UNITY_EDITOR
 using UnityEditor;
 
-public static class AssetMenuItems
+namespace Snm.Tools.MenuItemExtra
 {
-    [MenuItem("Assets/Tools/LogAssetUsages")]
-    private static void LogAssetUsages()
+    public static class AssetMenuItems
     {
-        AssetUsageHelper.LogAssetUsages(Selection.activeObject, AssetUsageHelper.GetAllDependents(Selection.activeObject, AssetUsageHelper.GetAllAssetPaths()));
-    }
-
-    [MenuItem("Assets/Tools/LogGUID")]
-    private static void LogGUID()
-    {
-        if (Selection.activeObject != null)
+        [MenuItem("Assets/Tools/LogAssetUsages")]
+        private static void LogAssetUsages()
         {
-            UnityEngine.Debug.Log(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(Selection.activeObject, out var guid, out long l) ? $"{guid} - {l}" : "NULL", Selection.activeObject);
+            AssetUsageHelper.LogAssetUsages(Selection.activeObject, AssetUsageHelper.GetAllDependents(Selection.activeObject, AssetUsageHelper.GetAllAssetPaths()));
+        }
+
+        [MenuItem("Assets/Tools/LogGUID")]
+        private static void LogGUID()
+        {
+            if (Selection.activeObject != null)
+            {
+                UnityEngine.Debug.Log(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(Selection.activeObject, out var guid, out long l) ? $"{guid} - {l}" : "NULL", Selection.activeObject);
+            }
         }
     }
 }

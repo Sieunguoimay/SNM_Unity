@@ -4,7 +4,8 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
-namespace SNMTools
+
+namespace Snm.Tools
 {
     public class ReflectionExposerWindow : EditorWindow
     {
@@ -12,7 +13,7 @@ namespace SNMTools
 
         private VisualElement _button_LogAllMembers;
         private VisualElement _textField_TypeName;
-        
+
         [MenuItem("Tools/ReflectionExposer")]
         private static void Open()
         {
@@ -27,7 +28,7 @@ namespace SNMTools
             {
                 value = typeName,
             });
-            
+
             _textField_TypeName.RegisterCallback<ChangeEvent<string>>(TextField_TypeName_OnValueChanged);
 
             rootVE.Add(_button_LogAllMembers = new Button(Button_LogAllMembers_OnClicked)

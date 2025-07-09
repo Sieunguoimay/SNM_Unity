@@ -3,13 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
     [CustomEditor(typeof(StructureElementAsset), true)]
     public class StructureElementAsset_Editor : Editor
@@ -88,152 +86,6 @@ namespace Snm.SystemStructureFramework
             return Enumerable.Empty<FieldInfo>();
         }
 
-        private class StructureElementAssetVE : Foldout, IDisposable
-        {
-            private readonly StructureElementAsset elementAsset;
-            private IReadOnlyList<StructureElementReferenceEntry> _cachedReferenceList;
-
-            public StructureElementAssetVE(StructureElementAsset elementAsset)
-            {
-                text = "Element References";
-                Debug.Log($"{nameof(StructureElementAsset)} Created");
-                this.elementAsset = elementAsset;
-                UpdateReferenceList();
-            }
-
-            public void Dispose()
-            {
-                foreach (var eve in Children().OfType<StructureElementReferenceEntryVE>())
-                {
-                    eve.Dispose();
-                }
-
-                if (_cachedReferenceList != null)
-                {
-                    foreach (var r in _cachedReferenceList)
-                    {
-                        r.OnDefinitionAssetChanged -= AnyReference_OnDefinitionAssetChanged;
-                    }
-                    _cachedReferenceList = null;
-                }
-
-                Debug.Log($"{nameof(StructureElementAsset)} Disposed");
-            }
-
-            public void RefreshVE()
-            {
-                UpdateReferenceList();
-            }
-
-            private void UpdateReferenceList()
-            {
-                foreach (var eve in Children().OfType<StructureElementReferenceEntryVE>())
-                {
-                    eve.Dispose();
-                }
-                Clear();
-
-                if (_cachedReferenceList != null)
-                {
-                    foreach (var r in _cachedReferenceList)
-                    {
-                        r.OnDefinitionAssetChanged -= AnyReference_OnDefinitionAssetChanged;
-                    }
-                }
-
-                _cachedReferenceList = elementAsset.Editor_ElementReferences;
-
-                if (_cachedReferenceList != null)
-                {
-                    foreach (var r in _cachedReferenceList)
-                    {
-                        r.OnDefinitionAssetChanged += AnyReference_OnDefinitionAssetChanged;
-                    }
-
-                    foreach (var er in _cachedReferenceList)
-                    {
-                        Add(new StructureElementReferenceEntryVE(er));
-                    }
-                }
-            }
-
-            private void AnyReference_OnDefinitionAssetChanged(StructureElementReferenceEntry entry)
-            {
-                SaveElementAsset();
-            }
-
-            private void SaveElementAsset()
-            {
-                EditorUtility.SetDirty(elementAsset);
-                Debug.Log($"Saved {elementAsset.name}", elementAsset);
-            }
-        }
-
-        private class StructureElementReferenceEntryVE : ObjectField, IDisposable
-        {
-            private readonly StructureElementReferenceEntry entry;
-            private StructureElementAssetForAttribute _att;
-
-            public StructureElementReferenceEntryVE(StructureElementReferenceEntry entry)
-            {
-                this.entry = entry;
-                label = FormatFieldName(entry.InjectId) + $" ({entry.Editor_TargetType.Name})";
-                value = entry.DefinitionAsset;
-                labelElement.style.width = new StyleLength(Length.Percent(40));
-                objectType = typeof(StructureElementAsset);
-                this.RegisterValueChangedCallback(ThisObjectField_OnValueChanged);
-                UpdateAttribute();
-            }
-
-            public void Dispose()
-            {
-                this.UnregisterValueChangedCallback(ThisObjectField_OnValueChanged);
-            }
-
-            private void ThisObjectField_OnValueChanged(ChangeEvent<UnityEngine.Object> evt)
-            {
-                if (evt.newValue is StructureElementAsset asset)
-                {
-                    entry.SetAsset(asset);
-                }
-                UpdateAttribute();
-            }
-
-            private void UpdateAttribute()
-            {
-                if (value != null)
-                {
-                    _att = value.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
-                }
-                else
-                {
-                    _att = null;
-                }
-                Validate();
-            }
-
-            private void Validate()
-            {
-                var isValid = false;
-                if (_att == null)
-                {
-                    if (value != null)
-                    {
-                        isValid = true;
-                    }
-                }
-                else
-                {
-                    if (entry.Editor_TargetType.IsAssignableFrom(_att.ElementType))
-                    {
-                        isValid = true;
-                    }
-                }
-
-                labelElement.style.color = isValid ? Color.green : Color.red;
-            }
-        }
-
         private static IEnumerable<FieldInfo> GetReferenceFields(Type type)
         {
             var currentType = type;
@@ -253,15 +105,8 @@ namespace Snm.SystemStructureFramework
                 currentType = currentType.BaseType;
             }
         }
-
-        public static string FormatFieldName(string fieldName)
-        {
-            var formatted = Regex.Replace(fieldName, @"([a-z])([A-Z])", "$1 $2");
-
-            formatted = char.ToUpper(formatted[0]) + formatted[1..];
-
-            return formatted;
-        }
     }
+
+
 }
 #endif

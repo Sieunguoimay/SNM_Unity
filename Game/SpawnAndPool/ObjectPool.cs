@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace GameNodeHierarchy
+namespace Snm.Framework.NodeHierarchy
 {
     public class ObjectPool<T> where T : Object
     {

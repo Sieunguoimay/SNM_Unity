@@ -1,13 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Snm.Tools;
 using UnityEngine;
 
-namespace GameNodeHierarchy
+namespace Snm.Framework.NodeHierarchy
 {
     public class NodeEntryPoint : MonoBehaviour
     {
-        [ObjectSelector(typeof(IGameNode))]
+        [TypeSelector(typeof(IGameNode))]
         [SerializeField]
         private Object[] rootNodes;
 

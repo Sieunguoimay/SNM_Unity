@@ -1,9 +1,14 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using Snm.Tools;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
 
     [Serializable]
@@ -31,13 +36,6 @@ namespace Snm.SystemStructureFramework
 #endif
         public StructureElementReferenceEntry() { }
 
-#if UNITY_EDITOR
-        public void SetTargetType(Type targetType)
-        {
-            _editor_TargetType = targetType;
-        }
-#endif
-
         public StructureElementReferenceEntry(string injectId, StructureElementAsset referenceAsset)
         {
             this.injectId = injectId;
@@ -49,5 +47,12 @@ namespace Snm.SystemStructureFramework
             referenceAsset = asset;
             OnDefinitionAssetChanged?.Invoke(this);
         }
+
+#if UNITY_EDITOR
+        public void SetTargetType(Type targetType)
+        {
+            _editor_TargetType = targetType;
+        }
+#endif
     }
 }

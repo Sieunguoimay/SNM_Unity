@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using System;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
 
     public interface IRefreshHandler

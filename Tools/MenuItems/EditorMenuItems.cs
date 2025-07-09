@@ -3,35 +3,39 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
 
-public static class EditorMenuItems
+namespace Snm.Tools.MenuItemExtra
 {
-    [MenuItem("Tools/LogAllMenuItems")]
-    private static void LogAllMenuItems()
-    {
-        var menuItems = FindAllMenuItems();
-        foreach (var (type, methodInfo, menuItem) in menuItems)
-        {
-            UnityEngine.Debug.Log($"{type.Name} -> {menuItem.menuItem} -> {methodInfo.Name}");
-        }
-    }
 
-    private static IEnumerable<(System.Type type, MethodInfo methodInfo, MenuItem)> FindAllMenuItems()
+    public static class EditorMenuItems
     {
-        var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-
-        foreach (var assembly in assemblies)
+        [MenuItem("Tools/LogAllMenuItems")]
+        private static void LogAllMenuItems()
         {
-            foreach (var type in assembly.GetTypes())
+            var menuItems = FindAllMenuItems();
+            foreach (var (type, methodInfo, menuItem) in menuItems)
             {
-                foreach (var method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-                {
-                    MenuItem mi = null;
-                    try { mi = method.GetCustomAttribute<MenuItem>(); } catch (System.Exception) { }
-                    if (mi != null)
-                    {
-                        yield return (type, method, mi);
-                    }
+                UnityEngine.Debug.Log($"{type.Name} -> {menuItem.menuItem} -> {methodInfo.Name}");
+            }
+        }
 
+        private static IEnumerable<(System.Type type, MethodInfo methodInfo, MenuItem)> FindAllMenuItems()
+        {
+            var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+
+            foreach (var assembly in assemblies)
+            {
+                foreach (var type in assembly.GetTypes())
+                {
+                    foreach (var method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                    {
+                        MenuItem mi = null;
+                        try { mi = method.GetCustomAttribute<MenuItem>(); } catch (System.Exception) { }
+                        if (mi != null)
+                        {
+                            yield return (type, method, mi);
+                        }
+
+                    }
                 }
             }
         }

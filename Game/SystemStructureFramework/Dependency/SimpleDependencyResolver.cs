@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
     public class SimpleDependencyResolver : IDepedencyResolver
     {

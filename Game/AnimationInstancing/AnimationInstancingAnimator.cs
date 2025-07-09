@@ -1,7 +1,8 @@
 using System.Collections.Generic;
+using Snm.Visual.Animation;
 using UnityEngine;
 
-namespace SNM_Unity.AnimationInstancing
+namespace Snm.AnimationInstancing
 {
     [RequireComponent(typeof(AnimationInstancingRenderer))]
     public class AnimationInstancingAnimator : MonoBehaviour

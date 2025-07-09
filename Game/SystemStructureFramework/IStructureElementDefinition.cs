@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
     public interface IStructureElementDefinition
     {

@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System;
 using System.Collections;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public class InspectorExtensionInstaller
     {

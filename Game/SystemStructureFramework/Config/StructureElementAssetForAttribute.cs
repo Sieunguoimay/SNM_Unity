@@ -1,6 +1,6 @@
 using System;
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
     /// <summary>
     /// Optional attribute to specify the LifecycleUnit type that this LifecycleUnitAsset is for.

@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
 
     public class RevealNonSerializedExt : IInspectorExtension

@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 using Common.UnityExtend.UIElements.GraphView;
 using Common.UnityExtend.UIElements.Utilities;
 using System.Collections.Generic;
@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+namespace Snm.Tools.DependencyVisualize{
 
 public partial class AssetDependencyGraph
 {
@@ -366,3 +367,4 @@ public partial class AssetDependencyGraph
     }
 }
 #endif
+}

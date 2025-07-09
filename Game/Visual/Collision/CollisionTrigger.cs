@@ -1,39 +1,43 @@
 using System;
+using Snm.Tools;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class CollisionTrigger : MonoBehaviour
+namespace Snm.Components.Collision
 {
-    [ObjectSelector(typeof(ICollisionEventHandler))]
-    [SerializeField] private UnityEngine.Object handler;
-    [SerializeField] private UnityEvent onCollisionEnter;
-    [SerializeField] private UnityEvent onCollisionExit;
-
-    private ICollisionEventHandler _handler;
-
-    public event Action<CollisionTrigger> TriggerEnterEvent;
-    public event Action<CollisionTrigger> TriggerExitEvent;
-
-    private void Awake()
+    public class CollisionTrigger : MonoBehaviour
     {
-        _handler = handler as ICollisionEventHandler;
-        if (_handler == null)
+        [TypeSelector(typeof(ICollisionEventHandler))]
+        [SerializeField] private UnityEngine.Object handler;
+        [SerializeField] private UnityEvent onCollisionEnter;
+        [SerializeField] private UnityEvent onCollisionExit;
+
+        private ICollisionEventHandler _handler;
+
+        public event Action<CollisionTrigger> TriggerEnterEvent;
+        public event Action<CollisionTrigger> TriggerExitEvent;
+
+        private void Awake()
         {
-            Debug.LogError("Assigned object has not implemented ICollisionEventHandler");
+            _handler = handler as ICollisionEventHandler;
+            if (_handler == null)
+            {
+                Debug.LogError("Assigned object has not implemented ICollisionEventHandler");
+            }
         }
-    }
 
-    private void OnTriggerEnter(Collider other)
-    {
-        _handler.OnCollisionEnter(this, other);
-        onCollisionEnter?.Invoke();
-        TriggerEnterEvent?.Invoke(this);
-    }
+        private void OnTriggerEnter(Collider other)
+        {
+            _handler.OnCollisionEnter(this, other);
+            onCollisionEnter?.Invoke();
+            TriggerEnterEvent?.Invoke(this);
+        }
 
-    private void OnTriggerExit(Collider other)
-    {
-        _handler.OnCollisionExit(this, other);
-        onCollisionExit?.Invoke();
-        TriggerExitEvent?.Invoke(this);
+        private void OnTriggerExit(Collider other)
+        {
+            _handler.OnCollisionExit(this, other);
+            onCollisionExit?.Invoke();
+            TriggerExitEvent?.Invoke(this);
+        }
     }
 }

@@ -12,7 +12,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace IDs
+namespace Snm.Identification
 {
 
 #if UNITY_EDITOR

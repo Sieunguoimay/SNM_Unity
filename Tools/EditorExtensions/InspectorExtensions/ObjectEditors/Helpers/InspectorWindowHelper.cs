@@ -4,7 +4,7 @@ using UnityEngine;
 using System.Reflection;
 using System;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public class InspectorWindowHelper
     {

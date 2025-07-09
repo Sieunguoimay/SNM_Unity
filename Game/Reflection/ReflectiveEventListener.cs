@@ -5,12 +5,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using UnityEngine.Events;
+using Snm.Tools;
 
 namespace Reflection
 {
     public class ReflectiveEventListener : MonoBehaviour
     {
-        [ObjectSelector]
+        [TypeSelector]
         [SerializeField] private UnityEngine.Object target;
         [SerializeField] private ReflectionEvent[] events;
         [SerializeField] private UnityEvent onTriggered;

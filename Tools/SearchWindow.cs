@@ -6,16 +6,17 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
-namespace SNMTools
+namespace Snm.Tools
 {
     public class SearchWindow : EditorWindow
     {
+        private readonly int displayCount = 20;
+
         private Action<string> _onResult;
         private IEnumerable<string> _options;
 
         private string _searchString = "";
         private string[] _searchResult;
-        private int _displayCount = 20;
         private bool _firstTime = true;
 
         public static void Show(IEnumerable<string> options, Action<string> onResult)
@@ -44,7 +45,7 @@ namespace SNMTools
                 var count = 0;
                 foreach (var r in _searchResult)
                 {
-                    if (count > _displayCount) break;
+                    if (count > displayCount) break;
                     if (GUILayout.Button($"{r}"))
                     {
                         _onResult?.Invoke(r);

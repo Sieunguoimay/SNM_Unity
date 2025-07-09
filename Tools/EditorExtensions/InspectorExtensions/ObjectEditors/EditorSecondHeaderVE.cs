@@ -7,7 +7,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public interface IInspectorModeHelper : System.IDisposable
     {

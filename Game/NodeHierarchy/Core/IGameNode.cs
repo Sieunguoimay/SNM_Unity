@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace GameNodeHierarchy
+namespace Snm.Framework.NodeHierarchy
 {
     public interface IGameNode
     {

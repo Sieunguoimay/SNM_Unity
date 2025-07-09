@@ -1,5 +1,5 @@
 using System;
-namespace IDs
+namespace Snm.Identification
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class IDSpaceAttribute : Attribute { }

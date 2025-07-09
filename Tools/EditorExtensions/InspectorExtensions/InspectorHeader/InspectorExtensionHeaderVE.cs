@@ -7,7 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
 
     public class InspectorExtensionHeaderVE : VisualElement, IDisposable

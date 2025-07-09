@@ -1,4 +1,4 @@
-﻿namespace InspectorExtensions
+﻿namespace Snm.Tools.InspectorExtra
 {
     public class IMGUIMethodAttribute : System.Attribute
     {

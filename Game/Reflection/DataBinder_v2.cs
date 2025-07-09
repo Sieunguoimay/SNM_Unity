@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using InspectorExtensions;
+using Snm.Tools.InspectorExtra;
+using Snm.Tools;
 using UnityEngine;
 
 namespace Reflection
@@ -11,7 +12,7 @@ namespace Reflection
     public class DataBinder_v2 : MonoBehaviour
     {
         [SerializeField] private bool bindOnEnable;
-        [ObjectSelector]
+        [TypeSelector]
         [SerializeField] private UnityEngine.Object sourceObject;
         [SerializeField] private MemberPairConfig[] memberPairConfigs;
 
@@ -249,7 +250,7 @@ namespace Reflection
             [StringSelector(nameof(AllSourceMembers), true)]
             public string sourceMember;
 
-            [ObjectSelector]
+            [TypeSelector]
             public UnityEngine.Object destObject;
 
             [StringSelector(nameof(AllDestMembers))]

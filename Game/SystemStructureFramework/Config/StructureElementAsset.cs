@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
 
     public abstract class StructureElementAsset : ScriptableObject, IStructureElementDefinition

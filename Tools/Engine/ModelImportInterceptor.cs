@@ -1,14 +1,16 @@
 #if UNITY_EDITOR
-using System;
 using UnityEditor;
 
-public class ModelImportInterceptor : AssetPostprocessor
+namespace Snm.Tools
 {
-    private void OnPreprocessModel()
+    public class ModelImportInterceptor : AssetPostprocessor
     {
-        if (assetImporter is ModelImporter importer)
+        private void OnPreprocessModel()
         {
-            importer.bakeAxisConversion = true;
+            if (assetImporter is ModelImporter importer)
+            {
+                importer.bakeAxisConversion = true;
+            }
         }
     }
 }

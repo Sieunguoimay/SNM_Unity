@@ -2,7 +2,7 @@
 using System;
 using System.Reflection;
 
-namespace InspectorExtensions
+namespace Snm.Tools.InspectorExtra
 {
     public class CreateVisualElementExt : IInspectorExtension
     {

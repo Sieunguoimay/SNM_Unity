@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-namespace Snm.Camera
+namespace Snm.Components.Camera
 {
     public class CameraFOVConstraintByVisibleArea : MonoBehaviour
     {

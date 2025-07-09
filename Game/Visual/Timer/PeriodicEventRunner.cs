@@ -4,60 +4,63 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Serialization;
 
-public class PeriodicEventRunner : MonoBehaviour
+namespace Snm.Components.Timers
 {
-    [SerializeField] private float periodSecs = 1f;
-    [SerializeField] private bool triggerOnStart = false;
-    [FormerlySerializedAs("runOnStart")]
-    [SerializeField] private bool runOnEnable = true;
-    [SerializeField] private UnityEvent onTrigger;
-
-    public float PeriodSecs { get; private set; }
-
-    public event Action<PeriodicEventRunner> TriggerEvent;
-
-    private void OnEnable()
+    public class PeriodicEventRunner : MonoBehaviour
     {
-        if (runOnEnable)
+        [SerializeField] private float periodSecs = 1f;
+        [SerializeField] private bool triggerOnStart = false;
+        [FormerlySerializedAs("runOnStart")]
+        [SerializeField] private bool runOnEnable = true;
+        [SerializeField] private UnityEvent onTrigger;
+
+        public float PeriodSecs { get; private set; }
+
+        public event Action<PeriodicEventRunner> TriggerEvent;
+
+        private void OnEnable()
         {
-            StartRunning();
-        }
-    }
-
-    private void OnDisable()
-    {
-        StopRunning();
-    }
-
-    public void StartRunning()
-    {
-        SetPeriodSecs(periodSecs);
-        StartCoroutine(IE_IntervalLoop());
-    }
-
-    public void StopRunning()
-    {
-        StopAllCoroutines();
-    }
-
-    private IEnumerator IE_IntervalLoop()
-    {
-        if (triggerOnStart)
-        {
-            TriggerEvent?.Invoke(this);
-            onTrigger?.Invoke();
+            if (runOnEnable)
+            {
+                StartRunning();
+            }
         }
 
-        while (true)
+        private void OnDisable()
         {
-            yield return new WaitForSeconds(PeriodSecs);
-            TriggerEvent?.Invoke(this);
-            onTrigger?.Invoke();
+            StopRunning();
         }
-    }
 
-    public void SetPeriodSecs(float periodSecs)
-    {
-        PeriodSecs = periodSecs;
+        public void StartRunning()
+        {
+            SetPeriodSecs(periodSecs);
+            StartCoroutine(IE_IntervalLoop());
+        }
+
+        public void StopRunning()
+        {
+            StopAllCoroutines();
+        }
+
+        private IEnumerator IE_IntervalLoop()
+        {
+            if (triggerOnStart)
+            {
+                TriggerEvent?.Invoke(this);
+                onTrigger?.Invoke();
+            }
+
+            while (true)
+            {
+                yield return new WaitForSeconds(PeriodSecs);
+                TriggerEvent?.Invoke(this);
+                onTrigger?.Invoke();
+            }
+        }
+
+        public void SetPeriodSecs(float periodSecs)
+        {
+            PeriodSecs = periodSecs;
+        }
     }
 }

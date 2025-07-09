@@ -1,5 +1,6 @@
 using UnityEngine;
-namespace Snm.Layout
+
+namespace Snm.Visual.Layout3D
 {
     public interface IWorldBounds
     {

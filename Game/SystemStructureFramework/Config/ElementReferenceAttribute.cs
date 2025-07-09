@@ -1,6 +1,6 @@
 using System;
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
     public class ElementReferenceAttribute : Attribute

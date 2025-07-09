@@ -1,110 +1,76 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 #if UNITY_EDITOR
+using System.Linq;
+using System.Reflection;
 using UnityEditor;
 #endif
 using UnityEngine;
 
-public class ObjectSelectorAttribute : PropertyAttribute
+namespace Snm.Tools
 {
-    public ObjectSelectorAttribute(Type typeConstraint = null, bool shouldDrawLabel = true)
+    public class ObjectSelectorAttribute : PropertyAttribute
     {
-        TypeConstraint = typeConstraint;
-        ShouldDrawLabel = shouldDrawLabel;
+        public string ProviderMember { get; }
+
+        public ObjectSelectorAttribute(string providerMember)
+        {
+            ProviderMember = providerMember;
+        }
     }
 
-    public Type TypeConstraint { get; }
-    public bool ShouldDrawLabel { get; }
-}
-
 #if UNITY_EDITOR
-[CustomPropertyDrawer(typeof(ObjectSelectorAttribute))]
-public class ObjectSelectorDrawer : PropertyDrawer
-{
-    private ObjectSelectorAttribute _att;
-    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+
+    [CustomPropertyDrawer(typeof(ObjectSelectorAttribute))]
+    public class PropertyDrawer_ObjectSelector : PropertyDrawer
     {
-        _att ??= attribute as ObjectSelectorAttribute;
-        EditorGUI.BeginProperty(position, label, property);
-        position.width -= 20;
-
-        using var changed = new EditorGUI.ChangeCheckScope();
-        var oldValue = property.objectReferenceValue;
-
-        if (_att.ShouldDrawLabel)
+        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
+            EditorGUI.BeginProperty(position, label, property);
+
+            position.width -= 25;
             EditorGUI.PropertyField(position, property, label, true);
-        }
-        else
-        {
-            EditorGUI.PropertyField(position, property, GUIContent.none, true);
-        }
 
-        if (changed.changed)
-        {
-            var newValue = property.objectReferenceValue;
-            if (oldValue == null && newValue != null)
+            position.x += position.width;
+            position.width = 25;
+
+            if (GUI.Button(position, "..."))
             {
-                var autoSelected = GetAllAssociatedObjects(newValue).FirstOrDefault(o => _att.TypeConstraint.IsInstanceOfType(o));
+                ShowMenuItem(property);
+            }
 
-                property.serializedObject.Update();
-                property.objectReferenceValue = autoSelected;
-                property.serializedObject.ApplyModifiedProperties();
+            EditorGUI.EndProperty();
+        }
+
+        private void ShowMenuItem(SerializedProperty property)
+        {
+            var directObject = SerializeUtility.GetDirectTargetObject(property);
+            if (directObject != null)
+            {
+                var array = GetOptions(directObject);
+                ObjectPickerWindow.Show(array, obj =>
+                {
+                    Debug.Log("Selected Object: " + obj.name, obj);
+                    property.objectReferenceValue = obj;
+                    property.serializedObject.ApplyModifiedProperties();
+                });
             }
         }
 
-        position.x += position.width;
-        position.width = 20;
-        if (GUI.Button(position, new GUIContent("..", property.objectReferenceValue?.GetType()?.Name)))
+        private Object[] GetOptions(object directObject)
         {
-            ShowGenericMenu(property, obj =>
+            var att = attribute as ObjectSelectorAttribute;
+            var member = directObject.GetType().GetMember(att.ProviderMember).FirstOrDefault();
+            object result = null;
+            if (member is MethodInfo methodInfo)
             {
-                property.serializedObject.Update();
-                property.objectReferenceValue = obj;
-                property.serializedObject.ApplyModifiedProperties();
-            });
-        }
-        EditorGUI.EndProperty();
-    }
-
-    private void ShowGenericMenu(SerializedProperty property, System.Action<UnityEngine.Object> onNewObject)
-    {
-        var menu = new GenericMenu();
-        var att = attribute as ObjectSelectorAttribute;
-        var allObjects = GetAllAssociatedObjects(property.objectReferenceValue)
-            .Where(o => att.TypeConstraint?.IsAssignableFrom(o.GetType()) ?? true);
-        foreach (var obj in allObjects)
-        {
-            menu.AddItem(new GUIContent(obj.GetType().Name), property.objectReferenceValue == obj, () =>
+                result = methodInfo.Invoke(directObject, null);
+            }
+            else if (member is PropertyInfo propInfo)
             {
-                onNewObject?.Invoke(obj);
-            });
-        }
-        menu.ShowAsContext();
-    }
+                result = propInfo.GetValue(directObject);
+            }
 
-    private static IEnumerable<UnityEngine.Object> GetAllAssociatedObjects(UnityEngine.Object obj)
-    {
-        if (obj is GameObject go)
-        {
-            yield return go;
-            foreach (var c in go.GetComponents<Component>()) yield return c;
-        }
-        else if (obj is Component c)
-        {
-            yield return c.gameObject;
-            foreach (var c1 in c.gameObject.GetComponents<Component>()) yield return c1;
-        }
-        else if (obj is ScriptableObject so)
-        {
-            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(so))) yield return o;
-        }
-        else
-        {
-            yield return obj;
+            return result as Object[];
         }
     }
-}
 #endif
+}

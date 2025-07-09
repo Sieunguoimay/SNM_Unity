@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-namespace Snm.SystemStructureFramework
+namespace Snm.Framework.System
 {
     public static class SystemStructureBuilder
     {

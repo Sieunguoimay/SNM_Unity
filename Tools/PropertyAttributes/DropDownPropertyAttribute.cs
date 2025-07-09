@@ -1,68 +1,71 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-public class DropDownPropertyAttribute : PropertyAttribute
+namespace Snm.Tools
 {
-    public DropDownPropertyAttribute(string displayTextGetMethod, string valuesGetMethod, bool isPropertyInRootObject = false)
+    public class DropDownPropertyAttribute : PropertyAttribute
     {
-        DisplayTextGetMethod = displayTextGetMethod;
-        ValuesProperty = valuesGetMethod;
-        IsPropertyInRootObject = isPropertyInRootObject;
-    }
+        public DropDownPropertyAttribute(string displayTextGetMethod, string valuesGetMethod, bool isPropertyInRootObject = false)
+        {
+            DisplayTextGetMethod = displayTextGetMethod;
+            ValuesProperty = valuesGetMethod;
+            IsPropertyInRootObject = isPropertyInRootObject;
+        }
 
-    public string DisplayTextGetMethod { get; }
-    public string ValuesProperty { get; }
-    public bool IsPropertyInRootObject { get; internal set; }
-}
+        public string DisplayTextGetMethod { get; }
+        public string ValuesProperty { get; }
+        public bool IsPropertyInRootObject { get; internal set; }
+    }
 
 #if UNITY_EDITOR
-[UnityEditor.CustomPropertyDrawer(typeof(DropDownPropertyAttribute))]
-public class DropDownPropertyDrawer : UnityEditor.PropertyDrawer
-{
-    private DropDownPropertyAttribute _att;
-    private MethodInfo _displayTextGetMethod;
-    private IEnumerable<string> _values;
-    private object _target;
-
-    public override void OnGUI(Rect position, UnityEditor.SerializedProperty property, GUIContent label)
+    [CustomPropertyDrawer(typeof(DropDownPropertyAttribute))]
+    public class DropDownPropertyDrawer : PropertyDrawer
     {
-        if (_att == null)
+        private static readonly BindingFlags flag = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
+
+        private DropDownPropertyAttribute _att;
+        private MethodInfo _displayTextGetMethod;
+        private IEnumerable<string> _values;
+        private object _target;
+
+        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            _att = attribute as DropDownPropertyAttribute;
-
-            _target = _att.IsPropertyInRootObject ? property.serializedObject.targetObject : StringSelectorDrawer.GetDirectTargetObject(property);
-            _displayTextGetMethod = _target.GetType().GetMethod(_att.DisplayTextGetMethod, StringSelectorDrawer.Flag);
-            // var value = _method?.Invoke(_target, null);
-            _values = _target.GetType().GetProperty(_att.ValuesProperty, StringSelectorDrawer.Flag).GetValue(_target) as IEnumerable<string>;
-        }
-
-
-        UnityEditor.EditorGUI.BeginProperty(position, label, property);
-        if (UnityEditor.EditorGUI.DropdownButton(position,
-            new GUIContent(GetDisplaytext(property.stringValue)),
-            FocusType.Passive))
-        {
-            var gm = new GenericMenu();
-            foreach (var v in _values)
+            if (_att == null)
             {
-                gm.AddItem(new GUIContent(GetDisplaytext(v)), property.stringValue == v, () =>
-                {
+                _att = attribute as DropDownPropertyAttribute;
 
-                });
+                _target = _att.IsPropertyInRootObject ? property.serializedObject.targetObject : StringSelectorDrawer.GetDirectTargetObject(property);
+                _displayTextGetMethod = _target.GetType().GetMethod(_att.DisplayTextGetMethod, flag);
+                _values = _target.GetType().GetProperty(_att.ValuesProperty, flag).GetValue(_target) as IEnumerable<string>;
             }
-            gm.ShowAsContext();
-        }
-        UnityEditor.EditorGUI.EndProperty();
-    }
 
-    private string GetDisplaytext(string value)
-    {
-        return _displayTextGetMethod != null
-            ? _displayTextGetMethod.Invoke(_target, new object[] { value }) as string
-            : value;
+
+            EditorGUI.BeginProperty(position, label, property);
+            if (EditorGUI.DropdownButton(position,
+                new GUIContent(GetDisplaytext(property.stringValue)),
+                FocusType.Passive))
+            {
+                var gm = new GenericMenu();
+                foreach (var v in _values)
+                {
+                    gm.AddItem(new GUIContent(GetDisplaytext(v)), property.stringValue == v, () =>
+                    {
+
+                    });
+                }
+                gm.ShowAsContext();
+            }
+            EditorGUI.EndProperty();
+        }
+
+        private string GetDisplaytext(string value)
+        {
+            return _displayTextGetMethod != null
+                ? _displayTextGetMethod.Invoke(_target, new object[] { value }) as string
+                : value;
+        }
     }
-}
 #endif
+}
