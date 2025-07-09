@@ -24,6 +24,12 @@ namespace Snm.SystemStructureFramework
                 resolver: new SimpleDependencyResolver(new() {
                     { typeof(IViewSpawnService), new ViewSpawnService_Mock() }
                 }));
+
+            var lifecycle = structure as IStructureElementLifecycle;
+            lifecycle.Initialize();
+            lifecycle.Setup();
+            lifecycle.Teardown();
+            lifecycle.Cleanup();
         }
 
         [ContextMenu("CollectAllAssetsInFolder")]
