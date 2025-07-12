@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -15,9 +16,18 @@ namespace Snm.Framework.System
 #if UNITY_EDITOR
         public IReadOnlyList<StructureElementReferenceEntry> Editor_ElementReferences => elementReferences;
 
+        public event Action<StructureElementAsset> OnValidated;
+
+
+        private void OnValidate()
+        {
+            OnValidated?.Invoke(this);
+        }
+
         public void Editor_SetElementReferences(StructureElementReferenceEntry[] referenceEntries)
         {
             elementReferences = referenceEntries;
+            OnValidated?.Invoke(this);
         }
 #endif
 

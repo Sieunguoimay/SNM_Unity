@@ -15,13 +15,16 @@ namespace Snm.Framework.System
     public class StructureElementReferenceEntryVE : VisualElement, IDisposable
     {
         private readonly StructureElementReferenceEntry entry;
+        private readonly Func<StructureElementAsset[]> getOptionsCallback;
         private readonly ObjectField objectField;
         private readonly Label label;
         private StructureElementAssetForAttribute _att;
 
-        public StructureElementReferenceEntryVE(StructureElementReferenceEntry entry)
+        public StructureElementReferenceEntryVE(StructureElementReferenceEntry entry, Func<StructureElementAsset[]> getOptionsCallback)
         {
             this.entry = entry;
+            this.getOptionsCallback = getOptionsCallback;
+
             style.flexDirection = FlexDirection.Row;
             style.width = new StyleLength(Length.Percent(100));
 
@@ -73,36 +76,23 @@ namespace Snm.Framework.System
 
         private void UpdateValidateColor()
         {
-            var isValid = false;
-            if (_att == null)
-            {
-                if (objectField.value != null)
-                {
-                    isValid = true;
-                }
-            }
-            else
-            {
-                if (entry.Editor_TargetType.IsAssignableFrom(_att.ElementType))
-                {
-                    isValid = true;
-                }
-            }
+            var isInSameStruture =
+                objectField.value is StructureElementAsset structure
+                && getOptionsCallback().Contains(structure);
+
+            var isTargetTypeValid =
+                _att != null && entry.Editor_TargetType.IsAssignableFrom(_att.ElementType)
+                || _att == null;
+
+            var isValid = isInSameStruture && isTargetTypeValid;
 
             label.style.color = isValid ? Color.green : Color.red;
         }
 
         private void SelectObject()
         {
-            var options = GetOptions().ToArray();
+            var options = getOptionsCallback();
             ObjectPickerWindow.Show(options, obj => objectField.value = obj);
-        }
-
-        public IEnumerable<StructureElementAsset> GetOptions()
-        {
-            return AssetDatabase.FindAssets($"t:{nameof(StructureElementAsset)}")
-                .Select(AssetDatabase.GUIDToAssetPath)
-                .Select(AssetDatabase.LoadAssetAtPath<StructureElementAsset>);
         }
 
         public static string FormatFieldName(string fieldName)

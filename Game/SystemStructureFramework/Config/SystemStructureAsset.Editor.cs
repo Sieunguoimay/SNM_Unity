@@ -2,20 +2,23 @@
 using System.Linq;
 using Snm.GrabAndToss.ViewSystem;
 using UnityEngine;
-using System.Collections;
-
-#if UNITY_EDITOR
 using UnityEditor;
-#endif
+using System.Collections.Generic;
 
 namespace Snm.Framework.System
 {
 
     public partial class SystemStructureAsset
     {
-#if UNITY_EDITOR
-        [SerializeField] private Object[] selectedFolders;
-#endif
+        [SerializeField] private Object selectedFolder;
+
+        public Object SelectedFolder => selectedFolder;
+
+        public void SetElementAssets(StructureElementAsset[] value)
+        {
+            elementAssets = value;
+        }
+
         [ContextMenu("Test Build Structure")]
         private void TestBuildStructure()
         {
@@ -32,10 +35,37 @@ namespace Snm.Framework.System
             lifecycle.Cleanup();
         }
 
-        [ContextMenu("CollectAllAssetsInFolder")]
-        private void CollectAllAssetsInFolder()
+        [ContextMenu("Refill All Structures")]
+        private void RefillAll()
         {
-            var folderPaths = selectedFolders.Select(f => AssetDatabase.GetAssetPath(f)).ToArray();
+            RefillAllStructureAssets();
+        }
+
+        public static void RefillAllStructureAssets()
+        {
+            foreach (var structure in GetAllStructureAssets().OrderByDescending(GetStructureAssetDepth))
+            {
+                Debug.Log("Refilling " + structure.name, structure);
+                structure.CollectAllAssetsInFolder();
+            }
+        }
+
+        public static IEnumerable<SystemStructureAsset> GetAllStructureAssets()
+        {
+            return AssetDatabase.FindAssets($"t:{nameof(SystemStructureAsset)}")
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<SystemStructureAsset>);
+        }
+
+        private static int GetStructureAssetDepth(SystemStructureAsset structureAsset)
+        {
+            return AssetDatabase.GetAssetPath(structureAsset.SelectedFolder).Split('/').Length;
+        }
+
+        [ContextMenu("CollectAllAssetsInFolders")]
+        public void CollectAllAssetsInFolder()
+        {
+            var folderPaths = new string[] { AssetDatabase.GetAssetPath(selectedFolder) };
             var otherStructures = AssetDatabase.FindAssets($"t:{nameof(SystemStructureAsset)}", folderPaths)
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
