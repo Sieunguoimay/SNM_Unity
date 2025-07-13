@@ -22,6 +22,8 @@ namespace Snm.Framework.System
         {
             this.elementAsset = elementAsset;
 
+            Add(new Label("Structure Element Tool") { style = { flexGrow = 1, unityFontStyleAndWeight = FontStyle.Bold , unityTextAlign = TextAnchor.MiddleCenter} });
+
             Add(foldout_References = new Foldout() { text = "Element References" });
             UpdateReferenceVEList();
 

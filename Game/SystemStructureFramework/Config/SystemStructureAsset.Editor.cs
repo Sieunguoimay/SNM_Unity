@@ -11,6 +11,7 @@ namespace Snm.Framework.System
     public partial class SystemStructureAsset
     {
         [SerializeField] private Object selectedFolder;
+        [SerializeField] private Object[] exclusions;
 
         public Object SelectedFolder => selectedFolder;
 
@@ -76,7 +77,7 @@ namespace Snm.Framework.System
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
                 .OfType<StructureElementAsset>()
-                .Where(e => !otherStructures.Any(s => s.ElementAssets.Contains(e)))
+                .Where(e => !otherStructures.Any(s => s.ElementAssets.Contains(e)) && !exclusions.Contains(e))
                 .ToArray();
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssetIfDirty(this);

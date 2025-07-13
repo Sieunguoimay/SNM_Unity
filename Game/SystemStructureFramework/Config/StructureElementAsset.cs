@@ -9,6 +9,7 @@ namespace Snm.Framework.System
     public abstract class StructureElementAsset : ScriptableObject, IStructureElementDefinition
     {
         [FormerlySerializedAs("unitReferences")]
+        [HideInInspector]
         [SerializeField] private StructureElementReferenceEntry[] elementReferences = new StructureElementReferenceEntry[0];
 
         IReadOnlyList<IStructureElementReference> IStructureElementDefinition.ElementReferences => elementReferences;
