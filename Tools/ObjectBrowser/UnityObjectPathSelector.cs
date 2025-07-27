@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Sieunguoimay.Attribute;
 using Sieunguoimay.Reflection;
+using Snm.Tools;
 using UnityEditor;
 using UnityEngine;
 #if UNITY_EDITOR
@@ -14,11 +14,12 @@ namespace Sieunguoimay.Tools
     [Serializable]
     public class UnityObjectPathSelector
     {
-        [SerializeField, ComponentSelector] private UnityEngine.Object sourceObject;
+        [ObjectSelector(nameof(sourceObject))]
+        [SerializeField] private UnityEngine.Object sourceObject;
 
-#if UNITY_EDITOR
-        [PathSelector(nameof(sourceObject))]
-#endif
+// #if UNITY_EDITOR
+//         [PathSelector(nameof(sourceObject))]
+// #endif
         [SerializeField]
         private string path;
 

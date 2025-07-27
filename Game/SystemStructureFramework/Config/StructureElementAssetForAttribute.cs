@@ -9,10 +9,17 @@ namespace Snm.Framework.System
     public class StructureElementAssetForAttribute : Attribute
     {
         public Type ElementType { get; }
+        public Type ConfigType { get; }
 
-        public StructureElementAssetForAttribute(Type unitType)
+        public StructureElementAssetForAttribute(Type type)
+            : this(type, type)
         {
-            ElementType = unitType;
+        }
+
+        public StructureElementAssetForAttribute(Type configType, Type elementType)
+        {
+            ElementType = elementType;
+            ConfigType = configType;
         }
     }
 }

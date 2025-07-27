@@ -34,9 +34,9 @@ namespace Snm.Framework.System
 
         IStructureElement IStructureElementDefinition.CreateLifecycleUnit(IDepedencyResolver resolver)
         {
-            return CreateLifecyleUnit_Override(resolver);
+            return CreateElement_Internal(resolver);
         }
 
-        protected abstract IStructureElement CreateLifecyleUnit_Override(IDepedencyResolver resolver);
+        protected abstract IStructureElement CreateElement_Internal(IDepedencyResolver resolver);
     }
 }

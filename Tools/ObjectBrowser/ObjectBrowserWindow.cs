@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Snm.Tools.InspectorExtra;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -12,19 +13,6 @@ namespace Sieunguoimay.Tools
     public class ObjectBrowserWindow : EditorWindow, RuntimeObjectExpose.ITargetObjectProvider
     {
         private const string RuntimeObjectBrowser = "Object Browser";
-
-        [MenuItem("Tools/Snm/Object Browser")]
-        public static void OpenWindow()
-        {
-            GetWindow(typeof(ObjectBrowserWindow), false, RuntimeObjectBrowser).Show();
-        }
-
-        public static ObjectBrowserWindow OpenWindowAndReturnSelf()
-        {
-            var window = GetWindow(typeof(ObjectBrowserWindow), false, RuntimeObjectBrowser);
-            window.Show();
-            return window as ObjectBrowserWindow;
-        }
 
         private Object _rootObject;
         private string _path;
@@ -43,6 +31,18 @@ namespace Sieunguoimay.Tools
 
         public object TargetObject { get; private set; }
 
+        [MenuItem("Tools/Snm/Object Browser")]
+        public static void OpenWindow()
+        {
+            GetWindow(typeof(ObjectBrowserWindow), false, RuntimeObjectBrowser).Show();
+        }
+
+        public static ObjectBrowserWindow OpenWindowAndReturnSelf()
+        {
+            var window = GetWindow(typeof(ObjectBrowserWindow), false, RuntimeObjectBrowser);
+            window.Show();
+            return window as ObjectBrowserWindow;
+        }
         private void OnGUI()
         {
             EditorGUILayout.BeginHorizontal();
@@ -103,6 +103,7 @@ namespace Sieunguoimay.Tools
 
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.BeginHorizontal();
+            DrawCurrentObjectType();
             GUILayout.FlexibleSpace();
             _refreshEveryFrame = GUILayout.Toggle(_refreshEveryFrame, "Refresh every frame");
             GUILayout.Space(5);
@@ -122,6 +123,11 @@ namespace Sieunguoimay.Tools
             {
                 Expose();
             }
+        }
+
+        private void DrawCurrentObjectType()
+        {
+            EditorGUILayout.LabelField($"{TargetObject}");
         }
 
         private static void DrawComponentSelectingButton(Object rootObject, Action<Object> selectedHandler)

@@ -166,7 +166,6 @@ namespace Sieunguoimay.Tools
                     }
                     else
                     {
-
                         var isExposable = !exposedItem.IsPrimitive && exposedItem.Value != null;
                         if (isExposable)
                         {
@@ -174,6 +173,8 @@ namespace Sieunguoimay.Tools
                             {
                                 _clickEventHandler?.Invoke(exposedItem);
                             }
+
+                            DrawToolVEButton(exposedItem.Value);
                         }
                     }
 
@@ -192,6 +193,18 @@ namespace Sieunguoimay.Tools
 
                 EditorGUILayout.EndVertical();
                 EditorGUILayout.EndScrollView();
+            }
+
+            private void DrawToolVEButton(object item)
+            {
+                var toolVEType = Snm.Tools.VisualElementToolForAttribute.TryGetToolVETypeFor(item.GetType());
+                if (toolVEType != null)
+                {
+                    if (GUILayout.Button("VE", GUILayout.Width(30)))
+                    {
+                        Snm.Tools.VisualElementToolViewerWindow.OpenWindow(item);
+                    }
+                }
             }
         }
 #endif

@@ -81,7 +81,7 @@ namespace Snm.Framework.System
             var att = target.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
             if (att != null)
             {
-                return GetReferenceFields(att.ElementType);
+                return GetReferenceFields(att.ConfigType);
             }
             return Enumerable.Empty<FieldInfo>();
         }
