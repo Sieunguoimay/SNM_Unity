@@ -14,7 +14,7 @@ namespace Snm.Framework.System
 
             foreach (var definition in definitions)
             {
-                var element = ((IStructureElementDefinition)definition).CreateElement(resolver);
+                var element = ((IStructureElementDefinition)definition).CreateLifecycleUnit(resolver);
                 dictionary.Add(definition, element);
             }
 

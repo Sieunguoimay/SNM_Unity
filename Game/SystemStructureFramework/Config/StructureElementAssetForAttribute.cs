@@ -9,18 +9,10 @@ namespace Snm.Framework.System
     public class StructureElementAssetForAttribute : Attribute
     {
         public Type ElementType { get; }
-        public Type ReferenceType { get; }
 
-        public StructureElementAssetForAttribute(Type configType)
-            :this(configType, configType)
+        public StructureElementAssetForAttribute(Type unitType)
         {
-            
-        }
-
-        public StructureElementAssetForAttribute(Type configType, Type referenceType)
-        {
-            ElementType = configType;
-            ReferenceType = referenceType;
+            ElementType = unitType;
         }
     }
 }

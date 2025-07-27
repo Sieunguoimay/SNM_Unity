@@ -1,7 +1,9 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.Search;
 using UnityEngine;
@@ -9,18 +11,31 @@ using UnityEngine.UIElements;
 
 namespace Snm.Framework.System
 {
-    public class StructureElementAssetVE : Foldout, IDisposable
+    public class StructureElementAssetVE : VisualElement, IDisposable
     {
         private readonly StructureElementAsset elementAsset;
-        private readonly ObjectField objectField_StructureAsset;
+        private readonly Foldout foldout_References;
+        private readonly VisualElement container_Structures;
         private IReadOnlyList<StructureElementReferenceEntry> _cachedReferenceList;
 
         public StructureElementAssetVE(StructureElementAsset elementAsset)
         {
-            text = "Element References";
             this.elementAsset = elementAsset;
+
+            Add(new Label("Structure Element Tool") { style = { flexGrow = 1, unityFontStyleAndWeight = FontStyle.Bold , unityTextAlign = TextAnchor.MiddleCenter} });
+
+            Add(foldout_References = new Foldout() { text = "Element References" });
             UpdateReferenceVEList();
-            Add(objectField_StructureAsset = new ObjectField() { label = "Structure Asset", value = GetStructureAsset()});
+
+            Foldout foldout_StructureAssets;
+            VisualElement horizontal;
+            Add(foldout_StructureAssets = new Foldout() { text = "Found in StructureAssets" });
+            foldout_StructureAssets.Add(container_Structures = new VisualElement());
+            foldout_StructureAssets.Add(horizontal = new VisualElement() { style = { flexDirection = FlexDirection.Row } });
+            horizontal.Add(new Button(AddElementToNearestStructure) { text = "Add to Nearest StructureAsset" });
+            horizontal.Add(new Button(RefillAllStructureAssets) { text = "Refill all StructureAssets" });
+
+            UpdateStructureVEList();
         }
 
         public void Dispose()
@@ -42,6 +57,65 @@ namespace Snm.Framework.System
             Debug.Log($"{nameof(StructureElementAsset)} Disposed");
         }
 
+
+        private void UpdateStructureVEList()
+        {
+            container_Structures.Clear();
+            foreach (var structureAsset in GetStructureAssets_ContainingThisElement())
+            {
+                container_Structures.Add(new ObjectField() { value = structureAsset });
+            }
+        }
+
+        private void AddElementToNearestStructure()
+        {
+            var elementPath = AssetDatabase.GetAssetPath(elementAsset);
+
+            var maxPathLength = int.MinValue;
+            SystemStructureAsset nearestStructure = null;
+
+            foreach (var structure in SystemStructureAsset.GetAllStructureAssets())
+            {
+                if (structure.ElementAssets.Contains(elementAsset))
+                {
+                    structure.SetElementAssets(structure.ElementAssets.Where(e => e != elementAsset).ToArray());
+                }
+
+                var pp = AssetDatabase.GetAssetPath(structure.SelectedFolder);
+
+                if (elementPath.StartsWith(pp + "/"))
+                {
+                    var pathLength = pp.Length;
+                    if (pathLength > maxPathLength)
+                    {
+                        maxPathLength = pathLength;
+                        nearestStructure = structure;
+                    }
+                }
+            }
+
+            if (nearestStructure != null)
+            {
+                nearestStructure.SetElementAssets(nearestStructure.ElementAssets.Append(elementAsset).ToArray());
+
+                EditorUtility.SetDirty(nearestStructure);
+                Undo.RecordObject(nearestStructure, "Added Element to StructureAsset");
+
+                Debug.Log($"Added {elementAsset.name} to StructureAsset " + nearestStructure.name, nearestStructure);
+            }
+            else
+            {
+                Debug.LogError("No StructureAsset found");
+            }
+
+            UpdateStructureVEList();
+        }
+
+        private void RefillAllStructureAssets()
+        {
+            SystemStructureAsset.RefillAllStructureAssets();
+        }
+
         public void RefreshVE()
         {
             UpdateReferenceVEList();
@@ -49,11 +123,11 @@ namespace Snm.Framework.System
 
         private void UpdateReferenceVEList()
         {
-            foreach (var eve in Children().OfType<StructureElementReferenceEntryVE>())
+            foreach (var eve in foldout_References.Children().OfType<StructureElementReferenceEntryVE>())
             {
                 eve.Dispose();
             }
-            Clear();
+            foldout_References.Clear();
 
             if (_cachedReferenceList != null)
             {
@@ -74,7 +148,17 @@ namespace Snm.Framework.System
 
                 foreach (var er in _cachedReferenceList)
                 {
-                    Add(new StructureElementReferenceEntryVE(er));
+                    foldout_References.Add(new StructureElementReferenceEntryVE(er, () =>
+                    {
+                        return GetStructureAssets_ContainingThisElement()
+                            .SelectMany(s => s.ElementAssets)
+                            .Where(o =>
+                            {
+                                var att = o.GetType().GetCustomAttribute<StructureElementAssetForAttribute>();
+                                return att == null || er.Editor_TargetType.IsAssignableFrom(att.ElementType);
+                            })
+                            .ToArray();
+                    }));
                 }
             }
         }
@@ -90,13 +174,18 @@ namespace Snm.Framework.System
             Debug.Log($"Saved {elementAsset.name}", elementAsset);
         }
 
-        private SystemStructureAsset GetStructureAsset()
+        private IEnumerable<SystemStructureAsset> GetStructureAssets_ContainingThisElement()
         {
-            return AssetDatabase.FindAssets($"t:{nameof(SystemStructureAsset)}")
-                .Select(AssetDatabase.GUIDToAssetPath)
-                .Select(AssetDatabase.LoadAssetAtPath<SystemStructureAsset>)
-                .FirstOrDefault(s => s.ElementAssets.Contains(elementAsset));
+            return SystemStructureAsset.GetAllStructureAssets()
+                .Where(s => s.ElementAssets.Contains(elementAsset));
         }
+
+        // private IEnumerable<SystemStructureAsset> GetStructureAssets()
+        // {
+        //     return AssetDatabase.FindAssets($"t:{nameof(SystemStructureAsset)}")
+        //         .Select(AssetDatabase.GUIDToAssetPath)
+        //         .Select(AssetDatabase.LoadAssetAtPath<SystemStructureAsset>);
+        // }
     }
 
 
