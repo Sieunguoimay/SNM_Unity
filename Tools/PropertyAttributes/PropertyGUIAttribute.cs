@@ -31,7 +31,7 @@ namespace Snm.Tools
             EditorGUI.PropertyField(position, property, label, true);
 
             _att ??= attribute as PropertyGUIAttribute;
-            _target ??= _att.IsPropertyInRootObject ? property.serializedObject.targetObject : SerializeUtility.GetDirectTargetObject(property);
+            _target ??= _att.IsPropertyInRootObject ? property.serializedObject.targetObject : SerializeUtility.GetObjectToWhichPropertyBelong(property);
             if (_methodInfo == null)
             {
                 var t = _target.GetType();

@@ -10,7 +10,7 @@ namespace Snm.Tools
     {
         public static BindingFlags Flag => BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
 
-        public static object GetDirectTargetObject(SerializedProperty property)
+        public static object GetObjectToWhichPropertyBelong(SerializedProperty property)
         {
             var pathComponents = property.propertyPath.Replace("Array.data[", "[").Split('.');
             var pathComponentsToDirectObject = pathComponents.Take(pathComponents.Length - 1);

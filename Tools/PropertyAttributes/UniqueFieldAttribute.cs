@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using PropertyAttribute = UnityEngine.PropertyAttribute;
 
-namespace Sieunguoimay.Attribute
+namespace Snm.PropertyAttributes
 {
     /// <summary>
     /// Unique across ScriptableObjects. Supports types: String, Integer, Float, Double, Enum, ObjectReference

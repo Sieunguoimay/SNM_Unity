@@ -42,7 +42,7 @@ namespace Snm.Tools
 
         private void ShowMenuItem(SerializedProperty property)
         {
-            var directObject = SerializeUtility.GetDirectTargetObject(property);
+            var directObject = SerializeUtility.GetObjectToWhichPropertyBelong(property);
             if (directObject != null)
             {
                 var array = GetOptions(directObject);

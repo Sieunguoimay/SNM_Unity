@@ -2,14 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Newtonsoft.Json;
 
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
 using UnityEngine;
 
-namespace Sieunguoimay.Attribute
+namespace Snm.PropertyAttributes
 {
     [AttributeUsage(AttributeTargets.Field)]
     public class SerializeReferenceSupportAttribute : PropertyAttribute
@@ -76,8 +75,8 @@ namespace Sieunguoimay.Attribute
 
             private static object CopySerialize(object from, Type targetType)
             {
-                var json = JsonConvert.SerializeObject(from);
-                return JsonConvert.DeserializeObject(json, targetType);
+                var json = JsonUtility.ToJson(from);
+                return JsonUtility.FromJson(json, targetType);
             }
 
             private static object CreateObjectByType(Type type)

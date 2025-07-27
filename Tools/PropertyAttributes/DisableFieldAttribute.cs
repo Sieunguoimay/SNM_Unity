@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using PropertyAttribute = UnityEngine.PropertyAttribute;
 
-namespace Sieunguoimay.Attribute
+namespace Snm.PropertyAttributes
 {
     public class DisableFieldAttribute : PropertyAttribute
     {

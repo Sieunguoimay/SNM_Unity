@@ -1,13 +1,14 @@
 ﻿using Sieunguoimay.Reflection;
-using Sieunguoimay.Serialization;
 using UnityEngine;
 using System.Collections.Generic;
+using Snm.Tools;
+
 
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
 
-namespace Sieunguoimay.Attribute
+namespace Snm.PropertyAttributes
 {
     public class DisableIfAttribute : PropertyAttribute
     {
