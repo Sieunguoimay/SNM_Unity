@@ -2,24 +2,20 @@
 using System.Linq;
 using Snm.GrabAndToss.ViewSystem;
 using UnityEngine;
+using System.Collections;
+
+#if UNITY_EDITOR
 using UnityEditor;
-using System.Collections.Generic;
+#endif
 
 namespace Snm.Framework.System
 {
 
     public partial class SystemStructureAsset
     {
-        [SerializeField] private Object selectedFolder;
-        [SerializeField] private Object[] exclusions;
-
-        public Object SelectedFolder => selectedFolder;
-
-        public void SetElementAssets(StructureElementAsset[] value)
-        {
-            elementAssets = value;
-        }
-
+#if UNITY_EDITOR
+        [SerializeField] private Object[] selectedFolders;
+#endif
         [ContextMenu("Test Build Structure")]
         private void TestBuildStructure()
         {
@@ -36,37 +32,10 @@ namespace Snm.Framework.System
             lifecycle.Cleanup();
         }
 
-        [ContextMenu("Refill All Structures")]
-        private void RefillAll()
+        [ContextMenu("CollectAllAssetsInFolder")]
+        private void CollectAllAssetsInFolder()
         {
-            RefillAllStructureAssets();
-        }
-
-        public static void RefillAllStructureAssets()
-        {
-            foreach (var structure in GetAllStructureAssets().OrderByDescending(GetStructureAssetDepth))
-            {
-                Debug.Log("Refilling " + structure.name, structure);
-                structure.CollectAllAssetsInFolder();
-            }
-        }
-
-        public static IEnumerable<SystemStructureAsset> GetAllStructureAssets()
-        {
-            return AssetDatabase.FindAssets($"t:{nameof(SystemStructureAsset)}")
-                .Select(AssetDatabase.GUIDToAssetPath)
-                .Select(AssetDatabase.LoadAssetAtPath<SystemStructureAsset>);
-        }
-
-        private static int GetStructureAssetDepth(SystemStructureAsset structureAsset)
-        {
-            return AssetDatabase.GetAssetPath(structureAsset.SelectedFolder).Split('/').Length;
-        }
-
-        [ContextMenu("CollectAllAssetsInFolders")]
-        public void CollectAllAssetsInFolder()
-        {
-            var folderPaths = new string[] { AssetDatabase.GetAssetPath(selectedFolder) };
+            var folderPaths = selectedFolders.Select(f => AssetDatabase.GetAssetPath(f)).ToArray();
             var otherStructures = AssetDatabase.FindAssets($"t:{nameof(SystemStructureAsset)}", folderPaths)
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
@@ -77,7 +46,7 @@ namespace Snm.Framework.System
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
                 .OfType<StructureElementAsset>()
-                .Where(e => !otherStructures.Any(s => s.ElementAssets.Contains(e)) && !exclusions.Contains(e))
+                .Where(e => !otherStructures.Any(s => s.ElementAssets.Contains(e)))
                 .ToArray();
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssetIfDirty(this);
