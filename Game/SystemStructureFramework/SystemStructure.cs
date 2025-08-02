@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Snm.Framework.System
 {
 
-    public class SystemStructure : IStructureElementLifecycle, IDisposable
+    public class SystemStructure : IDisposable
     {
         private readonly Dictionary<IStructureElementDefinition, IStructureElement> elementRegistry;
         private readonly IEnumerable<IStructureElementLifecycle> lifecycles;
@@ -18,19 +18,14 @@ namespace Snm.Framework.System
             this.elementRegistry = elementRegistry;
             lifecycles = this.elementRegistry.Values.OfType<IStructureElementLifecycle>();
             Debug.Log("Created LifecycleStructure. Structure contains " + this.elementRegistry.Count + " lifecycle elements.");
-        }
 
-        void IStructureElementLifecycle.Initialize()
-        {
             foreach (var element in lifecycles)
             {
                 element.Initialize();
                 Debug.Log("Initialize of " + element.GetType().Name + " completed.");
             }
-        }
 
-        void IStructureElementLifecycle.Setup()
-        {
+
             foreach (var element in lifecycles)
             {
                 element.Setup();
@@ -38,26 +33,18 @@ namespace Snm.Framework.System
             }
         }
 
-        void IStructureElementLifecycle.Teardown()
+        public void Dispose()
         {
             foreach (var element in lifecycles)
             {
                 element.Teardown();
                 Debug.Log("Teardown of " + element.GetType().Name + " completed.");
             }
-        }
-
-        void IStructureElementLifecycle.Cleanup()
-        {
             foreach (var element in lifecycles)
             {
                 element.Cleanup();
                 Debug.Log("Cleanup of " + element.GetType().Name + " completed.");
             }
-        }
-
-        public void Dispose()
-        {
             elementRegistry.Clear();
             Debug.Log("Disposed LifecycleStructure.");
         }

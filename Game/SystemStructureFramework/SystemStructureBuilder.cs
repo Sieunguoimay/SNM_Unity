@@ -9,12 +9,16 @@ namespace Snm.Framework.System
     {
         public static SystemStructure BuildStructure(SystemStructureAsset systemAsset, IDepedencyResolver resolver)
         {
+            return BuildStructure(systemAsset.ElementAssets, resolver);
+        }
+ 
+        public static SystemStructure BuildStructure(IEnumerable<IStructureElementDefinition> definitions, IDepedencyResolver resolver)
+        {
             var dictionary = new Dictionary<IStructureElementDefinition, IStructureElement>();
-            var definitions = systemAsset.ElementAssets;
 
             foreach (var definition in definitions)
             {
-                var element = ((IStructureElementDefinition)definition).CreateLifecycleUnit(resolver);
+                var element = definition.CreateElement(resolver);
                 dictionary.Add(definition, element);
             }
 

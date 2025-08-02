@@ -32,7 +32,7 @@ namespace Snm.Framework.System
         }
 #endif
 
-        IStructureElement IStructureElementDefinition.CreateLifecycleUnit(IDepedencyResolver resolver)
+        IStructureElement IStructureElementDefinition.CreateElement(IDepedencyResolver resolver)
         {
             return CreateElement_Internal(resolver);
         }

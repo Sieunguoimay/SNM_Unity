@@ -4,7 +4,7 @@ namespace Snm.Framework.System
 {
     public interface IStructureElementDefinition
     {
-        IStructureElement CreateLifecycleUnit(IDepedencyResolver resolver);
+        IStructureElement CreateElement(IDepedencyResolver resolver);
         IReadOnlyList<IStructureElementReference> ElementReferences { get; }
     }
 }
