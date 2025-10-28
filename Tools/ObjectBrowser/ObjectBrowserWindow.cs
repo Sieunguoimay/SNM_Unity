@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Snm.Tools.InspectorExtra;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -14,22 +13,24 @@ namespace Sieunguoimay.Tools
     {
         private const string RuntimeObjectBrowser = "Object Browser";
 
-        private Object _rootObject;
-        private string _path;
-        private bool _refreshEveryFrame;
+        [SerializeField] private Object _rootObject;
+        [SerializeField] private string _path;
+        [SerializeField] private bool _refreshEveryFrame;
 
-        private IReadOnlyList<RuntimeObjectExpose.ObjectExposedItem> _displayItems;
-        private RuntimeObjectExpose.CommonRuntimeObjectExposeEditor _commonRuntimeObjectExposeEditor;
+        private IReadOnlyList<ObjectExposedItem> _displayItems;
+        private ObjectExposedItemsDrawer _commonRuntimeObjectExposeEditor;
 
         private RuntimeObjectExpose _objectExpose;
         private RuntimeObjectExpose ObjectExpose => _objectExpose ??= new RuntimeObjectExpose(this);
 
-        private RuntimeObjectExpose.CommonRuntimeObjectExposeEditor CommonRuntimeObjectExposeEditor
-        {
-            get { return _commonRuntimeObjectExposeEditor ??= new RuntimeObjectExpose.CommonRuntimeObjectExposeEditor(OnItemClicked); }
-        }
+        private ObjectExposedItemsDrawer CommonRuntimeObjectExposeEditor => _commonRuntimeObjectExposeEditor ??= new ObjectExposedItemsDrawer(OnItemClicked);
 
         public object TargetObject { get; private set; }
+        public string Path { get => _path; set => _path = value; }
+        public Object RootObject { get => _rootObject; set => _rootObject = value; }
+
+        public event Action<ObjectBrowserWindow> OnExposed;
+        public event Action<ObjectBrowserWindow> OnClosed;
 
         [MenuItem("Tools/Snm/Object Browser")]
         public static void OpenWindow()
@@ -43,6 +44,17 @@ namespace Sieunguoimay.Tools
             window.Show();
             return window as ObjectBrowserWindow;
         }
+
+        private void OnEnable()
+        {
+            Browse();
+        }
+
+        private void OnDestroy()
+        {
+            OnClosed?.Invoke(this);
+        }
+
         private void OnGUI()
         {
             EditorGUILayout.BeginHorizontal();
@@ -63,8 +75,7 @@ namespace Sieunguoimay.Tools
                 {
                     ChangeRootObject(i);
                     ResetPath();
-                    UpdateCurrentObject();
-                    Expose();
+                    Browse();
                 });
             }
 
@@ -75,10 +86,8 @@ namespace Sieunguoimay.Tools
             {
                 ChangeRootObject(rootObject);
                 ResetPath();
-                UpdateCurrentObject();
-                Expose();
+                Browse();
             }
-
 
             GUILayout.Space(10);
             EditorGUILayout.BeginHorizontal();
@@ -89,29 +98,26 @@ namespace Sieunguoimay.Tools
             if (GUILayout.Button("<-", GUILayout.Width(25)))
             {
                 RemoveLastPathSegment();
-                UpdateCurrentObject();
-                Expose();
+                Browse();
             }
 
             GUI.enabled = ge;
             _path = EditorGUILayout.TextField(_path);
             if (GUILayout.Button("Browse", GUILayout.Width(60)))
             {
-                UpdateCurrentObject();
-                Expose();
+                Browse();
             }
 
             EditorGUILayout.EndHorizontal();
-            EditorGUILayout.BeginHorizontal();
-            DrawCurrentObjectType();
-            GUILayout.FlexibleSpace();
-            _refreshEveryFrame = GUILayout.Toggle(_refreshEveryFrame, "Refresh every frame");
-            GUILayout.Space(5);
-            EditorGUILayout.EndHorizontal();
 
-            if (_displayItems != null)
+            var rect = EditorGUILayout.GetControlRect();
+            var leftRect = new Rect(rect.x, rect.y, rect.width - 130f - 4f, rect.height);
+            DrawCurrentObject(leftRect);
+            _refreshEveryFrame = GUI.Toggle(new Rect(rect.x + rect.width - 130f, rect.y, 130f, rect.height), _refreshEveryFrame, "Refresh every frame");
+
+            if (_displayItems != null && _displayItems.Count > 0)
             {
-                CommonRuntimeObjectExposeEditor.DrawExposedItems(_displayItems);
+                CommonRuntimeObjectExposeEditor.DrawExposedItems(_displayItems, !RuntimeObjectExpose.IsPrimitive(TargetObject.GetType()));
             }
 
             if (_rootObject == null)
@@ -125,9 +131,22 @@ namespace Sieunguoimay.Tools
             }
         }
 
-        private void DrawCurrentObjectType()
+        public void Browse()
         {
-            EditorGUILayout.LabelField($"{TargetObject}");
+            UpdateCurrentObject();
+            Expose();
+        }
+
+        private void DrawCurrentObject(Rect leftRect)
+        {
+            if (TargetObject is UnityEngine.Object obj)
+            {
+                EditorGUI.ObjectField(leftRect, obj, typeof(UnityEngine.Object), true);
+            }
+            else
+            {
+                EditorGUI.LabelField(leftRect, $"{TargetObject}");
+            }
         }
 
         private static void DrawComponentSelectingButton(Object rootObject, Action<Object> selectedHandler)
@@ -152,7 +171,7 @@ namespace Sieunguoimay.Tools
             menu.ShowAsContext();
         }
 
-        private void OnItemClicked(RuntimeObjectExpose.ObjectExposedItem item)
+        private void OnItemClicked(ObjectExposedItem item)
         {
             if (item.MemberInfo is MethodInfo methodInfo)
             {
@@ -168,16 +187,15 @@ namespace Sieunguoimay.Tools
             }
         }
 
-        public void GoInto(RuntimeObjectExpose.ObjectExposedItem item)
+        public void GoInto(ObjectExposedItem item)
         {
-            GoInto(item.FieldName);
+            GoInto(item.MemberName);
         }
 
         private void GoInto(string pathSegment)
         {
             AppendPath(pathSegment);
-            UpdateCurrentObject();
-            Expose();
+            Browse();
         }
 
         public void ChangeRootObject(Object rootObject)
@@ -192,12 +210,12 @@ namespace Sieunguoimay.Tools
 
         private void AppendPath(string memberName)
         {
-            _path = string.Concat(_path, $".{memberName}");
+            _path = string.Concat(_path, $"|{memberName}");
         }
 
         private void RemoveLastPathSegment()
         {
-            var lastIndexOf = _path.LastIndexOf(".", StringComparison.Ordinal);
+            var lastIndexOf = _path.LastIndexOf("|", StringComparison.Ordinal);
             if (lastIndexOf >= 0)
             {
                 _path = _path[..lastIndexOf];
@@ -208,8 +226,8 @@ namespace Sieunguoimay.Tools
         {
             if (!string.IsNullOrEmpty(_path))
             {
-                var pe = new UnityObjectPathSelector.PathExecutor();
-                pe.Setup(_path, _rootObject, false, false, Application.isPlaying);
+                var pe = new ReflectionPathExecutor();
+                pe.Setup(_path, _rootObject);
                 TargetObject = pe.ExecutePath();
             }
             else
@@ -217,19 +235,21 @@ namespace Sieunguoimay.Tools
                 TargetObject = _rootObject;
             }
 
-            if (TargetObject == null || _rootObject == null) return;
+            // if (TargetObject == null || _rootObject == null) return;
             ObjectExpose.UpdateReflectionInfos();
         }
 
         private void Expose()
         {
-            if (TargetObject == null || _rootObject == null)
+            if (_rootObject == null)
             {
                 _displayItems = null;
                 return;
             }
 
             _displayItems = ObjectExpose.ExposeObject();
+
+            OnExposed?.Invoke(this);
         }
     }
 }

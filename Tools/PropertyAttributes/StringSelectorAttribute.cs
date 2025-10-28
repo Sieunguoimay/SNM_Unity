@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -9,19 +10,19 @@ namespace Snm.Tools
 {
     public class StringSelectorAttribute : PropertyAttribute
     {
-        public string PropertyName { get; private set; }
+        public string MemberName { get; private set; }
         public bool IsPropertyInRootObject { get; private set; }
         public bool ShouldCacheStrings { get; private set; }
         public bool ShouldDrawLabel { get; private set; }
         public string MaskFunction { get; }
 
-        public StringSelectorAttribute(string propertyName,
+        public StringSelectorAttribute(string memberName,
             bool isPropertyInRootObject = false,
             bool shouldCacheStrings = false,
             bool shouldDrawLabel = true,
             string maskFunction = "")
         {
-            PropertyName = propertyName;
+            MemberName = memberName;
             IsPropertyInRootObject = isPropertyInRootObject;
             ShouldCacheStrings = shouldCacheStrings;
             ShouldDrawLabel = shouldDrawLabel;
@@ -132,12 +133,25 @@ namespace Snm.Tools
 
             if (shouldCreateNewStrings)
             {
-                var target = att.IsPropertyInRootObject ? property.serializedObject.targetObject : GetDirectTargetObject(property);
-                var propertyInfo = target.GetType().GetProperty(att.PropertyName, flag);
-                var value = propertyInfo?.GetValue(target);
-                var strings = (value as IEnumerable<string>) ?? Enumerable.Empty<string>();
+                try
+                {
+                    var target = att.IsPropertyInRootObject ? property.serializedObject.targetObject : GetDirectTargetObject(property);
+                    var member = target.GetType().GetMember(att.MemberName, flag)[0];
+                    var value = member switch
+                    {
+                        PropertyInfo pi => pi.GetValue(target),
+                        FieldInfo fi => fi.GetValue(target),
+                        MethodInfo mi => mi.Invoke(target, new object[] { }),
+                        _ => throw new System.NotImplementedException(),
+                    };
+                    var strings = (value as IEnumerable<string>) ?? Enumerable.Empty<string>();
 
-                _strings = strings.ToArray();
+                    _strings = strings.ToArray();
+                }
+                catch (Exception)
+                {
+                    _strings = Array.Empty<string>();
+                }
             }
 
             return _strings;

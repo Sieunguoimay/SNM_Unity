@@ -1,17 +1,15 @@
-﻿#if UNITY_EDITOR
-using UnityEditor;
-#endif
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using UnityEngine;
-using Object = UnityEngine.Object;
-
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Sieunguoimay.Tools
 {
-    public class RuntimeObjectExpose
+    public partial class RuntimeObjectExpose
     {
+        private const BindingFlags BindingAttr = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Instance;
         private IEnumerable<FieldInfo> _allFields;
         private IEnumerable<PropertyInfo> _allProperties;
         private IEnumerable<MethodInfo> _allMethods;
@@ -29,7 +27,9 @@ namespace Sieunguoimay.Tools
 
         public IReadOnlyList<ObjectExposedItem> ExposeObject()
         {
-            if (_objectProvider.TargetObject == null) return null;
+            var targetObject = _objectProvider.TargetObject;
+
+            if (targetObject == null) return Array.Empty<ObjectExposedItem>();
             if (_allFields == null || _allProperties == null || _allMethods == null)
             {
                 UpdateReflectionInfos();
@@ -42,7 +42,7 @@ namespace Sieunguoimay.Tools
                 object value = null;
                 try
                 {
-                    value = fieldInfo.GetValue(_objectProvider.TargetObject);
+                    value = fieldInfo.GetValue(targetObject);
                 }
                 catch (Exception)
                 {
@@ -51,8 +51,9 @@ namespace Sieunguoimay.Tools
 
                 exposedItems.Add(new ObjectExposedItem
                 {
-                    FieldName = fieldInfo.Name,
-                    DisplayValue = value?.ToString(),
+                    MemberName = FormatMemberName(fieldInfo),
+                    DisplayMemberName = fieldInfo.Name,
+                    DisplayValue = ValueToString(value),
                     IsPrimitive = IsPrimitive(fieldInfo.FieldType),
                     Value = value,
                     MemberInfo = fieldInfo
@@ -64,7 +65,7 @@ namespace Sieunguoimay.Tools
                 object value = null;
                 try
                 {
-                    value = propInfo.GetValue(_objectProvider.TargetObject);
+                    value = propInfo.GetValue(targetObject);
                 }
                 catch (Exception)
                 {
@@ -73,8 +74,9 @@ namespace Sieunguoimay.Tools
 
                 exposedItems.Add(new ObjectExposedItem
                 {
-                    FieldName = propInfo.Name,
-                    DisplayValue = value?.ToString(),
+                    MemberName = FormatMemberName(propInfo),
+                    DisplayMemberName = propInfo.Name,
+                    DisplayValue = ValueToString(value),
                     IsPrimitive = IsPrimitive(propInfo.PropertyType),
                     Value = value,
                     MemberInfo = propInfo
@@ -83,11 +85,15 @@ namespace Sieunguoimay.Tools
 
             foreach (var methodInfo in _allMethods)
             {
+                var methodName = TrySplitLastDot(methodInfo.Name, out _, out var last) ? last : methodInfo.Name;
+                if (methodName.StartsWith("get_")) continue;
+
                 if (methodInfo.GetParameters().Length == 0)
                 {
                     exposedItems.Add(new ObjectExposedItem
                     {
-                        FieldName = methodInfo.Name,
+                        MemberName = FormatMemberName(methodInfo),
+                        DisplayMemberName = methodInfo.Name,
                         DisplayValue = methodInfo.ReturnType.Name,
                         IsPrimitive = false,
                         Value = methodInfo.ReturnType.Name,
@@ -96,16 +102,17 @@ namespace Sieunguoimay.Tools
                 }
             }
 
-            if (_objectProvider.TargetObject is not Array arr) return exposedItems;
+            var type = targetObject.GetType();
+            if (IndexableTypeHelper.TryGetElementType(type, out _))
             {
-                for (var i = 0; i < arr.Length; i++)
+                for (var i = 0; i < IndexableTypeHelper.GetElementCount(targetObject); i++)
                 {
-                    var value = arr.GetValue(i);
-                    if (value == null) continue;
+                    var value = IndexableTypeHelper.GetElementAtIndex(targetObject, i);
                     exposedItems.Add(new ObjectExposedItem
                     {
-                        FieldName = $"[{i}]",
-                        DisplayValue = value.ToString(),
+                        MemberName = $"[{i}]",
+                        DisplayMemberName = $"[{i}]",
+                        DisplayValue = ValueToString(value),
                         IsPrimitive = IsPrimitive(value.GetType()),
                         Value = value,
                         MemberInfo = null
@@ -118,95 +125,138 @@ namespace Sieunguoimay.Tools
 
         public void UpdateReflectionInfos()
         {
-            var type = _objectProvider.TargetObject.GetType();
-
-            _allFields = type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Instance);
-            _allProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Instance);
-            _allMethods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Instance);
+            var type = _objectProvider.TargetObject?.GetType();
+            if (type == null)
+            {
+                _allFields = Array.Empty<FieldInfo>();
+                _allProperties = Array.Empty<PropertyInfo>();
+                _allMethods = Array.Empty<MethodInfo>();
+            }
+            else
+            {
+                _allFields = type.GetFields(BindingAttr);
+                _allProperties = type.GetProperties(BindingAttr);
+                _allMethods = type.GetMethods(BindingAttr);
+            }
         }
 
-        private static bool IsPrimitive(Type type)
+        public static bool IsPrimitive(Type type)
         {
             return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal);
         }
 
-        public class ObjectExposedItem
+        private static string FormatMemberName(MemberInfo info)
         {
-            public string FieldName;
-            public string DisplayValue;
-            public object Value;
-            public bool IsPrimitive;
-            public MemberInfo MemberInfo;
-        }
-#if UNITY_EDITOR
-
-        public class CommonRuntimeObjectExposeEditor
-        {
-            private readonly Action<ObjectExposedItem> _clickEventHandler;
-            private Vector2 _scrollPos;
-
-            public CommonRuntimeObjectExposeEditor(Action<ObjectExposedItem> clickEventHandler)
+            var fullName = info.ReflectedType.FullName;
+            var memberName = info.Name;
+            if (TrySplitLastDot(info.Name, out var before, out var after))
             {
-                _clickEventHandler = clickEventHandler;
+                fullName = before;
+                memberName = after;
+            }
+            return $"{BaseAndInterfacesHashResolver.GetShortHash(fullName)}.{memberName}";
+        }
+
+        public static MemberInfo GetMemberInfo(Type type, string memberName)
+        {
+            var result = TrySplitLastDot(memberName, out var before, out var after) ? after : "";
+
+            var hashedType = BaseAndInterfacesHashResolver.FindByFullNameHash(type, before);
+
+            var reflectionType = type;
+
+            if (hashedType != null && hashedType.IsAssignableFrom(type))
+            {
+                reflectionType = hashedType;
             }
 
-            public void DrawExposedItems(IEnumerable<ObjectExposedItem> exposedItems)
+            return reflectionType?.GetMember(result, BindingAttr)?.FirstOrDefault();
+        }
+
+        private static bool TrySplitLastDot(string input, out string before, out string after)
+        {
+            before = "";
+            after = "";
+
+            if (string.IsNullOrEmpty(input))
+                return false;
+
+            var lastDot = input.LastIndexOf('.');
+            if (lastDot < 0)
+                return false;
+
+            before = input[..lastDot];
+            after = input[(lastDot + 1)..];
+            return true;
+        }
+
+        public static string ValueToString(object value)
+        {
+            return value?.ToString() ?? GetDefaultValueString(value);
+        }
+
+        public static string GetDefaultValueString<T>(T _)
+        {
+            var defaultValue = default(T);
+            return defaultValue == null ? "null" : defaultValue.ToString();
+        }
+
+        public static class BaseAndInterfacesHashResolver
+        {
+            public static Type FindByFullNameHash(
+                Type root,
+                string targetHash,
+                int hashBytes = 4,
+                StringComparison comparison = StringComparison.OrdinalIgnoreCase,
+                bool includeSelf = false)
             {
-                _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos, EditorStyles.helpBox, GUILayout.ExpandWidth(true));
-                EditorGUILayout.BeginVertical(GUI.skin.box);
-                foreach (var exposedItem in exposedItems)
+                if (root == null) throw new ArgumentNullException(nameof(root));
+                if (string.IsNullOrWhiteSpace(targetHash)) throw new ArgumentException("Hash required.", nameof(targetHash));
+
+                var candidates = EnumerateBaseAndDirectInterfaces(root, includeSelf);
+
+                foreach (var t in candidates)
                 {
-                    EditorGUILayout.BeginHorizontal();
-                    if (exposedItem.MemberInfo is MethodInfo methodInfo && methodInfo.GetParameters().Length == 0)
-                    {
-                        if (GUILayout.Button(new GUIContent($"()", "Invoke Method"), GUILayout.Width(25)))
-                        {
-                            _clickEventHandler?.Invoke(exposedItem);
-                        }
-                    }
-                    else
-                    {
-                        var isExposable = !exposedItem.IsPrimitive && exposedItem.Value != null;
-                        if (isExposable)
-                        {
-                            if (GUILayout.Button(new GUIContent($"->", "Go into"), GUILayout.Width(25)))
-                            {
-                                _clickEventHandler?.Invoke(exposedItem);
-                            }
+                    var name = t.FullName ?? t.ToString(); // consistent with how you hashed
+                    if (name is null) continue;
 
-                            DrawToolVEButton(exposedItem.Value);
-                        }
-                    }
+                    var h = GetShortHash(name, hashBytes);
+                    if (string.Equals(h, targetHash, comparison))
+                        return t;
+                }
+                return null;
+            }
 
-                    EditorGUILayout.LabelField($"{exposedItem.FieldName}");
-                    if (exposedItem.Value is Object asset)
-                    {
-                        EditorGUILayout.ObjectField(asset, typeof(Object), false);
-                    }
-                    else
-                    {
-                        EditorGUILayout.LabelField($"{exposedItem.DisplayValue}");
-                    }
+            public static IEnumerable<Type> EnumerateBaseAndDirectInterfaces(Type type, bool includeSelf = false)
+            {
+                if (type == null)
+                    throw new ArgumentNullException(nameof(type));
 
-                    EditorGUILayout.EndHorizontal();
+                var baseTypes = new List<Type>();
+                var current = includeSelf ? type : type.BaseType;
+                while (current != null)
+                {
+                    baseTypes.Add(current);
+                    current = current.BaseType;
                 }
 
-                EditorGUILayout.EndVertical();
-                EditorGUILayout.EndScrollView();
+                var interfaces = type.GetInterfaces();
+
+                return baseTypes.Concat(interfaces).Distinct();
             }
 
-            private void DrawToolVEButton(object item)
+            public static string GetShortHash(string text, int hashBytes = 4)
             {
-                var toolVEType = Snm.Tools.VisualElementToolForAttribute.TryGetToolVETypeFor(item.GetType());
-                if (toolVEType != null)
-                {
-                    if (GUILayout.Button("VE", GUILayout.Width(30)))
-                    {
-                        Snm.Tools.VisualElementToolViewerWindow.OpenWindow(item);
-                    }
-                }
+                using var sha1 = SHA1.Create();
+                var data = Encoding.UTF8.GetBytes(text);
+                var hash = sha1.ComputeHash(data);
+                if (hashBytes < 1 || hashBytes > hash.Length) hashBytes = Math.Clamp(hashBytes, 1, hash.Length);
+
+                var sb = new StringBuilder(hashBytes * 2);
+                for (int i = 0; i < hashBytes; i++) sb.Append(hash[i].ToString("x2"));
+                return sb.ToString();
             }
         }
-#endif
+
     }
 }
