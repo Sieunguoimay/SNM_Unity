@@ -1,6 +1,8 @@
-#if UNITY_EDITOR
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+#if UNITY_EDITOR
 using UnityEditor;
 #endif
 using UnityEngine;
@@ -11,7 +13,7 @@ namespace Snm.Tools
     {
         public string ProviderMember { get; }
 
-        public ObjectSelectorAttribute(string providerMember)
+        public ObjectSelectorAttribute(string providerMember = "")
         {
             ProviderMember = providerMember;
         }
@@ -42,22 +44,33 @@ namespace Snm.Tools
 
         private void ShowMenuItem(SerializedProperty property)
         {
-            var directObject = SerializeUtility.GetObjectToWhichPropertyBelong(property);
-            if (directObject != null)
+            var options = ExtractOptions(property);
+
+            var menu = new GenericMenu();
+            foreach (var option in options)
             {
-                var array = GetOptions(directObject);
-                ObjectPickerWindow.Show(array, obj =>
+                var localOption = option;
+                var isCurrent = option == property.objectReferenceValue;
+                menu.AddItem(new GUIContent(option.GetType().Name), isCurrent, () =>
                 {
-                    Debug.Log("Selected Object: " + obj.name, obj);
-                    property.objectReferenceValue = obj;
-                    property.serializedObject.ApplyModifiedProperties();
+                    property.objectReferenceValue = localOption;
                 });
             }
+            menu.ShowAsContext();
         }
 
-        private Object[] GetOptions(object directObject)
+        private UnityEngine.Object[] ExtractOptions(SerializedProperty property)
         {
+            var directObject = SerializeUtility.GetObjectToWhichPropertyBelong(property);
+
+            if (directObject == null) return Array.Empty<UnityEngine.Object>();
+
             var att = attribute as ObjectSelectorAttribute;
+            if (string.IsNullOrEmpty(att.ProviderMember))
+            {
+                return GetAssociatedObjects(property.objectReferenceValue).ToArray();
+            }
+
             var member = directObject.GetType().GetMember(att.ProviderMember).FirstOrDefault();
             object result = null;
             if (member is MethodInfo methodInfo)
@@ -69,7 +82,20 @@ namespace Snm.Tools
                 result = propInfo.GetValue(directObject);
             }
 
-            return result as Object[];
+            return result as UnityEngine.Object[];
+        }
+
+        private IEnumerable<UnityEngine.Object> GetAssociatedObjects(UnityEngine.Object obj)
+        {
+            if (obj is GameObject go)
+            {
+                foreach (var o in go.GetComponentsInChildren<Component>()
+                    .OfType<UnityEngine.Object>())
+                {
+                    yield return o;
+                }
+            }
+            yield return obj;
         }
     }
 #endif

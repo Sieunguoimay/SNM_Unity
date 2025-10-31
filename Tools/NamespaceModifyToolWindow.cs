@@ -10,7 +10,7 @@ namespace Snm.Tools
 {
     public class NamespaceModifyToolWindow : EditorWindow
     {
-        [SerializeField] private NamespaceModifyToolVE.SerializedData serializedData = new();
+        [SerializeField] private SerializedData serializedData = new();
 
         [MenuItem("Tools/Snm/Namespace Modify Tool")]
         public static void ShowWindow()
@@ -23,57 +23,41 @@ namespace Snm.Tools
 
         private void CreateGUI()
         {
-            rootVisualElement.Add(new NamespaceModifyToolVE(serializedData));
+            rootVisualElement.Add(NamespaceModifyToolVECreator.Create(serializedData));
         }
     }
 
-    public class NamespaceModifyToolVE : VisualElement
+    public static class NamespaceModifyToolVECreator
     {
-        private readonly SerializedData serializedData;
-
-        public NamespaceModifyToolVE(SerializedData serializedData)
+        public static VisualElement Create(SerializedData serializedData)
         {
-            this.serializedData = serializedData;
-
-            TextField targetPath;
-            Add(targetPath = new TextField("Target Path")
+            var root = new VisualElement();
+            var textField_TargetPath = new TextField("Target Path") { value = serializedData.targetPath };
+            var button_SelectTargetPath = new Button() { text = "Select Target Path", clickable = new(() => textField_TargetPath.value = AssetDatabase.GetAssetPath(Selection.activeObject)) };
+            var textField_namespace = new TextField() { label = "Namespace", value = serializedData.namespaceString };
+            var button_AddOrReplace = new Button()
             {
-                value = serializedData.targetPath
-            });
+                text = "Add or Replace Namespace",
+                clickable = new(() => ModifyNamespace(textField_TargetPath.value, textField_namespace.value))
+            };
 
-            Button selectTargetPath;
-            Add(selectTargetPath = new(() =>
-            {
-                targetPath.value = AssetDatabase.GetAssetPath(Selection.activeObject);
-            })
-            { text = "Select Target Path" });
-
-            TextField namespaceString;
-            Add(namespaceString = new TextField("Namespace")
-            {
-                value = serializedData.namespaceString
-            });
-
-            Button addNameSpace;
-            Add(addNameSpace = new(() =>
-            {
-                ModifyNamespace(targetPath, namespaceString);
-            })
-            { text = "Add Namespace" });
+            root.Add(textField_TargetPath);
+            root.Add(button_SelectTargetPath);
+            root.Add(textField_namespace);
+            root.Add(button_AddOrReplace);
+            return root;
         }
 
-        private static void ModifyNamespace(TextField targetPath, TextField namespaceString)
+        private static void ModifyNamespace(string targetPath, string namespaceStr)
         {
-            var targetPathString = targetPath.value;
-            var namespaceStringString = namespaceString.value;
 
-            if (string.IsNullOrEmpty(targetPathString) || string.IsNullOrEmpty(namespaceStringString))
+            if (string.IsNullOrEmpty(targetPath) || string.IsNullOrEmpty(namespaceStr))
             {
                 Debug.LogError("Target Path or Namespace is empty");
                 return;
             }
 
-            var files = GetFilesFromPath(targetPathString);
+            var files = GetFilesFromPath(targetPath);
             var modified = false;
             foreach (var path in files)
             {
@@ -82,7 +66,7 @@ namespace Snm.Tools
 
                 var lines = content.Split('\n').ToList();
 
-                if (ModifyNamespace(lines, namespaceStringString))
+                if (ModifyNamespace(lines, namespaceStr))
                 {
                     content = string.Join("\n", lines);
                     System.IO.File.WriteAllText(path, content);
@@ -115,15 +99,15 @@ namespace Snm.Tools
             }
         }
 
-        private static bool ModifyNamespace(List<string> lines, string namespaceStringString)
+        private static bool ModifyNamespace(List<string> lines, string namespaceStr)
         {
-            if (ReplaceNamespace(lines, namespaceStringString))
+            if (ReplaceNamespace(lines, namespaceStr))
             {
                 return true;
             }
             else
             {
-                if (AddNamespace(lines, namespaceStringString))
+                if (AddNamespace(lines, namespaceStr))
                 {
                     return true;
                 }
@@ -131,20 +115,20 @@ namespace Snm.Tools
             return false;
         }
 
-        private static bool ReplaceNamespace(List<string> lines, string namespaceStringString)
+        private static bool ReplaceNamespace(List<string> lines, string namespaceStr)
         {
             for (int i = 0; i < lines.Count; i++)
             {
                 if (lines[i].StartsWith("namespace"))
                 {
-                    lines[i] = $"namespace {namespaceStringString}";
+                    lines[i] = $"namespace {namespaceStr}";
                     return true;
                 }
             }
             return false;
         }
 
-        private static bool AddNamespace(List<string> lines, string namespaceStringString)
+        private static bool AddNamespace(List<string> lines, string namespaceStr)
         {
             var lastUsingLineIndex = -1;
             for (int i = 0; i < lines.Count; i++)
@@ -155,18 +139,18 @@ namespace Snm.Tools
                 }
             }
 
-            lines.Insert(lastUsingLineIndex + 1, string.Format("namespace {0}{{", namespaceStringString));
+            lines.Insert(lastUsingLineIndex + 1, string.Format("namespace {0}{{", namespaceStr));
             lines.Add("}");
             return true;
         }
 
-        [Serializable]
-        public class SerializedData
-        {
-            public string targetPath = "Assets/Scripts";
-            public string namespaceString = "Default.Namesapce";
-        }
     }
 
+    [Serializable]
+    public class SerializedData
+    {
+        public string targetPath = "Assets/Scripts";
+        public string namespaceString = "Default.Namesapce";
+    }
 }
 #endif

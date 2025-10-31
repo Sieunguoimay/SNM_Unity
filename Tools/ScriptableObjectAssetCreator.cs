@@ -9,11 +9,10 @@ using UnityEngine;
 namespace Snm.Tools
 {
 
-    [EditorWindowTitle(title = "ScriptableObjectAssetCreator")]
     public class ScriptableObjectAssetCreator : EditorWindow
     {
-        private System.Type[] _types;
-        private readonly List<System.Type> _searchResult = new();
+        private Type[] _types;
+        private readonly List<Type> _searchResult = new();
         private Vector2 _scrollPos;
         private string _searchString;
         private Action _assetCreatedCallback;
@@ -24,13 +23,13 @@ namespace Snm.Tools
         [MenuItem("Tools/ScriptableObjectAssetCreator")]
         public static void OpenWindow()
         {
-            EditorWindow.GetWindow<ScriptableObjectAssetCreator>().Show();
+            GetWindow<ScriptableObjectAssetCreator>().Show();
         }
 
         [MenuItem("Assets/ScriptableObjectAssetCreator")]
         public static void OpenWindowFromAssets()
         {
-            EditorWindow.GetWindow<ScriptableObjectAssetCreator>().Show();
+            GetWindow<ScriptableObjectAssetCreator>().Show();
         }
 
         public void SetAssetCreatedCallback(Action assetCreatedCallback)
