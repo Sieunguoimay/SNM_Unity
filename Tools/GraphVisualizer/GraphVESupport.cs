@@ -131,7 +131,7 @@ namespace Snm.Tools.GraphVisualizer
                     position = Position.Absolute,
                     width = 1400,
                     height = 900,
-                    // backgroundColor = new StyleColor(new Color(0.88f, 0.95f, 1f, 1f)),
+                    // backgroundColor = Color.aliceBlue,
                     paddingLeft = 0,
                     paddingTop = 0,
                 }

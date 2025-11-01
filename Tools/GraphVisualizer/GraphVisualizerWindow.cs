@@ -64,7 +64,6 @@ namespace Snm.Tools.GraphVisualizer
             {
                 GraphLayout.LayoutGraph(_serializeGraph, GraphLayout.DefaultSpacing, cyclic: true);
             }
-            PutGraphToCenterOfWorld();
         }
 
         public void Visualize(Graph graph)
@@ -75,11 +74,7 @@ namespace Snm.Tools.GraphVisualizer
             }
 
             _graphVE = GraphVEBuilder.BuildGraphVE(graph);
-
-            if (_graphVE != null)
-            {
-                _world.Add(_graphVE);
-            }
+            _world.Add(_graphVE);
 
             PutGraphToCenterOfWorld();
         }
@@ -88,9 +83,9 @@ namespace Snm.Tools.GraphVisualizer
         {
             if (_graphVE == null) return;
             var graphSize = GetBounds(_graphVE.Children());
-            var worldRect = _world.contentRect;
+            var worldSize = new Vector2(_world.style.width.value.value, _world.style.height.value.value);
             var graphHalfSize = new Vector2(graphSize.x + graphSize.width * 0.5f, graphSize.y + graphSize.height * 0.5f);
-            var worldHalfSize = new Vector2(worldRect.width / 2f, worldRect.height / 2f);
+            var worldHalfSize = new Vector2(worldSize.x / 2f, worldSize.y / 2f);
             var graphOffset = worldHalfSize - graphHalfSize;
             _graphVE.style.left = graphOffset.x;
             _graphVE.style.top = graphOffset.y;
@@ -108,15 +103,20 @@ namespace Snm.Tools.GraphVisualizer
 
             foreach (var e in elements)
             {
-                var rect = e.layout;
+                var x = e.style.left.value.value;
+                var y = e.style.top.value.value;
+                var w = e.style.width.value.value;
+                var h = e.style.height.value.value;
 
-                // Convert local layout to world if needed
-                var worldPos = e.worldBound; // safer: worldBound includes position offset
+                var xMin = x;
+                var xMax = x + w;
+                var yMin = y;
+                var yMax = y + h;
 
-                minX = Mathf.Min(minX, worldPos.xMin);
-                minY = Mathf.Min(minY, worldPos.yMin);
-                maxX = Mathf.Max(maxX, worldPos.xMax);
-                maxY = Mathf.Max(maxY, worldPos.yMax);
+                minX = Mathf.Min(minX, xMin);
+                minY = Mathf.Min(minY, yMin);
+                maxX = Mathf.Max(maxX, xMax);
+                maxY = Mathf.Max(maxY, yMax);
             }
 
             return new Rect(minX, minY, maxX - minX, maxY - minY);

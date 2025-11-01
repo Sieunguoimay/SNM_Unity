@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Sieunguoimay.Tools
+namespace Snm.Tools.ObjectBrowser
 {
     public static class IndexableTypeHelper
     {

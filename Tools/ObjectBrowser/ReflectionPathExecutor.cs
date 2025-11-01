@@ -1,21 +1,35 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace Sieunguoimay.Tools
+namespace Snm.Tools.ObjectBrowser
 {
     public partial class ReflectionPathExecutor
     {
-        private MemberInfoWrapper[] _executablePath;
-        private object _sourceObject;
+        private readonly MemberInfoWrapper[] executablePath;
+        private readonly object sourceObject;
 
-        public void Setup(string path, object sourceObject)
+        public ReflectionPathExecutor(string path, object sourceObject, Type reflectionType)
         {
-            _sourceObject = sourceObject;
-            _executablePath = CreateExecutablePath(sourceObject, path);
+            this.sourceObject = sourceObject;
+            executablePath = CreateExecutablePath(sourceObject, reflectionType, path);
         }
 
-        private static MemberInfoWrapper[] CreateExecutablePath(object sourceObject, string path)
+        public object ExecutePath()
+        {
+            return ExecutePath(executablePath, sourceObject);
+        }
+
+        public Type GetFinalReflectionType()
+        {
+            return executablePath.Length > 0
+                ? executablePath[^1].GetMemberType()
+                : null;
+        }
+
+        private static MemberInfoWrapper[] CreateExecutablePath(object sourceObject, Type reflectionType, string path)
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -25,8 +39,8 @@ namespace Sieunguoimay.Tools
             var pathSegments = path.Split('|', StringSplitOptions.RemoveEmptyEntries);
             var memberInfos = new MemberInfoWrapper[pathSegments.Length];
 
-            var currObj = sourceObject;
-            var currType = sourceObject.GetType();
+            var currObj = reflectionType != null ? null : sourceObject;
+            var currType = reflectionType != null ? reflectionType : sourceObject.GetType();
 
             for (var i = 0; i < pathSegments.Length; i++)
             {
@@ -37,9 +51,9 @@ namespace Sieunguoimay.Tools
             return memberInfos;
         }
 
-        public object ExecutePath()
+        private static object ExecutePath(IEnumerable<MemberInfoWrapper> path, object rootObject)
         {
-            return _executablePath.Aggregate(_sourceObject, (current, mi) => mi.GetMemberValue(current));
+            return path.Aggregate(rootObject, (current, mi) => mi.GetMemberValue(current));
         }
 
         private class MemberInfoWrapper
@@ -61,7 +75,7 @@ namespace Sieunguoimay.Tools
                     }
                 }
 
-                var memberInfo = RuntimeObjectExpose.GetMemberInfo(type, memberName);
+                var memberInfo = ObjectReflectionExposer.GetMemberInfo(type, memberName);
 
                 if (memberInfo is FieldInfo fi)
                 {

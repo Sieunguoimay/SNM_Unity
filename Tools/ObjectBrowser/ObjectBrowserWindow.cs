@@ -5,44 +5,36 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 
-namespace Sieunguoimay.Tools
+namespace Snm.Tools.ObjectBrowser
 {
-    public class ObjectBrowserWindow : EditorWindow, RuntimeObjectExpose.ITargetObjectProvider
+    public class ObjectBrowserWindow : EditorWindow
     {
-        private const string RuntimeObjectBrowser = "Object Browser";
-
-        [SerializeField] private Object _rootObject;
-        [SerializeField] private string _path;
-        [SerializeField] private bool _refreshEveryFrame;
+        [SerializeField] private Object rootObject;
+        [SerializeField] private string path;
+        [SerializeField] private ReflectionFilterType reflectionFilterType = ReflectionFilterType.DeclaredOnly;
+        [SerializeField] private MemberFilterType memberFilterType = MemberFilterType.AllMembers;
 
         private IReadOnlyList<ObjectExposedItem> _displayItems;
-        private ObjectExposedItemsDrawer _commonRuntimeObjectExposeEditor;
+        private object _currentObject;
+        private Type _currentReflectionType;
+        private Vector2 _scrollPos;
 
-        private RuntimeObjectExpose _objectExpose;
-        private RuntimeObjectExpose ObjectExpose => _objectExpose ??= new RuntimeObjectExpose(this);
-
-        private ObjectExposedItemsDrawer CommonRuntimeObjectExposeEditor => _commonRuntimeObjectExposeEditor ??= new ObjectExposedItemsDrawer(OnItemClicked);
-
-        public object TargetObject { get; private set; }
-        public string Path { get => _path; set => _path = value; }
-        public Object RootObject { get => _rootObject; set => _rootObject = value; }
+        public object TargetObject => _currentObject;
+        public string Path => path;
+        public Object RootObject { get => rootObject; set => rootObject = value; }
 
         public event Action<ObjectBrowserWindow> OnExposed;
         public event Action<ObjectBrowserWindow> OnClosed;
 
         [MenuItem("Tools/Snm/Object Browser")]
-        public static void OpenWindow()
-        {
-            GetWindow(typeof(ObjectBrowserWindow), false, RuntimeObjectBrowser).Show();
-        }
+        public static void OpenWindow() => OpenWindowAndReturnSelf();
 
         public static ObjectBrowserWindow OpenWindowAndReturnSelf()
         {
-            var window = GetWindow(typeof(ObjectBrowserWindow), false, RuntimeObjectBrowser);
-            window.Show();
-            return window as ObjectBrowserWindow;
+            return GetWindow<ObjectBrowserWindow>("Object Browser");
         }
 
         private void OnEnable()
@@ -67,24 +59,40 @@ namespace Sieunguoimay.Tools
 
             EditorGUILayout.BeginHorizontal();
             GUILayout.Space(50);
-            var rootObject = EditorGUILayout.ObjectField("Source Object", _rootObject, typeof(Object), true);
-            var canGetComponents = _rootObject is GameObject or Component;
-            if (canGetComponents)
+            var ro = EditorGUILayout.ObjectField("Source Object", this.rootObject, typeof(Object), true);
+            DrawComponentSelectingButton(this.rootObject, i =>
             {
-                DrawComponentSelectingButton(_rootObject, i =>
+                ChangeRootObject(i);
+                ResetPath();
+                Browse();
+            });
+
+            if (GUILayout.Button(new GUIContent("@", "Pick In Memory Object"), GUILayout.Width(25)))
+            {
+                var supportedTypes = new Type[] {
+                    typeof(ScriptableObject),
+                    typeof(Material),
+                    typeof(Mesh),
+                    typeof(Texture)
+                };
+                var menu = new GenericMenu();
+                foreach (var t in supportedTypes)
                 {
-                    ChangeRootObject(i);
-                    ResetPath();
-                    Browse();
-                });
+                    var current = t;
+                    menu.AddItem(new GUIContent(t.Name), false, () =>
+                    {
+                        PickInMemoryObject(current);
+                    });
+                }
+                menu.ShowAsContext();
             }
 
             GUILayout.Space(50);
             EditorGUILayout.EndHorizontal();
 
-            if (_rootObject != rootObject)
+            if (this.rootObject != ro)
             {
-                ChangeRootObject(rootObject);
+                ChangeRootObject(ro);
                 ResetPath();
                 Browse();
             }
@@ -92,7 +100,7 @@ namespace Sieunguoimay.Tools
             GUILayout.Space(10);
             EditorGUILayout.BeginHorizontal();
 
-            var enableBackButton = !string.IsNullOrEmpty(_path);
+            var enableBackButton = !string.IsNullOrEmpty(path);
             var ge = GUI.enabled;
             GUI.enabled = enableBackButton;
             if (GUILayout.Button("<-", GUILayout.Width(25)))
@@ -102,7 +110,7 @@ namespace Sieunguoimay.Tools
             }
 
             GUI.enabled = ge;
-            _path = EditorGUILayout.TextField(_path);
+            path = EditorGUILayout.TextField(path);
             if (GUILayout.Button("Browse", GUILayout.Width(60)))
             {
                 Browse();
@@ -111,24 +119,64 @@ namespace Sieunguoimay.Tools
             EditorGUILayout.EndHorizontal();
 
             var rect = EditorGUILayout.GetControlRect();
-            var leftRect = new Rect(rect.x, rect.y, rect.width - 130f - 4f, rect.height);
-            DrawCurrentObject(leftRect);
-            _refreshEveryFrame = GUI.Toggle(new Rect(rect.x + rect.width - 130f, rect.y, 130f, rect.height), _refreshEveryFrame, "Refresh every frame");
+
+            var w3 = 100f;
+            var w2 = 100f;
+            var w0 = 50f;
+            var w1 = rect.width - w2 - w3 - w0;
+
+            var r0 = new Rect(rect.x, rect.y, w0, rect.height);
+            var r1 = new Rect(rect.x + w0, rect.y, w1 - 4f, rect.height);
+            var r2 = new Rect(rect.x + w0 + w1, rect.y, w2, rect.height);
+            var r3 = new Rect(rect.x + w0 + w1 + w2, rect.y, w3, rect.height);
+
+            GUI.Label(r0, "Current");
+            DrawCurrentObject(r1);
+            var rfType = (ReflectionFilterType)EditorGUI.EnumPopup(r2, reflectionFilterType);
+            var mfType = (MemberFilterType)EditorGUI.EnumPopup(r3, memberFilterType);
+
+            if (rfType != reflectionFilterType || mfType != memberFilterType)
+            {
+                reflectionFilterType = rfType;
+                memberFilterType = mfType;
+                Browse();
+            }
 
             if (_displayItems != null && _displayItems.Count > 0)
             {
-                CommonRuntimeObjectExposeEditor.DrawExposedItems(_displayItems, !RuntimeObjectExpose.IsPrimitive(TargetObject.GetType()));
+                var allowExpose = _currentObject == null || !ObjectReflectionExposer.IsPrimitive(_currentObject.GetType());
+                var hasObject = _currentReflectionType == null && _currentObject != null;
+
+                EditorGUILayout.BeginVertical(GUI.skin.box);
+                _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos, EditorStyles.helpBox, GUILayout.ExpandWidth(true));
+
+                ObjectExposedItemsDrawer.DrawExposedItems(_displayItems, allowExpose, hasObject, OnItemClicked);
+
+                EditorGUILayout.EndScrollView();
+                EditorGUILayout.EndVertical();
             }
 
-            if (_rootObject == null)
+            if (this.rootObject == null)
             {
                 GUILayout.Box("Drag UnityEngine.Object into the above Object Field", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 25, wordWrap = true }, GUILayout.ExpandHeight(true), GUILayout.ExpandWidth(true));
             }
+        }
 
-            if (_refreshEveryFrame)
-            {
-                Expose();
-            }
+        private void PickInMemoryObject(Type targetType)
+        {
+            var nonAssetScriptableObjects = Resources.FindObjectsOfTypeAll(targetType)
+                .Where(o => string.IsNullOrEmpty(AssetDatabase.GetAssetPath(o)));
+            var dic = nonAssetScriptableObjects
+                .ToDictionary(o => $"{o.name} ({o.GetType().Name}@{o.GetInstanceID()})", o => o);
+
+            SearchWindow.Show(dic.Select(pair => pair.Key), selected => Browse(dic[selected]));
+        }
+
+        public void Browse(UnityEngine.Object ro)
+        {
+            rootObject = ro;
+            path = "";
+            Browse();
         }
 
         public void Browse()
@@ -137,38 +185,57 @@ namespace Sieunguoimay.Tools
             Expose();
         }
 
-        private void DrawCurrentObject(Rect leftRect)
+        private void DrawCurrentObject(Rect rect)
         {
-            if (TargetObject is UnityEngine.Object obj)
+            var rect_Value = new Rect(rect);
+            var rect_Type = new Rect(rect);
+
+            rect_Value.width /= 2f;
+            rect_Type.width = rect_Value.width - 2;
+            rect_Type.x += rect_Value.width + 2;
+
+            if (_currentObject is UnityEngine.Object obj)
             {
-                EditorGUI.ObjectField(leftRect, obj, typeof(UnityEngine.Object), true);
+                var enabled = GUI.enabled;
+                GUI.enabled = false;
+                EditorGUI.ObjectField(rect_Value, obj, typeof(UnityEngine.Object), true);
+                GUI.enabled = enabled;
+                EditorGUI.LabelField(rect_Type, _currentObject is MonoScript ms ? $"{ms.GetClass().FullName}" : $"{_currentObject.GetType().FullName}");
             }
             else
             {
-                EditorGUI.LabelField(leftRect, $"{TargetObject}");
+                var reflectionType = _currentObject?.GetType().FullName ?? _currentReflectionType?.FullName;
+                var value = ObjectReflectionExposer.ValueToString(_currentObject);
+
+                EditorGUI.TextField(rect_Value, value);
+                EditorGUI.LabelField(rect_Type, reflectionType);
             }
         }
 
         private static void DrawComponentSelectingButton(Object rootObject, Action<Object> selectedHandler)
         {
-            if (!GUILayout.Button("...", GUILayout.Width(20))) return;
+            var selectable = rootObject is GameObject or Component or ScriptableObject;
+            if (!selectable) return;
 
-            var menu = new GenericMenu();
-            var gameObject = rootObject switch
+            if (GUILayout.Button("...", GUILayout.Width(20)))
             {
-                GameObject go => go,
-                Component co => co.gameObject,
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            IEnumerable<Object> interfaces = gameObject.GetComponents<Component>();
-            interfaces = interfaces.Append(gameObject);
+                var menu = new GenericMenu();
 
-            foreach (var i in interfaces)
-            {
-                menu.AddItem(new GUIContent(i.GetType().Name), rootObject == i, () => { selectedHandler?.Invoke(i); });
+                IEnumerable<UnityEngine.Object> objects = rootObject switch
+                {
+                    GameObject go => go.GetComponents<Component>().OfType<UnityEngine.Object>().Append(go),
+                    Component co => co.gameObject.GetComponents<Component>().OfType<UnityEngine.Object>().Append(co.gameObject),
+                    ScriptableObject so => AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(so)),
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+
+                foreach (var i in objects)
+                {
+                    menu.AddItem(new GUIContent(i.GetType().Name), rootObject == i, () => { selectedHandler?.Invoke(i); });
+                }
+
+                menu.ShowAsContext();
             }
-
-            menu.ShowAsContext();
         }
 
         private void OnItemClicked(ObjectExposedItem item)
@@ -177,8 +244,8 @@ namespace Sieunguoimay.Tools
             {
                 if (methodInfo.GetParameters().Length == 0)
                 {
-                    methodInfo.Invoke(TargetObject, null);
-                    Debug.Log($"Invoked method {methodInfo.Name} on object {TargetObject}");
+                    methodInfo.Invoke(_currentObject, null);
+                    Debug.Log($"Invoked method {methodInfo.Name} on object {_currentObject}");
                 }
             }
             else
@@ -200,54 +267,58 @@ namespace Sieunguoimay.Tools
 
         public void ChangeRootObject(Object rootObject)
         {
-            _rootObject = rootObject;
+            this.rootObject = rootObject;
         }
 
         public void ResetPath()
         {
-            _path = "";
+            path = "";
         }
 
         private void AppendPath(string memberName)
         {
-            _path = string.Concat(_path, $"|{memberName}");
+            path = string.Concat(path, $"|{memberName}");
         }
 
         private void RemoveLastPathSegment()
         {
-            var lastIndexOf = _path.LastIndexOf("|", StringComparison.Ordinal);
+            var lastIndexOf = path.LastIndexOf("|", StringComparison.Ordinal);
             if (lastIndexOf >= 0)
             {
-                _path = _path[..lastIndexOf];
+                path = path[..lastIndexOf];
             }
         }
 
         private void UpdateCurrentObject()
         {
-            if (!string.IsNullOrEmpty(_path))
+            if (!string.IsNullOrEmpty(path))
             {
-                var pe = new ReflectionPathExecutor();
-                pe.Setup(_path, _rootObject);
-                TargetObject = pe.ExecutePath();
+                var rootReflectionType = rootObject is MonoScript ms ? ms.GetClass() : null;
+                var pathExecutor = new ReflectionPathExecutor(path, rootObject, rootReflectionType);
+                _currentObject = pathExecutor.ExecutePath();
+                _currentReflectionType = pathExecutor.GetFinalReflectionType();
             }
             else
             {
-                TargetObject = _rootObject;
+                var rootReflectionType = rootObject is MonoScript ms ? ms.GetClass() : null;
+                _currentObject = rootObject;
+                _currentReflectionType = rootReflectionType ?? rootObject?.GetType();
             }
-
-            // if (TargetObject == null || _rootObject == null) return;
-            ObjectExpose.UpdateReflectionInfos();
         }
 
         private void Expose()
         {
-            if (_rootObject == null)
+            if (rootObject == null)
             {
                 _displayItems = null;
                 return;
             }
 
-            _displayItems = ObjectExpose.ExposeObject();
+            _displayItems = ObjectReflectionExposer.ExposeObject(
+                    _currentObject,
+                    _currentReflectionType,
+                    new ReflectionExtractor(reflectionFilterType, memberFilterType))
+                .ToArray();
 
             OnExposed?.Invoke(this);
         }

@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace Sieunguoimay.Tools
+namespace Snm.Tools.ObjectBrowser
 {
     public class ObjectExposedItem
     {

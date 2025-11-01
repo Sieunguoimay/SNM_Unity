@@ -8,32 +8,29 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 
-namespace Sieunguoimay.Tools
+namespace Snm.Tools.ObjectBrowser
 {
 #if UNITY_EDITOR
 
     public class ObjectExposedItemsDrawer
     {
-        private readonly Action<ObjectExposedItem> _clickEventHandler;
-        private Vector2 _scrollPos;
-
-        public ObjectExposedItemsDrawer(Action<ObjectExposedItem> clickEventHandler)
+        public static void DrawExposedItems(IEnumerable<ObjectExposedItem> exposedItems, bool allowExpose, bool hasObject, Action<ObjectExposedItem> clickEventHandler)
         {
-            _clickEventHandler = clickEventHandler;
-        }
-
-        public void DrawExposedItems(IEnumerable<ObjectExposedItem> exposedItems, bool allowExpose)
-        {
-            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos, EditorStyles.helpBox, GUILayout.ExpandWidth(true));
-            EditorGUILayout.BeginVertical(GUI.skin.box);
             foreach (var exposedItem in exposedItems)
             {
                 EditorGUILayout.BeginHorizontal();
-                if (exposedItem.MemberInfo is MethodInfo methodInfo && methodInfo.GetParameters().Length == 0)
+                if (exposedItem.MemberInfo is MethodInfo methodInfo)
                 {
-                    if (GUILayout.Button(new GUIContent($"()", "Invoke Method"), GUILayout.Width(25)))
+                    if (methodInfo.GetParameters().Length == 0 && (hasObject || methodInfo.IsStatic))
                     {
-                        _clickEventHandler?.Invoke(exposedItem);
+                        if (GUILayout.Button(new GUIContent($"()", "Invoke Method"), GUILayout.Width(25)))
+                        {
+                            clickEventHandler?.Invoke(exposedItem);
+                        }
+                    }
+                    else
+                    {
+                        GUILayout.Space(25);
                     }
                 }
                 else
@@ -43,7 +40,7 @@ namespace Sieunguoimay.Tools
                     {
                         if (GUILayout.Button(new GUIContent($"->", "Go into"), GUILayout.Width(25)))
                         {
-                            _clickEventHandler?.Invoke(exposedItem);
+                            clickEventHandler?.Invoke(exposedItem);
                         }
                     }
                     else
@@ -65,8 +62,6 @@ namespace Sieunguoimay.Tools
                 EditorGUILayout.EndHorizontal();
             }
 
-            EditorGUILayout.EndVertical();
-            EditorGUILayout.EndScrollView();
         }
     }
 #endif
