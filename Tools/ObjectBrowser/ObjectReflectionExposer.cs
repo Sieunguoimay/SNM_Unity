@@ -9,8 +9,8 @@ namespace Snm.Tools.ObjectBrowser
 {
     public enum ReflectionFilterType
     {
-        IncludeBaseTypes,
-        DeclaredOnly,
+        AllRelatedTypes,
+        DeclaringTypeOnly,
     }
 
     public enum MemberFilterType
@@ -32,7 +32,9 @@ namespace Snm.Tools.ObjectBrowser
         private readonly ReflectionFilterType filterType;
         private readonly MemberFilterType memberFilterType;
 
-        public ReflectionExtractor(ReflectionFilterType filterType, MemberFilterType memberFilterType)
+        public ReflectionExtractor(
+            ReflectionFilterType filterType,
+            MemberFilterType memberFilterType)
         {
             this.filterType = filterType;
             this.memberFilterType = memberFilterType;
@@ -40,17 +42,15 @@ namespace Snm.Tools.ObjectBrowser
 
         public IEnumerable<MemberInfo> Extract(Type type)
         {
-            return GetAllMemberInfos(type, filterType == ReflectionFilterType.IncludeBaseTypes)
-                .Where(m => Filter(m, memberFilterType));
-        }
-
-        public static IEnumerable<MemberInfo> GetAllMemberInfos(Type type, bool includeBaseTypes)
-        {
+            var includeBaseTypes = filterType == ReflectionFilterType.AllRelatedTypes;
             while (type != null)
             {
                 foreach (var m in type.GetMembers(BindingAttr))
                 {
-                    yield return m;
+                    if (Filter(m, memberFilterType))
+                    {
+                        yield return m;
+                    }
                 }
 
                 if (!includeBaseTypes)
@@ -59,7 +59,6 @@ namespace Snm.Tools.ObjectBrowser
                 type = type.BaseType;
             }
         }
-
 
         public static bool Filter(MemberInfo memberInfo, MemberFilterType memberFilterType)
         {
@@ -76,10 +75,6 @@ namespace Snm.Tools.ObjectBrowser
 
     public partial class ObjectReflectionExposer
     {
-        private const BindingFlags BindingAttr = BindingFlags.Public
-            | BindingFlags.Instance
-            | BindingFlags.NonPublic;
-
         public static IEnumerable<ObjectExposedItem> ExposeObject(
             object targetObject,
             Type reflectionType,
@@ -196,12 +191,13 @@ namespace Snm.Tools.ObjectBrowser
         {
             var shouldDisplayReflectionType = false;
             var isStatic = false;
+            var isConst = false;
+
             if (info.DeclaringType != info.ReflectedType)
             {
                 if (info is FieldInfo fi)
                 {
                     shouldDisplayReflectionType = fi.IsPrivate;
-                    isStatic = fi.IsStatic;
                 }
                 else if (info is PropertyInfo pi)
                 {
@@ -211,6 +207,17 @@ namespace Snm.Tools.ObjectBrowser
                 else if (info is MethodInfo mi)
                 {
                     shouldDisplayReflectionType = mi.IsPrivate;
+                }
+            }
+
+            {
+                if (info is FieldInfo fi)
+                {
+                    isStatic = fi.IsStatic;
+                    isConst = fi.IsLiteral && !fi.IsInitOnly;
+                }
+                else if (info is MethodInfo mi)
+                {
                     isStatic = mi.IsStatic;
                 }
             }
@@ -218,23 +225,17 @@ namespace Snm.Tools.ObjectBrowser
             var declaringTypeTag = shouldDisplayReflectionType
                 ? $" [of: {info.DeclaringType.Name}]" : "";
             var staticTag = isStatic ? " [static]" : "";
-            return info.Name + declaringTypeTag + staticTag;
+            var constTag = isConst ? " [const]" : "";
+            return info.Name + declaringTypeTag + staticTag + constTag;
         }
 
         public static MemberInfo GetMemberInfo(Type type, string memberName)
         {
             var result = TrySplitLastDot(memberName, out var before, out var after) ? after : "";
 
-            var hashedType = BaseAndInterfacesHashResolver.FindByFullNameHash(type, before);
+            var reflectionType = BaseAndInterfacesHashResolver.FindByFullNameHash(type, before);
 
-            var reflectionType = type;
-
-            if (hashedType != null && hashedType.IsAssignableFrom(type))
-            {
-                reflectionType = hashedType;
-            }
-
-            return reflectionType?.GetMember(result, BindingAttr)?.FirstOrDefault();
+            return reflectionType?.GetMember(result, ReflectionExtractor.BindingAttr)?.FirstOrDefault();
         }
 
         private static bool TrySplitLastDot(string input, out string before, out string after)
@@ -273,7 +274,7 @@ namespace Snm.Tools.ObjectBrowser
             string targetHash,
             int hashBytes = 4,
             StringComparison comparison = StringComparison.OrdinalIgnoreCase,
-            bool includeSelf = false)
+            bool includeSelf = true)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
             if (string.IsNullOrWhiteSpace(targetHash))

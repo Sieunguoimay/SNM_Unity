@@ -14,7 +14,12 @@ namespace Snm.Tools.ObjectBrowser
 
     public class ObjectExposedItemsDrawer
     {
-        public static void DrawExposedItems(IEnumerable<ObjectExposedItem> exposedItems, bool allowExpose, bool hasObject, Action<ObjectExposedItem> clickEventHandler)
+        public static void DrawExposedItems(
+            IEnumerable<ObjectExposedItem> exposedItems,
+            Action<ObjectExposedItem> clickEventHandler,
+            bool allowExpose,
+            bool hasObject,
+            bool displayTypeHash)
         {
             foreach (var exposedItem in exposedItems)
             {
@@ -49,7 +54,7 @@ namespace Snm.Tools.ObjectBrowser
                     }
                 }
 
-                EditorGUILayout.LabelField($"{exposedItem.DisplayMemberName}");
+                EditorGUILayout.LabelField(displayTypeHash ? exposedItem.MemberName : exposedItem.DisplayMemberName);
                 if (exposedItem.Value is Object asset)
                 {
                     EditorGUILayout.ObjectField(asset, typeof(Object), false);

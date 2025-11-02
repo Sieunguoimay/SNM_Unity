@@ -5,17 +5,17 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 
 namespace Snm.Tools.ObjectBrowser
 {
-    public class ObjectBrowserWindow : EditorWindow
+    public class ObjectBrowserWindow : EditorWindow, IHasCustomMenu
     {
         [SerializeField] private Object rootObject;
         [SerializeField] private string path;
-        [SerializeField] private ReflectionFilterType reflectionFilterType = ReflectionFilterType.DeclaredOnly;
+        [SerializeField] private ReflectionFilterType reflectionFilterType = ReflectionFilterType.DeclaringTypeOnly;
         [SerializeField] private MemberFilterType memberFilterType = MemberFilterType.AllMembers;
+        [SerializeField] private bool displayTypeHash;
 
         private IReadOnlyList<ObjectExposedItem> _displayItems;
         private object _currentObject;
@@ -59,8 +59,8 @@ namespace Snm.Tools.ObjectBrowser
 
             EditorGUILayout.BeginHorizontal();
             GUILayout.Space(50);
-            var ro = EditorGUILayout.ObjectField("Source Object", this.rootObject, typeof(Object), true);
-            DrawComponentSelectingButton(this.rootObject, i =>
+            var ro = EditorGUILayout.ObjectField("Source Object", rootObject, typeof(Object), true);
+            DrawComponentSelectingButton(rootObject, i =>
             {
                 ChangeRootObject(i);
                 ResetPath();
@@ -90,7 +90,7 @@ namespace Snm.Tools.ObjectBrowser
             GUILayout.Space(50);
             EditorGUILayout.EndHorizontal();
 
-            if (this.rootObject != ro)
+            if (rootObject != ro)
             {
                 ChangeRootObject(ro);
                 ResetPath();
@@ -132,8 +132,8 @@ namespace Snm.Tools.ObjectBrowser
 
             GUI.Label(r0, "Current");
             DrawCurrentObject(r1);
-            var rfType = (ReflectionFilterType)EditorGUI.EnumPopup(r2, reflectionFilterType);
-            var mfType = (MemberFilterType)EditorGUI.EnumPopup(r3, memberFilterType);
+            var mfType = (MemberFilterType)EditorGUI.EnumPopup(r2, memberFilterType);
+            var rfType = (ReflectionFilterType)EditorGUI.EnumPopup(r3, reflectionFilterType);
 
             if (rfType != reflectionFilterType || mfType != memberFilterType)
             {
@@ -150,13 +150,13 @@ namespace Snm.Tools.ObjectBrowser
                 EditorGUILayout.BeginVertical(GUI.skin.box);
                 _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos, EditorStyles.helpBox, GUILayout.ExpandWidth(true));
 
-                ObjectExposedItemsDrawer.DrawExposedItems(_displayItems, allowExpose, hasObject, OnItemClicked);
+                ObjectExposedItemsDrawer.DrawExposedItems(_displayItems, OnItemClicked, allowExpose, hasObject, displayTypeHash);
 
                 EditorGUILayout.EndScrollView();
                 EditorGUILayout.EndVertical();
             }
 
-            if (this.rootObject == null)
+            if (rootObject == null)
             {
                 GUILayout.Box("Drag UnityEngine.Object into the above Object Field", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 25, wordWrap = true }, GUILayout.ExpandHeight(true), GUILayout.ExpandWidth(true));
             }
@@ -190,25 +190,32 @@ namespace Snm.Tools.ObjectBrowser
             var rect_Value = new Rect(rect);
             var rect_Type = new Rect(rect);
 
-            rect_Value.width /= 2f;
-            rect_Type.width = rect_Value.width - 2;
+            rect_Value.width /= 3f;
+            rect_Type.width = rect.width - rect_Value.width - 2;
             rect_Type.x += rect_Value.width + 2;
+
+            var reflectionType = _currentObject is MonoScript ms ? ms.GetClass() : _currentObject?.GetType() ?? _currentReflectionType;
+            var reflectionTypeName = reflectionType != null ? reflectionType.FullName : "";
+            if (displayTypeHash && !string.IsNullOrEmpty(reflectionTypeName))
+            {
+                reflectionTypeName += $"[{BaseAndInterfacesHashResolver.GetShortHash(reflectionType.FullName)}]";
+            }
 
             if (_currentObject is UnityEngine.Object obj)
             {
+
                 var enabled = GUI.enabled;
                 GUI.enabled = false;
                 EditorGUI.ObjectField(rect_Value, obj, typeof(UnityEngine.Object), true);
                 GUI.enabled = enabled;
-                EditorGUI.LabelField(rect_Type, _currentObject is MonoScript ms ? $"{ms.GetClass().FullName}" : $"{_currentObject.GetType().FullName}");
+                EditorGUI.LabelField(rect_Type, reflectionTypeName);
             }
             else
             {
-                var reflectionType = _currentObject?.GetType().FullName ?? _currentReflectionType?.FullName;
                 var value = ObjectReflectionExposer.ValueToString(_currentObject);
 
                 EditorGUI.TextField(rect_Value, value);
-                EditorGUI.LabelField(rect_Type, reflectionType);
+                EditorGUI.LabelField(rect_Type, reflectionTypeName);
             }
         }
 
@@ -302,7 +309,7 @@ namespace Snm.Tools.ObjectBrowser
             {
                 var rootReflectionType = rootObject is MonoScript ms ? ms.GetClass() : null;
                 _currentObject = rootObject;
-                _currentReflectionType = rootReflectionType ?? rootObject?.GetType();
+                _currentReflectionType = rootReflectionType;
             }
         }
 
@@ -316,11 +323,19 @@ namespace Snm.Tools.ObjectBrowser
 
             _displayItems = ObjectReflectionExposer.ExposeObject(
                     _currentObject,
-                    _currentReflectionType,
+                    _currentReflectionType ?? _currentObject?.GetType(),
                     new ReflectionExtractor(reflectionFilterType, memberFilterType))
                 .ToArray();
 
             OnExposed?.Invoke(this);
+        }
+
+        void IHasCustomMenu.AddItemsToMenu(GenericMenu menu)
+        {
+            menu.AddItem(new GUIContent("Display Type Hash"), displayTypeHash, () =>
+            {
+                displayTypeHash = !displayTypeHash;
+            });
         }
     }
 }
