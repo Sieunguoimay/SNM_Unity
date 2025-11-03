@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Runtime.InteropServices;
 
 namespace Snm.Tools.ObjectBrowser
 {
@@ -174,19 +175,6 @@ namespace Snm.Tools.ObjectBrowser
             return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal);
         }
 
-        private static string FormatMemberName(MemberInfo info)
-        {
-            var fullName = info.ReflectedType.FullName;
-            var memberName = info.Name;
-            if (TrySplitLastDot(info.Name, out var before, out var after))
-            {
-                fullName = before;
-                memberName = after;
-            }
-
-            return $"{BaseAndInterfacesHashResolver.GetShortHash(fullName)}.{memberName}";
-        }
-
         private static string FormatDisplayMemberName(MemberInfo info)
         {
             var shouldDisplayReflectionType = false;
@@ -229,13 +217,46 @@ namespace Snm.Tools.ObjectBrowser
             return info.Name + declaringTypeTag + staticTag + constTag;
         }
 
+        private static string FormatMemberName(MemberInfo info)
+        {
+            var reflectedType = info.ReflectedType.FullName;
+            var reflectedTypeHash = BaseAndInterfacesHashResolver.GetShortHash(reflectedType);
+            var memberName = info.Name;
+            if (TrySplitLastDot(memberName, out var before, out var after))
+            {
+                memberName = after;
+                var interfaceHash = BaseAndInterfacesHashResolver.GetShortHash(before);
+                return $"{reflectedTypeHash}.{interfaceHash}.{memberName}";
+            }
+
+            return $"{reflectedTypeHash}.{memberName}";
+        }
+
         public static MemberInfo GetMemberInfo(Type type, string memberName)
         {
-            var result = TrySplitLastDot(memberName, out var before, out var after) ? after : "";
-
-            var reflectionType = BaseAndInterfacesHashResolver.FindByFullNameHash(type, before);
-
-            return reflectionType?.GetMember(result, ReflectionExtractor.BindingAttr)?.FirstOrDefault();
+            var parts = memberName.Split('.');
+            var partCount = parts.Length;
+            if (partCount == 2)
+            {
+                var reflectedTypeHash = parts[0];
+                var mName = parts[1];
+                var reflectedType = BaseAndInterfacesHashResolver.FindByFullNameHash(type, reflectedTypeHash);
+                return reflectedType?.GetMember(mName, ReflectionExtractor.BindingAttr)?.FirstOrDefault();
+            }
+            else if (partCount == 3)
+            {
+                var reflectedTypeHash = parts[0];
+                var interfaceHash = parts[1];
+                var mName = parts[2];
+                var reflectedType = BaseAndInterfacesHashResolver.FindByFullNameHash(type, reflectedTypeHash);
+                var interfaceType = BaseAndInterfacesHashResolver.FindByFullNameHash(type, interfaceHash);
+                var mFullName = interfaceType.FullName + "." + mName;
+                return reflectedType?.GetMember(mFullName, ReflectionExtractor.BindingAttr)?.FirstOrDefault();
+            }
+            else
+            {
+                return null;
+            }
         }
 
         private static bool TrySplitLastDot(string input, out string before, out string after)
