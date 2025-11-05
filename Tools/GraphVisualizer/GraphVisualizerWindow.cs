@@ -76,19 +76,22 @@ namespace Snm.Tools.GraphVisualizer
             _graphVE = GraphVEBuilder.BuildGraphVE(graph);
             _world.Add(_graphVE);
 
-            PutGraphToCenterOfWorld();
+            _graphVE.schedule.Execute(() =>
+            {
+                LayoutCenter(_graphVE);
+            }).StartingIn(1);
         }
 
-        private void PutGraphToCenterOfWorld()
+        private static void LayoutCenter(VisualElement ve)
         {
-            if (_graphVE == null) return;
-            var graphSize = GetBounds(_graphVE.Children());
-            var worldSize = new Vector2(_world.style.width.value.value, _world.style.height.value.value);
-            var graphHalfSize = new Vector2(graphSize.x + graphSize.width * 0.5f, graphSize.y + graphSize.height * 0.5f);
-            var worldHalfSize = new Vector2(worldSize.x / 2f, worldSize.y / 2f);
-            var graphOffset = worldHalfSize - graphHalfSize;
-            _graphVE.style.left = graphOffset.x;
-            _graphVE.style.top = graphOffset.y;
+            var parent = ve.parent;
+            var veBoundRect = GetBounds(ve.Children());
+            var parentSize = new Vector2(parent.resolvedStyle.width, parent.resolvedStyle.height);
+            var veCenter = new Vector2(veBoundRect.x + veBoundRect.width * 0.5f, veBoundRect.y + veBoundRect.height * 0.5f);
+            var parentCenter = new Vector2(parentSize.x / 2f, parentSize.y / 2f);
+            var veOffset = parentCenter - veCenter;
+            ve.style.left = ve.resolvedStyle.left + veOffset.x;
+            ve.style.top = ve.resolvedStyle.top + veOffset.y;
         }
 
         public static Rect GetBounds(IEnumerable<VisualElement> elements)
@@ -96,17 +99,17 @@ namespace Snm.Tools.GraphVisualizer
             if (elements == null || !elements.Any())
                 return Rect.zero;
 
-            float minX = float.MaxValue;
-            float minY = float.MaxValue;
-            float maxX = float.MinValue;
-            float maxY = float.MinValue;
+            var minX = float.MaxValue;
+            var minY = float.MaxValue;
+            var maxX = float.MinValue;
+            var maxY = float.MinValue;
 
             foreach (var e in elements)
             {
-                var x = e.style.left.value.value;
-                var y = e.style.top.value.value;
-                var w = e.style.width.value.value;
-                var h = e.style.height.value.value;
+                var x = e.resolvedStyle.left;
+                var y = e.resolvedStyle.top;
+                var w = e.resolvedStyle.width;
+                var h = e.resolvedStyle.height;
 
                 var xMin = x;
                 var xMax = x + w;
@@ -121,6 +124,7 @@ namespace Snm.Tools.GraphVisualizer
 
             return new Rect(minX, minY, maxX - minX, maxY - minY);
         }
+
         private void SetupGraphPanel()
         {
             var viewport = GraphVESupport.CreateViewport();
@@ -130,6 +134,11 @@ namespace Snm.Tools.GraphVisualizer
             viewport.Add(_world);
 
             GraphVESupport.SetupDraggable(_world, null, false);
+
+            _world.schedule.Execute(() =>
+            {
+                LayoutCenter(_world);
+            }).StartingIn(1);
         }
 
         private enum LayoutAlgorithm

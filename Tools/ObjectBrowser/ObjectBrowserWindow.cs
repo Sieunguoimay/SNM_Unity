@@ -13,7 +13,7 @@ namespace Snm.Tools.ObjectBrowser
     {
         [SerializeField] private Object rootObject;
         [SerializeField] private string path;
-        [SerializeField] private ReflectionFilterType reflectionFilterType = ReflectionFilterType.DeclaringTypeOnly;
+        [SerializeField] private ReflectionFilterType reflectionFilterType = ReflectionFilterType.IncludeBaseTypes;
         [SerializeField] private MemberFilterType memberFilterType = MemberFilterType.AllMembers;
         [SerializeField] private bool displayTypeHash;
 
@@ -22,9 +22,9 @@ namespace Snm.Tools.ObjectBrowser
         private Type _currentReflectionType;
         private Vector2 _scrollPos;
 
-        public object TargetObject => _currentObject;
+        public object CurrentObject => _currentObject;
         public string Path => path;
-        public Object RootObject { get => rootObject; set => rootObject = value; }
+        public Object RootObject => rootObject;
 
         public event Action<ObjectBrowserWindow> OnExposed;
         public event Action<ObjectBrowserWindow> OnClosed;
@@ -120,8 +120,8 @@ namespace Snm.Tools.ObjectBrowser
 
             var rect = EditorGUILayout.GetControlRect();
 
-            var w3 = 100f;
-            var w2 = 100f;
+            var w3 = 135f;
+            var w2 = 90f;
             var w0 = 50f;
             var w1 = rect.width - w2 - w3 - w0;
 
@@ -169,13 +169,13 @@ namespace Snm.Tools.ObjectBrowser
             var dic = nonAssetScriptableObjects
                 .ToDictionary(o => $"{o.name} ({o.GetType().Name}@{o.GetInstanceID()})", o => o);
 
-            SearchWindow.Show(dic.Select(pair => pair.Key), selected => Browse(dic[selected]));
+            SearchWindow.Show(dic.Keys, t => Browse(dic[t], ""));
         }
 
-        public void Browse(UnityEngine.Object ro)
+        public void Browse(UnityEngine.Object ro, string path)
         {
             rootObject = ro;
-            path = "";
+            this.path = path;
             Browse();
         }
 
@@ -201,12 +201,12 @@ namespace Snm.Tools.ObjectBrowser
                 reflectionTypeName += $"[{BaseAndInterfacesHashResolver.GetShortHash(reflectionType.FullName)}]";
             }
 
-            if (_currentObject is UnityEngine.Object obj)
+            if (_currentObject is Object obj)
             {
 
                 var enabled = GUI.enabled;
                 GUI.enabled = false;
-                EditorGUI.ObjectField(rect_Value, obj, typeof(UnityEngine.Object), true);
+                EditorGUI.ObjectField(rect_Value, obj, typeof(Object), true);
                 GUI.enabled = enabled;
                 EditorGUI.LabelField(rect_Type, reflectionTypeName);
             }
@@ -228,7 +228,7 @@ namespace Snm.Tools.ObjectBrowser
             {
                 var menu = new GenericMenu();
 
-                IEnumerable<UnityEngine.Object> objects = rootObject switch
+                var objects = rootObject switch
                 {
                     GameObject go => go.GetComponents<Component>().OfType<UnityEngine.Object>().Append(go),
                     Component co => co.gameObject.GetComponents<Component>().OfType<UnityEngine.Object>().Append(co.gameObject),
@@ -257,13 +257,8 @@ namespace Snm.Tools.ObjectBrowser
             }
             else
             {
-                GoInto(item);
+                GoInto(item.MemberName);
             }
-        }
-
-        public void GoInto(ObjectExposedItem item)
-        {
-            GoInto(item.MemberName);
         }
 
         private void GoInto(string pathSegment)

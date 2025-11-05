@@ -124,28 +124,34 @@ namespace Snm.Tools.GraphVisualizer
 
         public static VisualElement CreateWorld()
         {
+            var width = 1400;
+            var height = 900;
+
             var world = new VisualElement
             {
                 name = "world",
                 style ={
                     position = Position.Absolute,
-                    width = 1400,
-                    height = 900,
-                    // backgroundColor = Color.aliceBlue,
+                    width = width,
+                    height = height,
                     paddingLeft = 0,
                     paddingTop = 0,
                 }
             };
-            for (int i = 0; i < 6; i++)
+
+            var xCount = width / 100 + 1;
+            var yCount = height / 100 + 1;
+
+            for (int i = 0; i < xCount; i++)
             {
-                for (int j = 0; j < 4; j++)
+                for (int j = 0; j < yCount; j++)
                 {
                     var dot = new VisualElement()
                     {
                         style ={
                             position = Position.Absolute,
-                            left = 200 + i * 160,
-                            top = 150 + j * 150,
+                            left = i * 100,
+                            top = j * 100,
                             width = 6,
                             height = 6,
                             borderTopLeftRadius = 3,

@@ -4,13 +4,12 @@ using System.Reflection;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Runtime.InteropServices;
 
 namespace Snm.Tools.ObjectBrowser
 {
     public enum ReflectionFilterType
     {
-        AllRelatedTypes,
+        IncludeBaseTypes,
         DeclaringTypeOnly,
     }
 
@@ -43,7 +42,8 @@ namespace Snm.Tools.ObjectBrowser
 
         public IEnumerable<MemberInfo> Extract(Type type)
         {
-            var includeBaseTypes = filterType == ReflectionFilterType.AllRelatedTypes;
+            var includeBaseTypes = filterType == ReflectionFilterType.IncludeBaseTypes;
+
             while (type != null)
             {
                 foreach (var m in type.GetMembers(BindingAttr))
@@ -56,6 +56,17 @@ namespace Snm.Tools.ObjectBrowser
 
                 if (!includeBaseTypes)
                     break;
+
+                foreach (var iType in type.GetInterfaces())
+                {
+                    foreach (var m in iType.GetMembers(BindingAttr))
+                    {
+                        if (Filter(m, memberFilterType))
+                        {
+                            yield return m;
+                        }
+                    }
+                }
 
                 type = type.BaseType;
             }

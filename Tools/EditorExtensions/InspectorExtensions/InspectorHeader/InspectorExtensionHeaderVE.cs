@@ -17,7 +17,6 @@ namespace Snm.Tools.InspectorExtra
         private readonly ToggleButton toggleButton;
         private readonly HistoryBrowserVE historyBrowser;
         private readonly InspectorWindowHelper inspectorWindowHelper;
-        private readonly Button pingButton;
         private readonly ToggleButton2 inspectorModeToggleButton;
 
         public InspectorExtensionHeaderVE(IExtensionElementProvider extensionElementProvider, EditorWindow window, IRefreshHandler refreshHandler)
@@ -65,12 +64,12 @@ namespace Snm.Tools.InspectorExtra
                 }
             }
 
-            pingButton = new Button(OnPingButtonClicked) { text = "Ping" };
-            pingButton.style.marginTop = 0;
-            pingButton.style.marginRight = 1;
-            pingButton.style.marginLeft = 0;
-            pingButton.style.marginBottom = 0;
-            Add(pingButton);
+            // pingButton = new Button(OnPingButtonClicked) { text = "Ping" };
+            // pingButton.style.marginTop = 0;
+            // pingButton.style.marginRight = 1;
+            // pingButton.style.marginLeft = 0;
+            // pingButton.style.marginBottom = 0;
+            // Add(pingButton);
 
             if (inspectorWindowHelper != null)
             {
@@ -134,13 +133,13 @@ namespace Snm.Tools.InspectorExtra
             }
         }
 
-        private void OnPingButtonClicked()
-        {
-            foreach (var o in inspectorWindowHelper.GetInspectedObjects())
-            {
-                EditorGUIUtility.PingObject(o);
-            }
-        }
+        // private void OnPingButtonClicked()
+        // {
+        //     foreach (var o in inspectorWindowHelper.GetInspectedObjects())
+        //     {
+        //         EditorGUIUtility.PingObject(o);
+        //     }
+        // }
 
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
         {
@@ -222,7 +221,7 @@ namespace Snm.Tools.InspectorExtra
             if (_extensionElementProvider == null) return;
 
             var status = toggleButton.Status;
-            foreach (var e in _extensionElementProvider.GetExtensionElements().Concat(new VisualElement[] { pingButton, inspectorModeToggleButton }))
+            foreach (var e in _extensionElementProvider.GetExtensionElements().Concat(new VisualElement[] { inspectorModeToggleButton }))
             {
                 e.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
             }

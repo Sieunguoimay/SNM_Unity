@@ -183,82 +183,90 @@ namespace Snm.Tools.InspectorExtra
         }
     }
 
-
     public class EditorSecondHeaderVE : VisualElement
     {
         private readonly Object target;
         private readonly EditorWindow inspectorWindow;
-        private readonly IRefreshHandler refreshHandler;
-        private readonly VisualElement buttonsContainer;
         private readonly IInspectorModeHelper inspectorModeHelper;
 
-        public EditorSecondHeaderVE(Object target, EditorWindow inspectorWindow, IRefreshHandler refreshHandler, IInspectorModeHelper inspectorModeHelper = null)
+        private MenuItemButton _copyComponentMenuItem;
+        private MenuItemButton _pasteComponentValuesMenuItem;
+
+        public EditorSecondHeaderVE(
+            Object target,
+            EditorWindow inspectorWindow,
+            IRefreshHandler refreshHandler,
+            IInspectorModeHelper inspectorModeHelper = null)
         {
             this.target = target;
             this.inspectorWindow = inspectorWindow;
-            this.refreshHandler = refreshHandler;
             this.inspectorModeHelper = inspectorModeHelper;
-            var foldout = new ReferencesFoldout(target);
-            var toggle = foldout.Q<Toggle>();
-            buttonsContainer = new VisualElement();
-            buttonsContainer.style.flexDirection = FlexDirection.RowReverse;
-            buttonsContainer.style.flexGrow = 1;
-            toggle.style.marginBottom = 0;
-            toggle.style.marginTop = 0;
-            toggle.style.marginRight = 0;
-            toggle.Add(buttonsContainer);
-            Add(foldout);
 
-            style.backgroundColor = new Color(0f, 0f, 0f, .2f);
+            var layout_Buttons = this;
+
+            style.flexDirection = FlexDirection.RowReverse;
+            style.flexGrow = 1;
             style.marginBottom = 4;
+            style.backgroundColor = new Color(0f, 0f, 0f, .2f);
+            style.height = EditorGUIUtility.singleLineHeight + 2;
 
             if (target is MonoBehaviour || target is ScriptableObject)
-                buttonsContainer.Add(CreateEditScriptButton());
-            buttonsContainer.Add(CreateOpenInWindowButton());
-            buttonsContainer.Add(CreateFindReferencesInSceneButton());
-            if (target is not Component && (target is not GameObject go || !go.scene.isLoaded))
-                buttonsContainer.Add(CreateFindReferencesInProjectButton());
+            {
+                layout_Buttons.Add(CreateEditScriptButton());
+            }
+
+            layout_Buttons.Add(new Button() { text = "Ping", clickable = new(() => EditorGUIUtility.PingObject(target)) });
+            layout_Buttons.Add(CreateOpenInWindowButton());
+
+            if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(target)) && (target is GameObject || target is Component))
+            {
+                layout_Buttons.Add(CreateFindReferencesInSceneButton());
+            }
+
+            if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(target)))
+            {
+                layout_Buttons.Add(CreateFindReferencesInProjectButton());
+            }
 
             if (inspectorModeHelper != null)
             {
-                buttonsContainer.Add(CreateDebugButton());
+                layout_Buttons.Add(CreateDebugButton());
             }
 
-            if (target is ScriptableObject)
+            IMenuItemObject copy = null;
+            IMenuItemObject paste = null;
+
+            if (target is ScriptableObject so)
             {
-                CreateMenuItemObjects();
-                buttonsContainer.Add(_copyComponentMenuItem);
-                buttonsContainer.Add(_pasteComponentValuesMenuItem);
+                copy = new FakeMenuItemObject_ScriptableObject_Copy(so, refreshHandler);
+                paste = new FakeMenuItemObject_ScriptableObject_Paste(so);
+            }
+            else if (target is Component && target is not Transform)
+            {
+                copy = new MenuItemObject("CONTEXT/Component/Copy Component", target, refreshHandler);
+                paste = new MenuItemObject("CONTEXT/Component/Paste Component Values", target, refreshHandler);
             }
 
-            if (target is Component && target is not Transform)
+            if (copy != null && paste != null)
             {
-                CreateMenuItemObjects();
-                buttonsContainer.Add(_copyComponentMenuItem);
-                buttonsContainer.Add(_pasteComponentValuesMenuItem);
+                _copyComponentMenuItem = new MenuItemButton(copy, "Copy");
+                _pasteComponentValuesMenuItem = new MenuItemButton(paste, "Paste");
+                layout_Buttons.Add(_copyComponentMenuItem);
+                layout_Buttons.Add(_pasteComponentValuesMenuItem);
             }
 
             inspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
 
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
-            // RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
         }
 
         public void TriggerOnAttachToPanel(VisualElement parent)
         {
-            _parent = parent;
-            _parent.RegisterCallback<MouseEnterEvent>(OnMouseEnter);
-            _parent.RegisterCallback<MouseLeaveEvent>(OnMouseLeave);
         }
 
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
         {
             inspectorWindow.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
-            if (_parent != null)
-            {
-                _parent.UnregisterCallback<MouseEnterEvent>(OnMouseEnter);
-                _parent.UnregisterCallback<MouseLeaveEvent>(OnMouseLeave);
-            }
 
             if (inspectorModeHelper != null)
             {
@@ -266,22 +274,10 @@ namespace Snm.Tools.InspectorExtra
             }
         }
 
-        private void OnMouseEnter(MouseEnterEvent evt)
-        {
-            // style.backgroundColor = new Color(0f, 0f, 0f, 0f);
-            // style.borderBottomWidth = 1;
-            // style.borderBottomColor = new Color(0f, 0f, 0f, .2f);
-        }
-
-        private void OnMouseLeave(MouseLeaveEvent evt)
-        {
-            // style.backgroundColor = new Color(0f, 0f, 0f, .2f);
-            // style.borderBottomWidth = 0;
-        }
-
         private void OnInspectorModeToggleButtonClicked()
         {
-            inspectorModeHelper.SetDebugMode(inspectorModeHelper.IsDebugMode() ? InspectorMode.Normal : InspectorMode.Debug);
+            var mode = inspectorModeHelper.IsDebugMode() ? InspectorMode.Normal : InspectorMode.Debug;
+            inspectorModeHelper.SetDebugMode(mode);
         }
 
         private void OnRepaint(MouseEnterEvent evt)
@@ -293,53 +289,38 @@ namespace Snm.Tools.InspectorExtra
         {
             _copyComponentMenuItem?.Refresh();
             _pasteComponentValuesMenuItem?.Refresh();
-            _pasteComponentAsNewMenuItem?.Refresh();
         }
 
         private VisualElement CreateDebugButton()
         {
-            ToggleButton2 inspectorModeToggleButton = null;
-            inspectorModeToggleButton = new ToggleButton2(
+            return new ToggleButton2(
                 "Normal", "Debug", Color.cyan * .8f,
                 inspectorModeHelper.IsDebugMode,
                 OnInspectorModeToggleButtonClicked,
                 "InspectorExtensions_ToggleButton_InspectorMode",
                 inspectorWindow);
-
-            inspectorModeToggleButton.style.marginRight = 3;
-            inspectorModeToggleButton.style.marginBottom = 0;
-            inspectorModeToggleButton.style.paddingLeft = 3;
-            inspectorModeToggleButton.style.paddingRight = 3;
-            return inspectorModeToggleButton;
         }
 
         private VisualElement CreateEditScriptButton()
         {
-            var button = new Button(OnEditScriptButtonClicked)
+            return new Button()
             {
-                text = "Edit Script"
+                text = "Edit Script",
+                clickable = new(OnEditScriptButtonClicked),
             };
-            button.style.marginTop = 0;
-            button.style.marginBottom = 0;
-            button.style.paddingLeft = 6;
-            return button;
         }
 
         private VisualElement CreateOpenInWindowButton()
         {
-            var button = new Button(() =>
-            {
-                EditorPopupWindow.Open(target);
-            })
+            return new Button()
             {
                 tooltip = "Open in Window",
                 text = "Window",
+                clickable = new(() => EditorPopupWindow.Open(target)),
 #if UNITY_2023_2_OR_NEWER
                 iconImage = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_ScaleTool").image)
 #endif
             };
-            button.style.paddingLeft = 6;
-            return button;
         }
 
         private void OnEditScriptButtonClicked()
@@ -354,10 +335,11 @@ namespace Snm.Tools.InspectorExtra
 
         private VisualElement CreateFindReferencesInSceneButton()
         {
-            var button = new Button(OnFindReferencesInSceneClicked)
+            var button = new Button()
             {
                 tooltip = "Find References in Scene",
                 text = "Scene",
+                clickable = new(OnFindReferencesInSceneClicked),
 #if UNITY_2023_2_OR_NEWER
                 iconImage = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_Search Icon").image)
 #endif
@@ -367,9 +349,6 @@ namespace Snm.Tools.InspectorExtra
             image.style.height = 17;
             image.style.width = 17;
 #endif
-            button.style.marginTop = 0;
-            button.style.marginBottom = 0;
-            button.style.paddingLeft = 6;
             return button;
         }
 
@@ -396,9 +375,6 @@ namespace Snm.Tools.InspectorExtra
             image.style.height = 17;
             image.style.width = 17;
 #endif
-            button.style.marginTop = 0;
-            button.style.marginBottom = 0;
-            button.style.paddingLeft = 6;
             return button;
         }
 
@@ -407,56 +383,6 @@ namespace Snm.Tools.InspectorExtra
             typeof(SearchableEditorWindow)
                 .GetMethod("SearchForReferencesInProject", BindingFlags.NonPublic | BindingFlags.Static)
                 .Invoke(null, new object[] { target });
-        }
-
-        private void LogAllMenuItems()
-        {
-            foreach (var mi in FindAllMenuItems())
-            {
-                Debug.Log(mi.Item1 + "|" + mi.Item2 + "|" + mi.Item3.menuItem);
-            }
-        }
-
-        private static IEnumerable<(System.Type type, MethodInfo methodInfo, MenuItem)> FindAllMenuItems()
-        {
-            var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-
-            foreach (var assembly in assemblies)
-            {
-                foreach (var type in assembly.GetTypes())
-                {
-                    foreach (var method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-                    {
-                        MenuItem mi = null;
-                        try { mi = method.GetCustomAttribute<MenuItem>(); } catch (System.Exception) { }
-                        if (mi != null)
-                        {
-                            yield return (type, method, mi);
-                        }
-                    }
-                }
-            }
-        }
-
-        private MenuItemButton _copyComponentMenuItem;
-        private MenuItemButton _pasteComponentValuesMenuItem;
-        private MenuItemButton _pasteComponentAsNewMenuItem;
-        private VisualElement _parent;
-
-        private void CreateMenuItemObjects()
-        {
-            if (target is ScriptableObject scriptableObject)
-            {
-                _copyComponentMenuItem = new MenuItemButton(new FakeMenuItemObject_ScriptableObject_Copy(scriptableObject, refreshHandler), "Copy");
-                _pasteComponentValuesMenuItem = new MenuItemButton(new FakeMenuItemObject_ScriptableObject_Paste(scriptableObject), "Paste");
-            }
-            else
-            {
-
-                _copyComponentMenuItem = new MenuItemButton(new MenuItemObject("CONTEXT/Component/Copy Component", target, refreshHandler), "Copy");
-                _pasteComponentValuesMenuItem = new MenuItemButton(new MenuItemObject("CONTEXT/Component/Paste Component Values", target, refreshHandler), "Paste");
-                _pasteComponentAsNewMenuItem = new MenuItemButton(new MenuItemObject("CONTEXT/Component/Paste Component As New", target, refreshHandler), "Paste Component As New");
-            }
         }
 
         private class MenuItemButton : Button
@@ -468,9 +394,6 @@ namespace Snm.Tools.InspectorExtra
                 this.menuItemObject = menuItemObject;
 
                 text = displayText;
-                style.marginTop = 0;
-                style.marginBottom = 0;
-                style.paddingLeft = 6;
                 clicked += OnButtonClicked;
 
                 Refresh();

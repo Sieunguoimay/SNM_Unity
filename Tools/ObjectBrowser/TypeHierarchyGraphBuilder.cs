@@ -48,7 +48,6 @@ namespace Snm.Tools.ObjectBrowser
 
         private Node CreateNode(Type type, out Port input, out Port output)
         {
-            var hash = BaseAndInterfacesHashResolver.GetShortHash(type.AssemblyQualifiedName);
             input = new Port() { name = "input", id = $"{Guid.NewGuid()}" };
             output = new Port() { name = "output", id = $"{Guid.NewGuid()}" };
 
@@ -59,31 +58,21 @@ namespace Snm.Tools.ObjectBrowser
                 outputs = new[] { output },
             };
         }
-    }
 
-    public class TypeHierarchyGraphBuilderWindow : EditorWindow
-    {
-        [SerializeField] private MonoScript monoScript;
-
-        [MenuItem("Tools/Snm/TypeHierarchyGraphBuilderWindow")]
-        public static void Open()
+        [MenuItem("CONTEXT/Object/Snm/TypeHierarchyGraphBuilderWindow")]
+        public static void OpenTypeGraph()
         {
-            GetWindow<TypeHierarchyGraphBuilderWindow>(nameof(TypeHierarchyGraphBuilderWindow));
-        }
-
-        private void CreateGUI()
-        {
-            var editor = Editor.CreateEditor(this);
-
-            rootVisualElement.Add(new IMGUIContainer(editor.OnInspectorGUI));
-            rootVisualElement.Add(new Button() { text = "Open Graph", clickable = new(OpenGraph) });
-        }
-
-        private void OpenGraph()
-        {
-            var graph = new TypeHierarchyGraphBuilder().CreateGraph(monoScript.GetClass());
-
-            GetWindow<GraphVisualizerWindow>().LoadGraph(graph);
+            var obj = Selection.activeObject;
+            if (obj is MonoScript monoScript)
+            {
+                var graph = new TypeHierarchyGraphBuilder().CreateGraph(monoScript.GetClass());
+                EditorWindow.GetWindow<GraphVisualizerWindow>().LoadGraph(graph);
+            }
+            else
+            {
+                var graph = new TypeHierarchyGraphBuilder().CreateGraph(obj.GetType());
+                EditorWindow.GetWindow<GraphVisualizerWindow>().LoadGraph(graph);
+            }
         }
     }
 }
