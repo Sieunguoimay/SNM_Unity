@@ -99,6 +99,7 @@ namespace Snm.Tools.InspectorExtra
 
             UpdateExtensionElementsVisible();
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
+            RegisterCallback<ClickEvent>(evt => this.refreshHandler.Refresh());
         }
 
         private void OnHierachyButtonClicked()
@@ -166,10 +167,7 @@ namespace Snm.Tools.InspectorExtra
         private void OnRefreshButtonClicked(ClickEvent evt)
         {
             var menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Refresh"), false, () =>
-            {
-                refreshHandler.Refresh();
-            });
+            menu.AddItem(new GUIContent("Refresh"), false, refreshHandler.Refresh);
 
             foreach (var (path, script) in GetScriptsToOpen())
             {

@@ -248,7 +248,7 @@ namespace Snm.Tools.InspectorExtra
 
             if (loaded != null)
             {
-                return $"{data.Path} | {loaded.name}"; ;
+                return $"{loaded.name} | {data.Path}"; ;
             }
 
             return "NULL";

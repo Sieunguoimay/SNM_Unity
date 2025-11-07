@@ -92,8 +92,6 @@ namespace Snm.Tools.InspectorExtra
         private class Toolbar : VisualElement
         {
             private readonly List<SubSOInspectorElement> _targets = new();
-            private bool _foldoutState = false;
-            private readonly Button _button;
             private readonly UnityEngine.Object _target;
             private readonly IRefreshHandler refreshHandler;
             private readonly int allSubAssetsCount;
@@ -119,11 +117,8 @@ namespace Snm.Tools.InspectorExtra
 
                 if (allSubAssetsCount >= 1)
                 {
-                    _button = new Button() { text = "Reveal All" };
-                    _button.style.width = 70;
-                    _button.focusable = false;
-                    _button.RegisterCallback<ClickEvent>(OnButtonClick);
-                    Add(_button);
+                    var button = new Button() { text = "Fold", clickable = new(ToggleFold), style = { flexShrink = 1 } };
+                    Add(button);
                 }
 
                 SetFouldoutState(false);
@@ -174,17 +169,16 @@ namespace Snm.Tools.InspectorExtra
                 _targets.Add(target);
             }
 
-            private void OnButtonClick(ClickEvent evt)
+            private void ToggleFold()
             {
-                _foldoutState = !_foldoutState;
-                SetFouldoutState(_foldoutState);
+                var state = _targets.Any(f => f.Header.Foldout.value);
+                SetFouldoutState(!state);
             }
 
             private void SetFouldoutState(bool fouldout)
             {
                 foreach (var t in _targets)
                 {
-                    _button.text = fouldout ? "Close all" : "Reveal all";
                     t.SetFoldout(fouldout);
                 }
             }
@@ -198,6 +192,8 @@ namespace Snm.Tools.InspectorExtra
             private readonly IMGUIContainer imguiContainer;
             private readonly ObjectEditorHeader header;
             private readonly VisualElement body;
+
+            public ObjectEditorHeader Header => header;
 
             public SubSOInspectorElement(UnityEngine.Object asset, Dictionary<UnityEngine.Object, ObjectData> objectStates, EditorWindow inspectorWindow, IRefreshHandler refreshHandler)
             {
@@ -226,6 +222,7 @@ namespace Snm.Tools.InspectorExtra
                 headerVE.TriggerOnAttachToPanel(this);
 
                 RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
+                SetFoldout(header.Foldout.value);
             }
 
             private void OnDetachFromPanel(DetachFromPanelEvent evt)
@@ -265,7 +262,7 @@ namespace Snm.Tools.InspectorExtra
                 }
                 if (modifyHeaderFoldout)
                 {
-                    header.Foldout.value = foldout;
+                    header.Foldout.SetValueWithoutNotify(foldout);
                 }
 
                 objectStates[asset].foldout = foldout;
@@ -313,8 +310,7 @@ namespace Snm.Tools.InspectorExtra
                 {
                     value = defaultValue
                 };
-                _foldoutCallback?.Invoke(defaultValue);
-                Foldout.RegisterCallback<ChangeEvent<bool>>(b =>
+                Foldout.RegisterValueChangedCallback(b =>
                 {
                     _foldoutCallback?.Invoke(b.newValue);
                 });
