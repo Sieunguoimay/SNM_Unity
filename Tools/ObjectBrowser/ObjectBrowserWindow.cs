@@ -298,7 +298,7 @@ namespace Snm.Tools.ObjectBrowser
                 var rootReflectionType = rootObject is MonoScript ms ? ms.GetClass() : null;
                 var pathExecutor = new ReflectionPathExecutor(path, rootObject, rootReflectionType);
                 _currentObject = pathExecutor.ExecutePath();
-                _currentReflectionType = pathExecutor.GetFinalReflectionType();
+                _currentReflectionType = _currentObject != null ? _currentObject.GetType() : pathExecutor.GetFinalReflectionType();
             }
             else
             {
