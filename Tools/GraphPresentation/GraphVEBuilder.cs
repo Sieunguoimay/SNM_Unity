@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Snm.Tools.GraphVisualizer
+namespace Snm.Tools.GraphPresentation
 {
     public static class GraphVEBuilder
     {

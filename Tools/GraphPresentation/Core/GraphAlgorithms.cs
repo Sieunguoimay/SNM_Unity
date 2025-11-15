@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Snm.Tools.GraphVisualizer
+namespace Snm.Tools.GraphPresentation
 {
     public static class GraphAlgorithms
     {

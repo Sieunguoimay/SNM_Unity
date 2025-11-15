@@ -2,7 +2,7 @@
 using System;
 using UnityEngine;
 
-namespace Snm.Tools.GraphVisualizer
+namespace Snm.Tools.GraphPresentation
 {
     [Serializable]
     public class Graph

@@ -1,7 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
-using Snm.Tools.GraphVisualizer;
+using Snm.Tools.GraphPresentation;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;

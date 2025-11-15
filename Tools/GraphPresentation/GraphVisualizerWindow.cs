@@ -6,7 +6,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Snm.Tools.GraphVisualizer
+namespace Snm.Tools.GraphPresentation
 {
     public class GraphVisualizerWindow : EditorWindow
     {
