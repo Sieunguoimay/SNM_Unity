@@ -22,6 +22,7 @@ namespace Snm.Tools
             if (GUILayout.Button("...", GUILayout.Width(30)))
             {
                 _showingMenu = !_showingMenu;
+                _contextMenuEntries = FindAllInScene().ToArray();
             }
 
             if (_showingMenu)
@@ -59,7 +60,7 @@ namespace Snm.Tools
                 // If some control consumed the click it will have converted type -> EventType.Used
                 if (Event.current.type != EventType.Used)
                 {
-                    Debug.Log("Clicked outside all GUI controls");
+                    // Debug.Log("Clicked outside all GUI controls");
                     Event.current.Use(); // optional: consume the event now
                     return true;
                 }
@@ -73,7 +74,9 @@ namespace Snm.Tools
 
         public static IEnumerable<ContextMenuEntry> FindAllInScene()
         {
-            var allBehaviours = UnityEngine.Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var allBehaviours = FindObjectsByType<MonoBehaviour>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
 
             foreach (var behaviour in allBehaviours)
             {
@@ -103,11 +106,11 @@ namespace Snm.Tools
 
         public struct ContextMenuEntry
         {
-            public UnityEngine.Object Target;
+            public Object Target;
             public MethodInfo Method;
             public string MenuName;
 
-            public void Invoke()
+            public readonly void Invoke()
             {
                 Method.Invoke(Target, null);
             }
