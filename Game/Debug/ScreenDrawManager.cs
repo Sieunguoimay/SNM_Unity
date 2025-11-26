@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Snm.Visual
+namespace Snm.Debugging
 {
     public class ScreenDrawManager : MonoBehaviour
     {
