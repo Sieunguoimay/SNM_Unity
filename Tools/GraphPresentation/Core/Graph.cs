@@ -1,4 +1,3 @@
-#if UNITY_EDITOR
 using System;
 using UnityEngine;
 
@@ -34,4 +33,3 @@ namespace Snm.Tools.GraphPresentation
         public string to;
     }
 }
-#endif

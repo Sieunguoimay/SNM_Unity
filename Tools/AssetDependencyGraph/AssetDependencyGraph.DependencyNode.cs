@@ -98,5 +98,5 @@ namespace Snm.Tools.DependencyVisualize
             }
         }
     }
-#endif
 }
+#endif

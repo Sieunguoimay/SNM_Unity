@@ -20,5 +20,5 @@ namespace Snm.Tools.DependencyVisualize
             rootVisualElement.Add(graph);
         }
     }
-#endif
 }
+#endif
