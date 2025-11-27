@@ -16,7 +16,7 @@ namespace Snm.Debugging
             {
                 if (_instance != null) return _instance;
 
-                GameObject go = new GameObject("[ScreenDraw]");
+                var go = new GameObject("[ScreenDraw]");
                 DontDestroyOnLoad(go);
                 _instance = go.AddComponent<ScreenDrawManager>();
                 return _instance;

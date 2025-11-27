@@ -124,7 +124,7 @@ namespace Snm.Debugging
             Vector2 end,
             Color color,
             float width = 2f,
-            float duration = 0.05f)
+            float duration = 0f)
         {
             start.y = Screen.height - start.y;
             end.y = Screen.height - end.y;
@@ -138,7 +138,7 @@ namespace Snm.Debugging
             float width = 2f,
             float headLength = 12f,
             float headAngle = 25f,
-            float duration = 0.05f)
+            float duration = 0f)
         {
             // Shaft
             DrawScreenLine(start, end, color, width, duration);
@@ -168,7 +168,7 @@ namespace Snm.Debugging
             Rect rect,
             Color color,
             float width = 2f,
-            float duration = 0.05f)
+            float duration = 0f)
         {
             Vector2 p0 = new(rect.xMin, rect.yMin);
             Vector2 p1 = new(rect.xMax, rect.yMin);
