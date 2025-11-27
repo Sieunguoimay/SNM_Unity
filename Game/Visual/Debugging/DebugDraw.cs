@@ -1,59 +1,9 @@
 using UnityEngine;
 
-namespace Snm.Visual
+namespace Snm.Debugging
 {
     public static class DebugDraw
     {
-        private static GameObject _container;
-        private static Material _lineMaterial;
-
-        // -------------------------
-        //  Core helper
-        // -------------------------
-        private static void EnsureContainer()
-        {
-            if (_container != null) return;
-
-            _container = new GameObject("[DebugDraw]");
-            Object.DontDestroyOnLoad(_container);
-
-            // Simple, always-available shader
-            _lineMaterial = new Material(Shader.Find("Sprites/Default"));
-        }
-
-        private static void CreateLine(
-            Vector3[] points,
-            Color color,
-            float duration,
-            float width,
-            string name = "DebugLine")
-        {
-            if (points == null || points.Length < 2) return;
-
-            EnsureContainer();
-
-            GameObject lineObj = new GameObject(name);
-            lineObj.transform.SetParent(_container.transform);
-
-            LineRenderer lr = lineObj.AddComponent<LineRenderer>();
-            lr.material = _lineMaterial;
-            lr.positionCount = points.Length;
-            lr.SetPositions(points);
-            lr.startColor = color;
-            lr.endColor = color;
-            lr.startWidth = width;
-            lr.endWidth = width;
-            lr.useWorldSpace = true;
-            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            lr.receiveShadows = false;
-            lr.loop = false;
-
-            if (duration > 0f)
-                Object.Destroy(lineObj, duration);
-            else
-                Object.Destroy(lineObj, Time.deltaTime); // one frame, like Debug.DrawLine
-        }
-
         // -------------------------
         //  PUBLIC API
         // -------------------------
@@ -65,10 +15,10 @@ namespace Snm.Visual
             Vector3 start,
             Vector3 end,
             Color color,
-            float duration = 0f,
-            float width = 0.02f)
+            float width = 0.02f,
+            float duration = 0f)
         {
-            CreateLine(new[] { start, end }, color, duration, width, "DebugLine");
+            WorldDrawManager.CreateLine(new[] { start, end }, color, width, duration);
         }
 
         /// <summary>
@@ -78,10 +28,10 @@ namespace Snm.Visual
             Vector3 start,
             Vector3 end,
             Color color,
-            float duration = 0f,
             float width = 0.02f,
             float headLength = 0.25f,
-            float headAngle = 20f)
+            float headAngle = 30f,
+            float duration = 0f)
         {
             Vector3 dir = end - start;
             if (dir.sqrMagnitude < 0.0001f)
@@ -90,7 +40,7 @@ namespace Snm.Visual
             dir.Normalize();
 
             // Shaft
-            DrawLine(start, end, color, duration, width);
+            DrawLine(start, end - width / 2f * dir, color, width, duration);
 
             // Build an orientation for the arrowhead
             // We need some vector not parallel to dir
@@ -110,8 +60,7 @@ namespace Snm.Visual
             Vector3 arrowPoint2 = end + headDir2 * headLength;
 
             // Two small lines for the arrow head
-            CreateLine(new[] { end, arrowPoint1 }, color, duration, width, "DebugArrowHead");
-            CreateLine(new[] { end, arrowPoint2 }, color, duration, width, "DebugArrowHead");
+            WorldDrawManager.CreateLine(new[] { arrowPoint1, end, arrowPoint2 }, color, width / 2f, duration);
         }
 
         /// <summary>
@@ -121,8 +70,8 @@ namespace Snm.Visual
             Vector3 center,
             Vector3 size,
             Color color,
-            float duration = 0f,
-            float width = 0.02f)
+            float width = 0.02f,
+            float duration = 0f)
         {
             Vector3 extents = size * 0.5f;
 
@@ -138,32 +87,32 @@ namespace Snm.Visual
             Vector3 p7 = center + new Vector3(-extents.x, extents.y, extents.z);
 
             // Bottom square
-            DrawLine(p0, p1, color, duration, width);
-            DrawLine(p1, p2, color, duration, width);
-            DrawLine(p2, p3, color, duration, width);
-            DrawLine(p3, p0, color, duration, width);
+            DrawLine(p0, p1, color, width, duration);
+            DrawLine(p1, p2, color, width, duration);
+            DrawLine(p2, p3, color, width, duration);
+            DrawLine(p3, p0, color, width, duration);
 
             // Top square
-            DrawLine(p4, p5, color, duration, width);
-            DrawLine(p5, p6, color, duration, width);
-            DrawLine(p6, p7, color, duration, width);
-            DrawLine(p7, p4, color, duration, width);
+            DrawLine(p4, p5, color, width, duration);
+            DrawLine(p5, p6, color, width, duration);
+            DrawLine(p6, p7, color, width, duration);
+            DrawLine(p7, p4, color, width, duration);
 
             // Vertical edges
-            DrawLine(p0, p4, color, duration, width);
-            DrawLine(p1, p5, color, duration, width);
-            DrawLine(p2, p6, color, duration, width);
-            DrawLine(p3, p7, color, duration, width);
+            DrawLine(p0, p4, color, width, duration);
+            DrawLine(p1, p5, color, width, duration);
+            DrawLine(p2, p6, color, width, duration);
+            DrawLine(p3, p7, color, width, duration);
         }
 
         // Convenience overload using Bounds
         public static void DrawWireCube(
             Bounds bounds,
             Color color,
-            float duration = 0f,
-            float width = 0.02f)
+            float width = 0.02f,
+            float duration = 0f)
         {
-            DrawWireCube(bounds.center, bounds.size, color, duration, width);
+            DrawWireCube(bounds.center, bounds.size, color, width, duration);
         }
 
         // -------------------------
@@ -174,8 +123,8 @@ namespace Snm.Visual
             Vector2 start,
             Vector2 end,
             Color color,
-            float duration = 0.05f,
-            float width = 2f)
+            float width = 2f,
+            float duration = 0.05f)
         {
             start.y = Screen.height - start.y;
             end.y = Screen.height - end.y;
@@ -186,50 +135,50 @@ namespace Snm.Visual
             Vector2 start,
             Vector2 end,
             Color color,
-            float duration = 0.05f,
             float width = 2f,
             float headLength = 12f,
-            float headAngle = 25f)
+            float headAngle = 25f,
+            float duration = 0.05f)
         {
             // Shaft
-            DrawScreenLine(start, end, color, duration, width);
+            DrawScreenLine(start, end, color, width, duration);
 
             // Arrow head
-            Vector2 dir = (end - start).normalized;
+            Vector2 dir = (start - end).normalized;
             float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
 
             float angle1 = angle + headAngle;
             float angle2 = angle - headAngle;
 
             Vector2 h1 = end + new Vector2(
-                Mathf.Cos((angle1) * Mathf.Deg2Rad),
-                Mathf.Sin((angle1) * Mathf.Deg2Rad)
+                Mathf.Cos(angle1 * Mathf.Deg2Rad),
+                Mathf.Sin(angle1 * Mathf.Deg2Rad)
             ) * headLength;
 
             Vector2 h2 = end + new Vector2(
-                Mathf.Cos((angle2) * Mathf.Deg2Rad),
-                Mathf.Sin((angle2) * Mathf.Deg2Rad)
+                Mathf.Cos(angle2 * Mathf.Deg2Rad),
+                Mathf.Sin(angle2 * Mathf.Deg2Rad)
             ) * headLength;
 
-            DrawScreenLine(end, h1, color, duration, width);
-            DrawScreenLine(end, h2, color, duration, width);
+            DrawScreenLine(end, h1, color, width, duration);
+            DrawScreenLine(end, h2, color, width, duration);
         }
 
         public static void DrawScreenRect(
             Rect rect,
             Color color,
-            float duration = 0.05f,
-            float width = 2f)
+            float width = 2f,
+            float duration = 0.05f)
         {
             Vector2 p0 = new(rect.xMin, rect.yMin);
             Vector2 p1 = new(rect.xMax, rect.yMin);
             Vector2 p2 = new(rect.xMax, rect.yMax);
             Vector2 p3 = new(rect.xMin, rect.yMax);
 
-            DrawScreenLine(p0, p1, color, duration, width);
-            DrawScreenLine(p1, p2, color, duration, width);
-            DrawScreenLine(p2, p3, color, duration, width);
-            DrawScreenLine(p3, p0, color, duration, width);
+            DrawScreenLine(p0, p1, color, width, duration);
+            DrawScreenLine(p1, p2, color, width, duration);
+            DrawScreenLine(p2, p3, color, width, duration);
+            DrawScreenLine(p3, p0, color, width, duration);
         }
     }
 

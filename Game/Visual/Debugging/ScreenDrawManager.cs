@@ -1,10 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Snm.Visual
+namespace Snm.Debugging
 {
     public class ScreenDrawManager : MonoBehaviour
     {
+        private readonly List<ScreenLine> lines = new();
+        private static Texture2D _tex;
+
         private static ScreenDrawManager _instance;
 
         public static ScreenDrawManager Instance
@@ -19,17 +22,6 @@ namespace Snm.Visual
                 return _instance;
             }
         }
-
-        struct ScreenLine
-        {
-            public Vector2 a;
-            public Vector2 b;
-            public Color color;
-            public float width;
-            public float endTime;
-        }
-
-        private readonly List<ScreenLine> lines = new();
 
         public void AddLine(Vector2 a, Vector2 b, Color color, float width, float duration)
         {
@@ -60,7 +52,6 @@ namespace Snm.Visual
         }
 
         // Simple GUI-based line drawing
-        private static Texture2D _tex;
 
         private void DrawLineGUI(Vector2 a, Vector2 b, Color color, float width)
         {
@@ -85,6 +76,15 @@ namespace Snm.Visual
 
             GUI.color = savedColor;
             GUI.matrix = matrixBackup;
+        }
+
+        struct ScreenLine
+        {
+            public Vector2 a;
+            public Vector2 b;
+            public Color color;
+            public float width;
+            public float endTime;
         }
     }
 }
