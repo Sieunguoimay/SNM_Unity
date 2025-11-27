@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Snm.Debugging
+namespace Snm.Runtime.Debugging
 {
     public class WorldDrawManager : MonoBehaviour
     {

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Snm.Debugging
+namespace Snm.Runtime.Debugging
 {
     public static class DebugDraw
     {
