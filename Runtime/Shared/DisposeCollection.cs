@@ -1,6 +1,6 @@
 using System;
 
-namespace GrabAndToss.Shared.Extensions
+namespace Snm.Runtime.Dispose
 {
     public class DisposeCollection : IDisposable
     {

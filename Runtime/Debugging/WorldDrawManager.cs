@@ -2,10 +2,14 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Snm.Debugging
+namespace Snm.Runtime.Debugging
 {
     public class WorldDrawManager : MonoBehaviour
     {
+        private readonly Queue<LineRenderer> _pool = new();
+        private GameObject _container;
+        private Material _lineMaterial;
+
         private static WorldDrawManager _instance;
         private static WorldDrawManager Instance
         {
@@ -13,18 +17,24 @@ namespace Snm.Debugging
             {
                 if (_instance == null)
                 {
-                    var go = new GameObject("[WorldLineManager]");
+                    var go = new GameObject("[WorldDrawManager]");
                     DontDestroyOnLoad(go);
                     _instance = go.AddComponent<WorldDrawManager>();
-                    _instance.EnsureContainer();
+                    _instance.Init(new Material(Shader.Find("Sprites/Default")));
                 }
                 return _instance;
             }
         }
 
-        private readonly Queue<LineRenderer> _pool = new Queue<LineRenderer>();
-        private GameObject _container;
-        private Material _lineMaterial;
+        public void Init(Material mat, int preload = 40)
+        {
+            _lineMaterial = mat;
+            EnsureContainer();
+
+            for (int i = 0; i < preload; i++)
+                _pool.Enqueue(CreateNewRenderer());
+        }
+
 
         private void EnsureContainer()
         {
@@ -32,18 +42,12 @@ namespace Snm.Debugging
 
             _container = new GameObject("[DebugLineContainer]");
             _container.transform.SetParent(transform);
-
-            // Simple, always-available shader
-            _lineMaterial = new Material(Shader.Find("Sprites/Default"));
-
-            var preload = 40;
-            for (int i = 0; i < preload; i++)
-                Instance._pool.Enqueue(Instance.CreateNewRenderer());
         }
+
 
         private LineRenderer CreateNewRenderer()
         {
-            var obj = new GameObject("[DebugLine]");
+            var obj = new GameObject("DebugLine");
             obj.transform.SetParent(_container.transform);
 
             LineRenderer lr = obj.AddComponent<LineRenderer>();
@@ -64,11 +68,11 @@ namespace Snm.Debugging
         //=====================================================================
         //  MULTI-POINT LINE
         //=====================================================================
-        public static void CreateLine(Vector3[] pts, Color color, float duration, float width)
+        public static void CreateLine(Vector3[] pts, Color color, float width, float duration)
         {
             if (pts == null || pts.Length < 2) return;
 
-            var lr = Instance.Get();
+            LineRenderer lr = Instance.Get();
 
             lr.gameObject.SetActive(true);
             lr.enabled = true;
@@ -76,6 +80,7 @@ namespace Snm.Debugging
             lr.SetPositions(pts);
             lr.startColor = lr.endColor = color;
             lr.startWidth = lr.endWidth = width;
+            lr.numCornerVertices = 5;
 
             Instance.StartCoroutine(Instance.ReturnAfter(lr, duration));
         }
@@ -84,7 +89,7 @@ namespace Snm.Debugging
         //=====================================================================
         //  ZERO-ALLOC 2-POINT LINE
         //=====================================================================
-        public static void CreateLine(Vector3 a, Vector3 b, Color color, float duration, float width)
+        public static void CreateLine(Vector3 a, Vector3 b, Color color, float width, float duration)
         {
             LineRenderer lr = Instance.Get();
 
@@ -106,8 +111,9 @@ namespace Snm.Debugging
         public static void DrawLine(Vector3 a, Vector3 b, Color color,
                                     float width = 0.02f, float duration = 0f)
         {
-            CreateLine(a, b, color, duration, width); // zero alloc!
+            CreateLine(a, b, color, width, duration); // zero alloc!
         }
+
 
         //=====================================================================
         //  Return object to pool
@@ -121,5 +127,4 @@ namespace Snm.Debugging
             _pool.Enqueue(lr);
         }
     }
-
 }
