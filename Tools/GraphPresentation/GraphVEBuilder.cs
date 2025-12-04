@@ -71,7 +71,7 @@ namespace Snm.Tools.GraphPresentation
                     borderBottomRightRadius = 6,
                 }
             };
-            var layout_PortSpace = new VisualElement() { style = { width = 1, backgroundColor = Color.blue, marginLeft = 10, marginRight = 10 } };
+            var layout_PortSpace = new VisualElement() { style = { width = 1, backgroundColor = Color.black, marginLeft = 10, marginRight = 10 } };
             var layout_Ports = new VisualElement() { style = { flexDirection = FlexDirection.Row, width = Length.Auto(), height = Length.Auto() } };
             var layout_Inputs = new VisualElement() { style = { width = Length.Auto(), height = Length.Auto() } };
             var layout_Outputs = new VisualElement() { style = { width = Length.Auto(), height = Length.Auto(), alignItems = Align.FlexEnd } };

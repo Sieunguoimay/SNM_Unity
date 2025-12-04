@@ -10,7 +10,7 @@ namespace Snm.Tools.GraphPresentation
 {
     public class GraphVisualizerWindow : EditorWindow
     {
-        [SerializeField] private Graph _serializeGraph;
+        [SerializeField] private Graph serializeGraph;
         [SerializeField, HideInInspector] private LayoutAlgorithm layoutAlgorithm;
 
         private VisualElement _world;
@@ -39,30 +39,30 @@ namespace Snm.Tools.GraphPresentation
 
         private void Refresh()
         {
-            if (_serializeGraph != null)
+            if (serializeGraph != null)
             {
                 LayoutGraph();
-                Visualize(_serializeGraph);
+                Visualize(serializeGraph);
             }
         }
 
         public void LoadGraph(Graph graph)
         {
-            _serializeGraph = graph;
+            serializeGraph = graph;
 
             LayoutGraph();
-            Visualize(_serializeGraph);
+            Visualize(serializeGraph);
         }
 
         private void LayoutGraph()
         {
             if (layoutAlgorithm == LayoutAlgorithm.LayoutAlgorithm_DAG)
             {
-                GraphLayout.LayoutGraph(_serializeGraph, GraphLayout.DefaultSpacing, cyclic: false);
+                GraphLayout.LayoutGraph(serializeGraph, GraphLayout.DefaultSpacing, cyclic: false);
             }
             else
             {
-                GraphLayout.LayoutGraph(_serializeGraph, GraphLayout.DefaultSpacing, cyclic: true);
+                GraphLayout.LayoutGraph(serializeGraph, GraphLayout.DefaultSpacing, cyclic: true);
             }
         }
 
@@ -134,6 +134,7 @@ namespace Snm.Tools.GraphPresentation
             viewport.Add(_world);
 
             GraphVESupport.SetupDraggable(_world, null, false);
+            GraphVESupport.SetupZoomable(_world);
 
             _world.schedule.Execute(() =>
             {

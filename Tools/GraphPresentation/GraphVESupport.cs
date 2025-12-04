@@ -122,6 +122,57 @@ namespace Snm.Tools.GraphPresentation
             }
         }
 
+        public static void SetupZoomable(
+            VisualElement ve,
+            float minScale = 0.5f,
+            float maxScale = 2.0f,
+            float zoomSpeed = 0.01f)
+        {
+            float currentScale = 1f;
+
+            // We listen on the VE's parent so zooming works anywhere inside it
+            var parent = ve.parent;
+            parent.RegisterCallback<WheelEvent>(OnWheel);
+
+            void OnWheel(WheelEvent evt)
+            {
+                // delta.y > 0 scrolls down → usually zoom OUT
+                float scroll = evt.delta.y;
+
+                if (Mathf.Abs(scroll) < 0.01f)
+                    return;
+
+                // Calculate new scale
+                float oldScale = currentScale;
+                float newScale = Mathf.Clamp(currentScale - scroll * zoomSpeed, minScale, maxScale);
+                if (Mathf.Approximately(newScale, oldScale))
+                    return;
+
+                currentScale = newScale;
+
+                // Mouse position relative to ve
+                Vector2 mouseLocal = ve.WorldToLocal(evt.mousePosition);
+
+                // Apply scale
+                ve.style.scale = new Scale(new Vector2(newScale, newScale));
+
+                // --- Keep zoom centered on cursor ---
+                // Get new mouse-local after scaling
+                Vector2 mouseLocalNew = ve.WorldToLocal(evt.mousePosition);
+
+                // Move VE so the point under cursor stays still
+                Vector2 delta = mouseLocalNew - mouseLocal;
+
+                float left = ve.style.left.value.value + delta.x;
+                float top = ve.style.top.value.value + delta.y;
+
+                ve.style.left = left;
+                ve.style.top = top;
+
+                evt.StopPropagation();
+            }
+        }
+
         public static VisualElement CreateWorld()
         {
             var width = 1400;
