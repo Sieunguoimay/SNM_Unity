@@ -1,11 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-<<<<<<<< HEAD:Runtime/Debug/ScreenDrawManager.cs
-namespace Snm.Debugging
-========
 namespace Snm.Runtime.Debugging
->>>>>>>> origin/main:Runtime/Debugging/ScreenDrawManager.cs
 {
     public class ScreenDrawManager : MonoBehaviour
     {

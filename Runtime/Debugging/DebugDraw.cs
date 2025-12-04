@@ -1,10 +1,6 @@
 using UnityEngine;
 
-<<<<<<<< HEAD:Runtime/Debug/DebugDraw.cs
-namespace Snm.Debugging
-========
 namespace Snm.Runtime.Debugging
->>>>>>>> origin/main:Runtime/Debugging/DebugDraw.cs
 {
     public static class DebugDraw
     {
@@ -22,11 +18,7 @@ namespace Snm.Runtime.Debugging
             float width = 0.02f,
             float duration = 0f)
         {
-<<<<<<<< HEAD:Runtime/Debug/DebugDraw.cs
             WorldDrawManager.DrawLine(start, end, color, width, duration);
-========
-            WorldDrawManager.CreateLine(new[] { start, end }, color, width, duration);
->>>>>>>> origin/main:Runtime/Debugging/DebugDraw.cs
         }
 
         /// <summary>
@@ -38,11 +30,7 @@ namespace Snm.Runtime.Debugging
             Color color,
             float width = 0.02f,
             float headLength = 0.25f,
-<<<<<<<< HEAD:Runtime/Debug/DebugDraw.cs
-            float headAngle = 20f,
-========
             float headAngle = 30f,
->>>>>>>> origin/main:Runtime/Debugging/DebugDraw.cs
             float duration = 0f)
         {
             Vector3 dir = end - start;
@@ -52,11 +40,7 @@ namespace Snm.Runtime.Debugging
             dir.Normalize();
 
             // Shaft
-<<<<<<<< HEAD:Runtime/Debug/DebugDraw.cs
-            DrawLine(start, end, color, width, duration);
-========
             DrawLine(start, end - width / 2f * dir, color, width, duration);
->>>>>>>> origin/main:Runtime/Debugging/DebugDraw.cs
 
             // Build an orientation for the arrowhead
             // We need some vector not parallel to dir
@@ -76,12 +60,7 @@ namespace Snm.Runtime.Debugging
             Vector3 arrowPoint2 = end + headDir2 * headLength;
 
             // Two small lines for the arrow head
-<<<<<<<< HEAD:Runtime/Debug/DebugDraw.cs
-            WorldDrawManager.CreateLine(new[] { end, arrowPoint1 }, color, duration, width);
-            WorldDrawManager.CreateLine(new[] { end, arrowPoint2 }, color, duration, width);
-========
             WorldDrawManager.CreateLine(new[] { arrowPoint1, end, arrowPoint2 }, color, width / 2f, duration);
->>>>>>>> origin/main:Runtime/Debugging/DebugDraw.cs
         }
 
         /// <summary>
