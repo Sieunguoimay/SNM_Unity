@@ -43,7 +43,7 @@ namespace Common.UnityExtend.UIElements
             _zoomContent.style.top = newOrigin.y;
 
             _scale = newScale;
-            _zoomContent.transform.scale = Vector2.one * _scale;
+            _zoomContent.style.scale = Vector2.one * _scale;
             _zoomContent.MarkDirtyRepaint();
         }
 
@@ -68,7 +68,7 @@ namespace Common.UnityExtend.UIElements
             var changingFactor = newDelta / _scale;
 
             _scale = valid;
-            _zoomContent.transform.scale = Vector2.one * _scale;
+            _zoomContent.style.scale = Vector2.one * _scale;
 
             var localOrigin = new Vector2(_zoomContent.style.left.value.value, _zoomContent.style.top.value.value);
             var offset = localPivot - localOrigin;

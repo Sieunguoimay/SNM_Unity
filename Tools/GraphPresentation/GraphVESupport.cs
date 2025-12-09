@@ -33,43 +33,67 @@ namespace Snm.Tools.GraphPresentation
 
         public static void SetupDraggable(VisualElement ve, Action dragCallback, bool checkInside)
         {
-            var isDragging = false;
-            var capturedPointerId = -1;
-            var pointerStartLocal = Vector2.zero;
-            var worldLeftStart = 0f;
-            var worldTopStart = 0f;
+            new Dragging(ve, dragCallback, checkInside);
+        }
 
-            var parent = ve.parent;
+        private class Dragging
+        {
+            private readonly VisualElement parent;
+            private readonly VisualElement ve;
+            private readonly Action dragCallback;
+            private readonly bool checkInside;
 
-            parent.RegisterCallback<PointerDownEvent>(OnPointerDown);
-            parent.RegisterCallback<PointerMoveEvent>(OnPointerMove);
-            parent.RegisterCallback<PointerUpEvent>(OnPointerUp);
+            private bool _isDragging;
+            private int _capturedPointerId;
+            private Vector2 _pointerStartLocal;
+            private float _worldLeftStart;
+            private float _worldTopStart;
 
-            parent.RegisterCallback<PointerCancelEvent>(OnPointerUp);
-            parent.RegisterCallback<PointerLeaveEvent>(OnPointerUp);
+            public Dragging(VisualElement ve, Action dragCallback, bool checkInside)
+            {
+                this.ve = ve;
+                this.dragCallback = dragCallback;
+                this.checkInside = checkInside;
+
+                _isDragging = false;
+                _capturedPointerId = -1;
+                _pointerStartLocal = Vector2.zero;
+                _worldLeftStart = 0f;
+                _worldTopStart = 0f;
+
+                parent = ve.parent;
+
+                parent.RegisterCallback<PointerDownEvent>(OnPointerDown);
+                parent.RegisterCallback<PointerMoveEvent>(OnPointerMove);
+                parent.RegisterCallback<PointerUpEvent>(OnPointerUp);
+
+                parent.RegisterCallback<PointerCancelEvent>(OnPointerUp);
+                parent.RegisterCallback<PointerLeaveEvent>(OnPointerUp);
+            }
 
             void OnPointerDown(PointerDownEvent evt)
             {
                 if (evt.button != 0)
                     return;
 
-                capturedPointerId = evt.pointerId;
-                pointerStartLocal = evt.localPosition;
+                _capturedPointerId = evt.pointerId;
+                _pointerStartLocal = evt.localPosition;
 
-                worldLeftStart = ve.style.left.value.value;
-                worldTopStart = ve.style.top.value.value;
+                _worldLeftStart = ve.resolvedStyle.left;
+                _worldTopStart = ve.resolvedStyle.top;
 
                 var worldWidth = ve.contentRect.width;
                 var worldHeight = ve.contentRect.height;
 
-                isDragging = !checkInside || CheckInside(
-                    pointerStartLocal,
-                    new Vector2(worldLeftStart, worldTopStart),
-                    new Vector2(worldLeftStart + worldWidth, worldTopStart + worldHeight));
+                var isValidDrag = !checkInside || CheckInside(
+                    _pointerStartLocal,
+                    new Vector2(_worldLeftStart, _worldTopStart),
+                    new Vector2(_worldLeftStart + worldWidth, _worldTopStart + worldHeight));
 
-                if (isDragging)
+                if (isValidDrag)
                 {
-                    parent.CapturePointer(capturedPointerId);
+                    _isDragging = true;
+                    parent.CapturePointer(_capturedPointerId);
                     evt.StopPropagation();
                 }
             }
@@ -84,36 +108,36 @@ namespace Snm.Tools.GraphPresentation
 
             void OnPointerMove(PointerMoveEvent evt)
             {
-                if (!isDragging || evt.pointerId != capturedPointerId || ve == null)
+                if (!_isDragging || evt.pointerId != _capturedPointerId || ve == null)
                     return;
 
                 Vector2 curLocal = evt.localPosition;
-                var delta = curLocal - pointerStartLocal;
-                var newLeft = worldLeftStart + delta.x;
-                var newTop = worldTopStart + delta.y;
+                var delta = curLocal - _pointerStartLocal;
+                var newLeft = _worldLeftStart + delta.x;
+                var newTop = _worldTopStart + delta.y;
 
-                SetWorldPosition(newLeft, newTop);
+                SetLocalPosition(newLeft, newTop);
 
                 evt.StopPropagation();
             }
 
             void OnPointerUp(IPointerEvent evt)
             {
-                if (!isDragging)
+                if (!_isDragging)
                     return;
 
-                if (capturedPointerId != -1)
+                if (_capturedPointerId != -1)
                 {
-                    try { parent.ReleasePointer(capturedPointerId); } catch { }
+                    try { parent.ReleasePointer(_capturedPointerId); } catch { }
                 }
 
-                isDragging = false;
-                capturedPointerId = -1;
+                _isDragging = false;
+                _capturedPointerId = -1;
 
                 if (evt is EventBase eb) eb.StopPropagation();
             }
 
-            void SetWorldPosition(float left, float top)
+            void SetLocalPosition(float left, float top)
             {
                 if (ve == null) return;
                 ve.style.left = left;
