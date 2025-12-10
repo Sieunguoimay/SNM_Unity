@@ -34,7 +34,7 @@ namespace Common.UnityExtend.UIElements
 
             var newScale = Mathf.Clamp(_scale * scale, _scaleMin, _scaleMax);
 
-            var contentOrigin = new Vector2(_zoomContent.style.left.value.value, _zoomContent.style.top.value.value);
+            var contentOrigin = new Vector2(_zoomContent.resolvedStyle.left, _zoomContent.resolvedStyle.top);
             var contentOriginOffset = contentOrigin - contentCenter;
             var scaledOriginOffset = contentOriginOffset * (newScale / _scale);
             var newOrigin = parentCenter + scaledOriginOffset;
@@ -70,7 +70,7 @@ namespace Common.UnityExtend.UIElements
             _scale = valid;
             _zoomContent.style.scale = Vector2.one * _scale;
 
-            var localOrigin = new Vector2(_zoomContent.style.left.value.value, _zoomContent.style.top.value.value);
+            var localOrigin = new Vector2(_zoomContent.resolvedStyle.left, _zoomContent.resolvedStyle.top);
             var offset = localPivot - localOrigin;
             var move = -offset * changingFactor;
             var newOrigin = localOrigin + move;

@@ -40,7 +40,7 @@ namespace Common.UnityExtend.UIElements
         private void BeginDrag(Vector2 mousePosition)
         {
             _isDragging = true;
-            _dragBeginContainerPos = new Vector2(_dragContent.style.left.value.value, _dragContent.style.top.value.value);
+            _dragBeginContainerPos = new Vector2(_dragContent.resolvedStyle.left, _dragContent.resolvedStyle.top);
             _dragBeginMousePos = _dragContent.parent.WorldToLocal(mousePosition);
         }
         private void Drag(Vector2 mousePosition)

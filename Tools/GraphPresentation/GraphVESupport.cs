@@ -68,7 +68,6 @@ namespace Snm.Tools.GraphPresentation
                 parent.RegisterCallback<PointerUpEvent>(OnPointerUp);
 
                 parent.RegisterCallback<PointerCancelEvent>(OnPointerUp);
-                parent.RegisterCallback<PointerLeaveEvent>(OnPointerUp);
             }
 
             void OnPointerDown(PointerDownEvent evt)
@@ -108,7 +107,7 @@ namespace Snm.Tools.GraphPresentation
 
             void OnPointerMove(PointerMoveEvent evt)
             {
-                if (!_isDragging || evt.pointerId != _capturedPointerId || ve == null)
+                if (!_isDragging)// || evt.pointerId != _capturedPointerId || ve == null)
                     return;
 
                 Vector2 curLocal = evt.localPosition;
@@ -187,8 +186,8 @@ namespace Snm.Tools.GraphPresentation
                 // Move VE so the point under cursor stays still
                 Vector2 delta = mouseLocalNew - mouseLocal;
 
-                float left = ve.style.left.value.value + delta.x;
-                float top = ve.style.top.value.value + delta.y;
+                float left = ve.resolvedStyle.left + delta.x;
+                float top = ve.resolvedStyle.top + delta.y;
 
                 ve.style.left = left;
                 ve.style.top = top;

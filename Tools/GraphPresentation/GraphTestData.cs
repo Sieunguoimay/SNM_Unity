@@ -18,9 +18,9 @@ namespace Snm.Tools.GraphPresentation
                     position = Vector2.zero
                 };
                 for (int i = 0; i < inCount; i++)
-                    n.inputs[i] = new Port { name = $"In{i}", id = $"N{index}.in{i}" };
+                    n.inputs[i] = new Port { name = $"In{i}" };
                 for (int o = 0; o < outCount; o++)
-                    n.outputs[o] = new Port { name = $"Out{o}", id = $"N{index}.out{o}" };
+                    n.outputs[o] = new Port { name = $"Out{o}" };
                 return n;
             }
 

@@ -13,10 +13,16 @@ namespace Snm.Tools.GraphPresentation
     [Serializable]
     public class Node
     {
+        public string id;
         public string name;
-        public Port[] inputs;
-        public Port[] outputs;
+        public Port[] inputs = new Port[0];
+        public Port[] outputs = new Port[0];
         public Vector2 position;
+
+        public Node()
+        {
+            id = $"{Guid.NewGuid()}";
+        }
     }
 
     [Serializable]
@@ -24,6 +30,11 @@ namespace Snm.Tools.GraphPresentation
     {
         public string name;
         public string id;
+
+        public Port()
+        {
+            id = $"{Guid.NewGuid()}";
+        }
     }
 
     [Serializable]

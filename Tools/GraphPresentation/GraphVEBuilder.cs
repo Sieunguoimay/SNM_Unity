@@ -6,24 +6,29 @@ using UnityEngine.UIElements;
 
 namespace Snm.Tools.GraphPresentation
 {
+    public interface INodeVEBuilder
+    {
+        VisualElement CreateNodeVE(Node node, Action<Port, VisualElement> createPortVECallback);
+    }
+
     public static class GraphVEBuilder
     {
-
-        public static VisualElement BuildGraphVE(Graph graph)
+        public static VisualElement BuildGraphVE(Graph graph, INodeVEBuilder nodeVEBuilder)
         {
+            nodeVEBuilder ??= new DefaultNodeVEBuilder();
             var root = new VisualElement() { style = { position = Position.Absolute, width = Length.Auto(), height = Length.Auto(), backgroundColor = Color.cyan } };
 
-            var portVEDic = new Dictionary<string, VisualElement>();
+            var connectVEDic = new Dictionary<string, VisualElement>();
             var connectionVERepaintActions = new List<Action>();
 
             for (int i = 0; i < graph.nodes.Length; i++)
             {
                 var node = graph.nodes[i];
 
-                var nodeVE = CreateNodeVE(node,
+                var nodeVE = CreateNodeVE(node, nodeVEBuilder,
                     createPortVECallback: (port, portVE) =>
                     {
-                        portVEDic.Add(port.id, portVE);
+                        connectVEDic.Add(port.id, portVE);
                     },
                     dragCallback: () =>
                     {
@@ -33,28 +38,200 @@ namespace Snm.Tools.GraphPresentation
                         }
                     });
 
+                connectVEDic.Add(node.id, nodeVE);
                 root.Add(nodeVE);
             }
 
             foreach (var connection in graph.connections)
             {
-                var connectionVE = CreateConnectionVE(connection, portVEResolver: ResolvePortVE, out var repaintAction);
+                var connectionVE = CreateConnectionVE(connection, connectVEResolver: id => connectVEDic[id], out var repaintAction);
 
                 root.Add(connectionVE);
                 connectionVERepaintActions.Add(repaintAction);
             }
             return root;
-
-            VisualElement ResolvePortVE(string port)
-            {
-                return portVEDic[port];
-            }
         }
 
         private static VisualElement CreateNodeVE(
             Node node,
+            INodeVEBuilder nodeVEBuilder,
             Action<Port, VisualElement> createPortVECallback,
             Action dragCallback)
+        {
+            var nodeVE = nodeVEBuilder.CreateNodeVE(node,
+                createPortVECallback: createPortVECallback);
+
+            nodeVE.RegisterCallbackOnce<AttachToPanelEvent>(evt =>
+            {
+                GraphVESupport.SetupDraggable(nodeVE, () =>
+                {
+                    dragCallback();
+                    node.position = new Vector2(nodeVE.resolvedStyle.left, nodeVE.resolvedStyle.top);
+                }, true);
+            });
+
+            return nodeVE;
+        }
+
+        private static VisualElement CreateConnectionVE(
+            Connection connection,
+            Func<string, VisualElement> connectVEResolver,
+            out Action repaintAction)
+        {
+            var root = new VisualElement()
+            {
+                style = {
+                    // backgroundColor = Color.green,
+                    position = Position.Absolute,
+                    width=100,
+                    height=100,
+                },
+                pickingMode = PickingMode.Ignore,
+            };
+            var fromVE = connectVEResolver.Invoke(connection.from);
+            var toVE = connectVEResolver.Invoke(connection.to);
+
+            root.generateVisualContent += (context) =>
+            {
+                var from = GetDotPosition(fromVE);
+                var to = GetDotPosition(toVE);
+
+                from = GetRectEdgeIntersection(fromVE.worldBound, to);
+                to = GetRectEdgeIntersection(toVE.worldBound, from);
+
+                var localPos1 = root.WorldToLocal(from);
+                var localPos2 = root.WorldToLocal(to);
+
+
+                var color = new Color(.05f, .05f, .05f, 1f);
+
+                Painter2DUtility.DrawPath(context.painter2D, new[] { localPos1, localPos2 }, color, 10f, 1f);
+                Painter2DUtility.DrawCap(context, localPos1, localPos2, new Vector2(8, 6), color);
+            };
+
+            repaintAction = () =>
+            {
+                var from = GetDotPosition(fromVE);
+                var to = GetDotPosition(toVE);
+                SetEdgePoints(from, to);
+
+                root.MarkDirtyRepaint();
+
+            };
+
+            return root;
+
+            void SetEdgePoints(Vector2 pos1, Vector2 pos2)
+            {
+                var localPos1 = root.parent.WorldToLocal(pos1);
+                var localPos2 = root.parent.WorldToLocal(pos2);
+
+                var xMin = Mathf.Min(localPos1.x, localPos2.x);
+                var yMin = Mathf.Min(localPos1.y, localPos2.y);
+                var xMax = Mathf.Max(localPos1.x, localPos2.x);
+                var yMax = Mathf.Max(localPos1.y, localPos2.y);
+
+                root.style.left = xMin;
+                root.style.top = yMin;
+                root.style.width = xMax - xMin;
+                root.style.height = yMax - yMin;
+            }
+
+            static Vector2 GetDotPosition(VisualElement ve)
+            {
+                var x = ve.resolvedStyle.left;
+                var y = ve.resolvedStyle.top;
+                var width = ve.resolvedStyle.width;
+                var height = ve.resolvedStyle.height;
+                return ve.parent.LocalToWorld(new Vector2(x + width / 2f, y + height / 2f));
+            }
+        }
+
+        public static Vector2 GetRectEdgeIntersection(Rect rect, Vector2 externalPoint)
+        {
+            var center = rect.center;
+            var dir = center - externalPoint;
+
+            // Handle degenerate case
+            if (dir.sqrMagnitude < Mathf.Epsilon)
+                return center;
+
+            // Normalize direction
+            dir.Normalize();
+
+            // Compute t for intersection against 4 rectangle borders
+            float tMin = float.MaxValue;
+
+            // Avoid divide-by-zero
+            const float EPS = 1e-6f;
+
+            // Left edge (x = rect.xMin)
+            if (Mathf.Abs(dir.x) > EPS)
+            {
+                float t = (rect.xMin - externalPoint.x) / dir.x;
+                if (t > 0)
+                {
+                    float y = externalPoint.y + t * dir.y;
+                    if (y >= rect.yMin && y <= rect.yMax)
+                        tMin = Mathf.Min(tMin, t);
+                }
+            }
+
+            // Right edge (x = rect.xMax)
+            if (Mathf.Abs(dir.x) > EPS)
+            {
+                float t = (rect.xMax - externalPoint.x) / dir.x;
+                if (t > 0)
+                {
+                    float y = externalPoint.y + t * dir.y;
+                    if (y >= rect.yMin && y <= rect.yMax)
+                        tMin = Mathf.Min(tMin, t);
+                }
+            }
+
+            // Bottom edge (y = rect.yMin)
+            if (Mathf.Abs(dir.y) > EPS)
+            {
+                float t = (rect.yMin - externalPoint.y) / dir.y;
+                if (t > 0)
+                {
+                    float x = externalPoint.x + t * dir.x;
+                    if (x >= rect.xMin && x <= rect.xMax)
+                        tMin = Mathf.Min(tMin, t);
+                }
+            }
+
+            // Top edge (y = rect.yMax)
+            if (Mathf.Abs(dir.y) > EPS)
+            {
+                float t = (rect.yMax - externalPoint.y) / dir.y;
+                if (t > 0)
+                {
+                    float x = externalPoint.x + t * dir.x;
+                    if (x >= rect.xMin && x <= rect.xMax)
+                        tMin = Mathf.Min(tMin, t);
+                }
+            }
+
+            // Intersection point
+            return externalPoint + dir * tMin;
+        }
+    }
+
+    public class DefaultNodeVEBuilder : INodeVEBuilder
+    {
+        VisualElement INodeVEBuilder.CreateNodeVE(
+            Node node,
+            Action<Port, VisualElement> createPortVECallback)
+        {
+            return CreateNodeVE(
+                node,
+                createPortVECallback);
+        }
+
+        private static VisualElement CreateNodeVE(
+            Node node,
+            Action<Port, VisualElement> createPortVECallback)
         {
             var root = new VisualElement()
             {
@@ -100,14 +277,6 @@ namespace Snm.Tools.GraphPresentation
                 createPortVECallback.Invoke(output, dot);
             }
 
-            root.RegisterCallbackOnce<AttachToPanelEvent>(evt =>
-            {
-                GraphVESupport.SetupDraggable(root, () =>
-                {
-                    dragCallback();
-                    node.position = new Vector2(root.style.left.value.value, root.style.top.value.value);
-                }, true);
-            });
             return root;
         }
 
@@ -132,78 +301,6 @@ namespace Snm.Tools.GraphPresentation
             root.Add(label);
             return root;
         }
-
-        private static VisualElement CreateConnectionVE(
-            Connection connection,
-            Func<string, VisualElement> portVEResolver,
-            out Action repaintAction)
-        {
-            var root = new VisualElement()
-            {
-                style = {
-                    // backgroundColor = Color.green,
-                    position = Position.Absolute,
-                    width=100,
-                    height=100,
-                }
-            };
-            var portVE_From = portVEResolver.Invoke(connection.from);
-            var portVE_To = portVEResolver.Invoke(connection.to);
-
-            root.generateVisualContent += (context) =>
-            {
-                var from = GetDotPosition(portVE_From);
-                var to = GetDotPosition(portVE_To);
-
-                var dotRadius = portVE_From.style.width.value.value;
-
-                var localPos1 = root.WorldToLocal(from);
-                var localPos2 = root.WorldToLocal(to);
-
-                var color = new Color(.05f, .05f, .05f, 1f);
-
-                Painter2DUtility.DrawPath(context.painter2D, new[] { localPos1, localPos2 }, color, 10f, 1f);
-                Painter2DUtility.DrawCap(context, localPos1, localPos2, new Vector2(8, 6), color);
-            };
-
-            repaintAction = () =>
-            {
-                var from = GetDotPosition(portVE_From);
-                var to = GetDotPosition(portVE_To);
-                SetEdgePoints(from, to);
-
-                root.MarkDirtyRepaint();
-
-            };
-
-            return root;
-
-            void SetEdgePoints(Vector2 pos1, Vector2 pos2)
-            {
-                var localPos1 = root.parent.WorldToLocal(pos1);
-                var localPos2 = root.parent.WorldToLocal(pos2);
-
-                var xMin = Mathf.Min(localPos1.x, localPos2.x);
-                var yMin = Mathf.Min(localPos1.y, localPos2.y);
-                var xMax = Mathf.Max(localPos1.x, localPos2.x);
-                var yMax = Mathf.Max(localPos1.y, localPos2.y);
-
-                root.style.left = xMin;
-                root.style.top = yMin;
-                root.style.width = xMax - xMin;
-                root.style.height = yMax - yMin;
-            }
-
-            static Vector2 GetDotPosition(VisualElement port)
-            {
-                var x = port.style.left.value.value;
-                var y = port.style.top.value.value;
-                var width = port.style.width.value.value;
-                var height = port.style.width.value.value;
-                return port.LocalToWorld(new Vector2(x + width / 2f, y + height / 2f));
-            }
-        }
-
     }
 
     public static class Painter2DUtility

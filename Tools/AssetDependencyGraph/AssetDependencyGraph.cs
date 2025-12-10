@@ -67,7 +67,7 @@ namespace Snm.Tools.DependencyVisualize
         {
             var hashSet = new HashSet<NodeView>();
             var arrangementItems = TraverseToGetArrangementItems(node, null, 0, hashSet).ToArray();
-            DependencyGraphCreator.ArrangeNodes(arrangementItems, node.style.left.value.value, node.style.top.value.value);
+            DependencyGraphCreator.ArrangeNodes(arrangementItems, node.resolvedStyle.left, node.resolvedStyle.top);
             foreach (var n in hashSet)
             {
                 foreach (var e in n.ConnectedEdges)

@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -10,8 +11,7 @@ namespace Snm.Tools.GraphPresentation
 {
     public class GraphVisualizerWindow : EditorWindow
     {
-        [SerializeField] private Graph serializeGraph;
-        [SerializeField, HideInInspector] private LayoutAlgorithm layoutAlgorithm;
+        [SerializeField] private SerializeData data = null;
 
         private VisualElement _world;
         private VisualElement _graphVE;
@@ -26,7 +26,7 @@ namespace Snm.Tools.GraphPresentation
             var enumField_Algorithm = new EnumField() { value = LayoutAlgorithm.LayoutAlgorithm_DAG };
             var button_Refresh = new Button() { text = "Refresh", clickable = new(() => Refresh()) };
 
-            enumField_Algorithm.BindProperty(new SerializedObject(this).FindProperty(nameof(layoutAlgorithm)));
+            enumField_Algorithm.BindProperty(new SerializedObject(this).FindProperty("data.layoutAlgorithm"));
 
             rootVisualElement.Add(imgui_DefaultEditor);
             rootVisualElement.Add(layout_Buttons);
@@ -35,35 +35,40 @@ namespace Snm.Tools.GraphPresentation
             layout_Buttons.Add(button_Refresh);
 
             SetupGraphPanel();
+            Refresh();
+        }
+
+        public void LoadGraph(
+            Graph graph,
+            GraphVisualizerComponent<IGraphVEBuilder> graphVEBuilderComponent = null,
+            GraphVisualizerComponent<IGraphLayout> graphLayoutComponent = null)
+        {
+            graphVEBuilderComponent ??= GraphVisualizerComponent<IGraphVEBuilder>.Create<Component_DefaultGraphVEBuilder>(null);
+            graphLayoutComponent ??= GraphVisualizerComponent<IGraphLayout>.Create<Component_SimpleGraphLayout>(Component_SimpleGraphLayout.SerializeConfig(GraphLayout.DefaultSpacing));
+
+            data = new()
+            {
+                components = new GraphVisualizerComponent[] { graphVEBuilderComponent, graphLayoutComponent },
+                graph = graph,
+                isValid = true
+            };
+
+            Refresh();
         }
 
         private void Refresh()
         {
-            if (serializeGraph != null)
+            if (data.isValid)
             {
                 LayoutGraph();
-                Visualize(serializeGraph);
+                Visualize(data.graph);
             }
-        }
-
-        public void LoadGraph(Graph graph)
-        {
-            serializeGraph = graph;
-
-            LayoutGraph();
-            Visualize(serializeGraph);
         }
 
         private void LayoutGraph()
         {
-            if (layoutAlgorithm == LayoutAlgorithm.LayoutAlgorithm_DAG)
-            {
-                GraphLayout.LayoutGraph(serializeGraph, GraphLayout.DefaultSpacing, cyclic: false);
-            }
-            else
-            {
-                GraphLayout.LayoutGraph(serializeGraph, GraphLayout.DefaultSpacing, cyclic: true);
-            }
+            var layouter = GetComponentOfType<IGraphLayout>();
+            layouter.LayoutGraph(data.graph, data.layoutAlgorithm == LayoutAlgorithm.LayoutAlgorithm_Cyclic);
         }
 
         public void Visualize(Graph graph)
@@ -73,13 +78,22 @@ namespace Snm.Tools.GraphPresentation
                 _world.Remove(_graphVE);
             }
 
-            _graphVE = GraphVEBuilder.BuildGraphVE(graph);
+            var builder = GetComponentOfType<IGraphVEBuilder>();
+            _graphVE = builder.CreateGraphVE(graph);
             _world.Add(_graphVE);
+            _graphVE.schedule
+                .Execute(() => LayoutCenter(_graphVE))
+                .StartingIn(100);
+        }
 
-            _graphVE.schedule.Execute(() =>
-            {
-                LayoutCenter(_graphVE);
-            }).StartingIn(1);
+        public TComp GetComponentOfType<TComp>()
+        {
+            var comp = data.components
+                .FirstOrDefault(c => typeof(TComp).IsAssignableFrom(Type.GetType(c.type)));
+
+            if (!string.IsNullOrEmpty(comp.type))
+                return (TComp)Activator.CreateInstance(Type.GetType(comp.type), comp.data);
+            return default;
         }
 
         private static void LayoutCenter(VisualElement ve)
@@ -136,16 +150,24 @@ namespace Snm.Tools.GraphPresentation
             GraphVESupport.SetupDraggable(_world, null, false);
             GraphVESupport.SetupZoomable(_world);
 
-            _world.schedule.Execute(() =>
-            {
-                LayoutCenter(_world);
-            }).StartingIn(1);
+            _world.schedule
+                .Execute(() => LayoutCenter(_world))
+                .StartingIn(1);
         }
 
         private enum LayoutAlgorithm
         {
             LayoutAlgorithm_DAG,
             LayoutAlgorithm_Cyclic,
+        }
+
+        [Serializable]
+        private class SerializeData
+        {
+            public bool isValid;
+            public Graph graph;
+            public GraphVisualizerComponent[] components;
+            public LayoutAlgorithm layoutAlgorithm;
         }
     }
 }

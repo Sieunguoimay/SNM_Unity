@@ -63,7 +63,7 @@ namespace Snm.Tools.DependencyVisualize
                     var parents = columnItems.Where(i => i.parent != null).Select(i => i.parent).Distinct().ToArray();
                     var parent = parents.FirstOrDefault();
                     var sameParent = parents.Count() <= 1;
-                    var y = (sameParent && parent != null ? (parent.node.style.top.value.value + parent.node.style.height.value.value / 2f) : 0f) - height / 2f;
+                    var y = (sameParent && parent != null ? (parent.node.resolvedStyle.top + parent.node.style.height.value.value / 2f) : 0f) - height / 2f;
                     //Debug.Log($"=> {string.Join(",", parents.SelectMany(p => p.node.hierarchy.Children().Select(c => (c as ObjectField).value.name)))}");
                     foreach (var g in columnItems)
                     {

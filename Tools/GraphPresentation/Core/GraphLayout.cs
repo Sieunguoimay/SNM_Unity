@@ -19,6 +19,7 @@ namespace Snm.Tools.GraphPresentation
             for (int nodeIndex = 0; nodeIndex < n; nodeIndex++)
             {
                 var node = graph.nodes[nodeIndex];
+                portOwner[node.id] = nodeIndex;
 
                 if (node.inputs != null)
                 {

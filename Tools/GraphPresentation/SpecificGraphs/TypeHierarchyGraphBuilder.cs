@@ -1,12 +1,9 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
-using Snm.Tools.GraphPresentation;
 using UnityEditor;
-using UnityEngine;
-using UnityEngine.UIElements;
 
-namespace Snm.Tools.ObjectBrowser
+namespace Snm.Tools.GraphPresentation
 {
     public class TypeHierarchyGraphBuilder
     {
@@ -15,25 +12,27 @@ namespace Snm.Tools.ObjectBrowser
             var current = type;
             var nodes = new List<Node>();
             var connections = new List<Connection>();
-
-            nodes.Add(CreateNode(current, out var first_Input, out var first_Output));
-            var curr_Input = first_Input;
+            var first_Node = CreateNode(current);
+            nodes.Add(first_Node);
+            var curr_InputId = first_Node.id;
 
             while (current != null)
             {
                 foreach (var i in current.GetInterfaces())
                 {
-                    nodes.Add(CreateNode(i, out var i_Input, out var i_Output));
-                    connections.Add(new Connection() { to = curr_Input.id, from = i_Output.id });
+                    var node = CreateNode(i);
+                    nodes.Add(node);
+                    connections.Add(new Connection() { from = curr_InputId, to = node.id });
                 }
 
                 var baseType = current.BaseType;
 
                 if (baseType != null)
                 {
-                    nodes.Add(CreateNode(baseType, out var base_Input, out var base_Output));
-                    connections.Add(new Connection() { to = curr_Input.id, from = base_Output.id });
-                    curr_Input = base_Input;
+                    var node = CreateNode(baseType);
+                    nodes.Add(node);
+                    connections.Add(new Connection() { from = curr_InputId, to = node.id });
+                    curr_InputId = node.id;
                 }
 
                 current = baseType;
@@ -46,20 +45,17 @@ namespace Snm.Tools.ObjectBrowser
             };
         }
 
-        private Node CreateNode(Type type, out Port input, out Port output)
+        private Node CreateNode(Type type)
         {
-            input = new Port() { name = "input", id = $"{Guid.NewGuid()}" };
-            output = new Port() { name = "output", id = $"{Guid.NewGuid()}" };
-
-            return new Node()
+            return new Node
             {
                 name = type.FullName,
-                inputs = new[] { input },
-                outputs = new[] { output },
+                inputs = new Port[0],
+                outputs = new Port[0],
             };
         }
 
-        [MenuItem("CONTEXT/Object/Snm/TypeHierarchyGraphBuilderWindow")]
+        [MenuItem("Assets/Tools/GraphVisualizerWindow_TypeHierarchy")]
         public static void OpenTypeGraph()
         {
             var obj = Selection.activeObject;
