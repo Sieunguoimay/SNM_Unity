@@ -92,7 +92,14 @@ namespace Snm.Tools.GraphPresentation
                 .FirstOrDefault(c => typeof(TComp).IsAssignableFrom(Type.GetType(c.type)));
 
             if (!string.IsNullOrEmpty(comp.type))
-                return (TComp)Activator.CreateInstance(Type.GetType(comp.type), comp.data);
+            {
+                var compType = Type.GetType(comp.type);
+                if (compType.GetConstructors().Any(c => c.GetParameters().Length == 1))
+                {
+                    return (TComp)Activator.CreateInstance(compType, comp.data);
+                }
+                return (TComp)Activator.CreateInstance(compType);
+            }
             return default;
         }
 
