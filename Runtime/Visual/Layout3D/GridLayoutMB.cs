@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Snm.Visual.Layout3D
 {
-    public class GridLayout : MonoBehaviour
+    public class GridLayoutMB : MonoBehaviour
     {
         [SerializeField] private Vector3Int gridSize;
         [SerializeField] private Vector3 cellSize;
