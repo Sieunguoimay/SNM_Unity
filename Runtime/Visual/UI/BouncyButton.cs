@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
@@ -13,6 +14,8 @@ namespace Snm.Components.UI
         private Vector3 _orignalScale;
         private Coroutine _coroutine;
         private bool _interactable = true;
+
+        public event Action<BouncyButton> OnClicked;
 
         private void Start()
         {
@@ -30,6 +33,7 @@ namespace Snm.Components.UI
             if (_interactable)
             {
                 onClick?.Invoke();
+                OnClicked?.Invoke(this);
             }
         }
 

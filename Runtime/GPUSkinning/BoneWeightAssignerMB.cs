@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -16,9 +15,7 @@ namespace Snm.Runtime.GPUSkinning
 
         private Transform[] _boneTransforms;
         private Matrix4x4[] _boneMatrices;
-        private Mesh _clonedMesh;
-
-        public Mesh ClonedMesh => _clonedMesh;
+        private Mesh _skinningMesh;
 
         private void Awake() => Setup();
 
@@ -36,70 +33,40 @@ namespace Snm.Runtime.GPUSkinning
             if (!sharedMesh || !meshFilter)
                 return;
 
-            if (_clonedMesh != null)
+            if (_skinningMesh != null)
                 return;
 
             _boneTransforms = boneConfigs.Select(b => b.boneTransform).ToArray();
-
-            _clonedMesh = Instantiate(sharedMesh);
-
-            var boneWeights = BuildBoneWeights(sharedMesh.vertexCount);
-            _clonedMesh.bindposes = BuildBindPoses();
-
-            var boneWeights4 = new List<Vector4>(boneWeights.Length);
-            var boneIndices4 = new List<Vector4>(boneWeights.Length);
-
-            for (int i = 0; i < boneWeights.Length; i++)
-            {
-                BoneWeight bw = boneWeights[i];
-
-                // ---- weights ----
-                Vector4 w = new Vector4(
-                    bw.weight0,
-                    bw.weight1,
-                    bw.weight2,
-                    bw.weight3
-                );
-                boneWeights4.Add(w);
-
-                // ---- indices ----
-                Vector4 idx = new Vector4(
-                    bw.boneIndex0,
-                    bw.boneIndex1,
-                    bw.boneIndex2,
-                    bw.boneIndex3
-                );
-                boneIndices4.Add(idx);
-            }
-            _clonedMesh.SetUVs(1, boneWeights4);   // List<Vector4>
-            _clonedMesh.SetUVs(2, boneIndices4);   // List<Vector4>
-
             _boneMatrices = new Matrix4x4[_boneTransforms.Length];
 
-            meshFilter.sharedMesh = _clonedMesh;
+            _skinningMesh = SkinnedMeshCreator.CreateSkinnedMesh(sharedMesh,
+                CreateBoneWeights(sharedMesh.vertexCount, boneConfigs),
+                CreateBindPoses(_boneTransforms, meshFilter.transform));
+            meshFilter.sharedMesh = _skinningMesh;
 
-            skinnedMeshRenderer.sharedMesh = _clonedMesh;
+            skinnedMeshRenderer.sharedMesh = _skinningMesh;
             skinnedMeshRenderer.bones = _boneTransforms;
         }
 
         private void Cleanup()
         {
-            if (_clonedMesh == null) return;
+            if (_skinningMesh == null) return;
 
             if (Application.IsPlaying(this))
-                Destroy(_clonedMesh);
+                Destroy(_skinningMesh);
             else
-                DestroyImmediate(_clonedMesh);
+                DestroyImmediate(_skinningMesh);
         }
 
+        [ContextMenu("LateUpdate")]
         private void LateUpdate()
         {
-            if (_clonedMesh == null || _boneTransforms == null) return;
+            if (_skinningMesh == null || _boneTransforms == null) return;
             if (!meshRenderer) return;
 
             UpdateBoneMatrices();
 
-            var mat = meshRenderer.material;
+            var mat = meshRenderer.sharedMaterial;
             if (!mat) return;
 
             mat.SetInt("_BoneCount", _boneMatrices.Length);
@@ -112,7 +79,7 @@ namespace Snm.Runtime.GPUSkinning
         [ContextMenu("UpdateBoneMatrices")]
         private void UpdateBoneMatrices()
         {
-            var bindposes = _clonedMesh.bindposes;
+            var bindposes = _skinningMesh.bindposes;
 
             for (int i = 0; i < _boneTransforms.Length; i++)
             {
@@ -131,14 +98,14 @@ namespace Snm.Runtime.GPUSkinning
         // ---------------------------------------------------------
         //  BUILD BINDPOSES
         // ---------------------------------------------------------
-        private Matrix4x4[] BuildBindPoses()
+        private static Matrix4x4[] CreateBindPoses(Transform[] boneTransforms, Transform meshTransform)
         {
-            var bindposes = new Matrix4x4[_boneTransforms.Length];
-            var meshToWorld = meshFilter.transform.localToWorldMatrix;
+            var bindposes = new Matrix4x4[boneTransforms.Length];
+            var meshToWorld = meshTransform.localToWorldMatrix;
 
-            for (int i = 0; i < _boneTransforms.Length; i++)
+            for (int i = 0; i < boneTransforms.Length; i++)
             {
-                var t = _boneTransforms[i];
+                var t = boneTransforms[i];
                 if (!t)
                 {
                     bindposes[i] = Matrix4x4.identity;
@@ -154,7 +121,7 @@ namespace Snm.Runtime.GPUSkinning
         // ---------------------------------------------------------
         //  BUILD BONE WEIGHTS (multi-weight, normalized)
         // ---------------------------------------------------------
-        private BoneWeight[] BuildBoneWeights(int vertexCount)
+        private static BoneWeight[] CreateBoneWeights(int vertexCount, BoneConfig[] boneConfigs)
         {
             // Temporary accumulation: supports multiple bones per vertex
             var temp = new List<(int bone, float weight)>[vertexCount];
@@ -193,14 +160,14 @@ namespace Snm.Runtime.GPUSkinning
                 list.Sort((a, b) => b.weight.CompareTo(a.weight));
 
                 // Unity supports only 4 weights
-                int count = Mathf.Min(list.Count, 4);
+                var count = Mathf.Min(list.Count, 4);
 
-                float total = 0f;
+                var total = 0f;
                 for (int i = 0; i < count; i++)
                     total += list[i].weight;
                 if (total < 1e-6f) total = 1f; // avoid division by zero
 
-                BoneWeight bw = new BoneWeight();
+                var bw = new BoneWeight();
 
                 if (count > 0) { bw.boneIndex0 = list[0].bone; bw.weight0 = list[0].weight / total; }
                 if (count > 1) { bw.boneIndex1 = list[1].bone; bw.weight1 = list[1].weight / total; }
@@ -226,26 +193,6 @@ namespace Snm.Runtime.GPUSkinning
         {
             public int vertexIndex;
             public float weight;
-        }
-    }
-
-    [CustomEditor(typeof(BoneWeightAssignerMB))]
-    public class BoneWeightAssignerMBEditor : Editor
-    {
-        private void OnSceneGUI()
-        {
-            var mb = (BoneWeightAssignerMB)target;
-            if (mb.ClonedMesh == null) return;
-            var vertices = mb.ClonedMesh.vertices;
-
-            Handles.matrix = mb.transform.localToWorldMatrix;
-
-            // Handles.Label(Vector3.up * 2f, $"Bone Weights Count: {mb.ClonedMesh.boneWeights.Length}");
-            for (int i = 0; i < vertices.Length; i++)
-            {
-                var v = vertices[i];
-                Handles.Label(v, $"{i}");
-            }
         }
     }
 }
