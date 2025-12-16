@@ -1,21 +1,62 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
 {
+    public class TransformBoneManager
+    {
+        private readonly Matrix4x4[] bindposes;
+        private readonly Transform[] boneTransforms;
+        private readonly Matrix4x4[] boneMatrices;
+
+        public TransformBoneManager(Transform[] boneTransforms, Matrix4x4 meshToWorld)
+        {
+            this.boneTransforms = boneTransforms;
+
+            bindposes = CreateBindpose(meshToWorld);
+            boneMatrices = new Matrix4x4[boneTransforms.Length];
+        }
+
+        public Matrix4x4[] CreateBoneMatrices()
+        {
+            for (int i = 0; i < boneTransforms.Length; i++)
+            {
+                var boneTransform = boneTransforms[i];
+                var binepose = bindposes[i];
+
+                boneMatrices[i] = boneTransform.localToWorldMatrix * binepose;
+            }
+
+            return boneMatrices;
+        }
+
+        private Matrix4x4[] CreateBindpose(Matrix4x4 meshToWorld)
+        {
+            var bindposes = new Matrix4x4[boneTransforms.Length];
+
+            for (int i = 0; i < boneTransforms.Length; i++)
+            {
+                var boneTransform = boneTransforms[i];
+
+                bindposes[i] = boneTransform.localToWorldMatrix * meshToWorld;
+            }
+            return bindposes;
+        }
+    }
+
+    [ExecuteInEditMode]
     public class BoneWeightAssignerMB : MonoBehaviour
     {
         [SerializeField] private Mesh sharedMesh;
-        [SerializeField] private MeshFilter meshFilter;
-        [SerializeField] private MeshRenderer meshRenderer;
-        [SerializeField] private SkinnedMeshRenderer skinnedMeshRenderer;
+        [SerializeField] private Material material;
+        // [SerializeField] private MeshFilter meshFilter;
+        // [SerializeField] private MeshRenderer meshRenderer;
+        // [SerializeField] private SkinnedMeshRenderer skinnedMeshRenderer;
         [SerializeField] private BoneConfig[] boneConfigs;
 
-        private Transform[] _boneTransforms;
-        private Matrix4x4[] _boneMatrices;
         private Mesh _skinningMesh;
+        private TransformBoneManager _boneManager;
 
         private void Awake() => Setup();
 
@@ -30,23 +71,24 @@ namespace Snm.Runtime.GPUSkinning
 
         private void Setup()
         {
-            if (!sharedMesh || !meshFilter)
+            if (!sharedMesh)
                 return;
 
-            if (_skinningMesh != null)
-                return;
+            var boneTransforms = boneConfigs.Select(bc => bc.transform).ToArray();
+            _boneManager = new TransformBoneManager(boneTransforms, meshToWorld: transform.localToWorldMatrix);
 
-            _boneTransforms = boneConfigs.Select(b => b.boneTransform).ToArray();
-            _boneMatrices = new Matrix4x4[_boneTransforms.Length];
-
-            _skinningMesh = SkinnedMeshCreator.CreateSkinnedMesh(sharedMesh,
-                CreateBoneWeights(sharedMesh.vertexCount, boneConfigs),
-                CreateBindPoses(_boneTransforms, meshFilter.transform));
-            meshFilter.sharedMesh = _skinningMesh;
-
-            skinnedMeshRenderer.sharedMesh = _skinningMesh;
-            skinnedMeshRenderer.bones = _boneTransforms;
+            var boneDatas = boneConfigs
+                .Select(cfg => new BoneData
+                {
+                    vertices = cfg.vertices
+                        .Select(v => new VertexData { index = v.index, boneWeight = v.boneWeight })
+                        .ToList()
+                })
+                .ToArray();
+            var boneWeights = BoneWeightExtractor.ExtractBoneWeights(boneDatas, sharedMesh.vertexCount);
+            _skinningMesh = SkinnedMeshCreator.CreateSkinnedMesh(sharedMesh, boneWeights);
         }
+
 
         private void Cleanup()
         {
@@ -61,138 +103,28 @@ namespace Snm.Runtime.GPUSkinning
         [ContextMenu("LateUpdate")]
         private void LateUpdate()
         {
-            if (_skinningMesh == null || _boneTransforms == null) return;
-            if (!meshRenderer) return;
+            if (_boneManager == null) return;
+            if (!material) return;
 
-            UpdateBoneMatrices();
-
-            var mat = meshRenderer.sharedMaterial;
-            if (!mat) return;
-
-            mat.SetInt("_BoneCount", _boneMatrices.Length);
-            mat.SetMatrixArray("_Bones", _boneMatrices);
-        }
-
-        // ---------------------------------------------------------
-        //  UPDATE BONE MATRICES FOR GPU SKINNING
-        // ---------------------------------------------------------
-        [ContextMenu("UpdateBoneMatrices")]
-        private void UpdateBoneMatrices()
-        {
-            var bindposes = _skinningMesh.bindposes;
-
-            for (int i = 0; i < _boneTransforms.Length; i++)
-            {
-                var bone = _boneTransforms[i];
-
-                if (!bone || i >= bindposes.Length)
-                {
-                    _boneMatrices[i] = Matrix4x4.identity;
-                    continue;
-                }
-
-                _boneMatrices[i] = bone.localToWorldMatrix * bindposes[i];
-            }
-        }
-
-        // ---------------------------------------------------------
-        //  BUILD BINDPOSES
-        // ---------------------------------------------------------
-        private static Matrix4x4[] CreateBindPoses(Transform[] boneTransforms, Transform meshTransform)
-        {
-            var bindposes = new Matrix4x4[boneTransforms.Length];
-            var meshToWorld = meshTransform.localToWorldMatrix;
-
-            for (int i = 0; i < boneTransforms.Length; i++)
-            {
-                var t = boneTransforms[i];
-                if (!t)
-                {
-                    bindposes[i] = Matrix4x4.identity;
-                    continue;
-                }
-
-                bindposes[i] = t.worldToLocalMatrix * meshToWorld;
-            }
-
-            return bindposes;
-        }
-
-        // ---------------------------------------------------------
-        //  BUILD BONE WEIGHTS (multi-weight, normalized)
-        // ---------------------------------------------------------
-        private static BoneWeight[] CreateBoneWeights(int vertexCount, BoneConfig[] boneConfigs)
-        {
-            // Temporary accumulation: supports multiple bones per vertex
-            var temp = new List<(int bone, float weight)>[vertexCount];
-            for (int i = 0; i < vertexCount; i++)
-                temp[i] = new List<(int, float)>();
-
-            // Fill accumulators
-            for (int boneIndex = 0; boneIndex < boneConfigs.Length; boneIndex++)
-            {
-                var cfg = boneConfigs[boneIndex];
-                if (cfg.vertexBoneWeights == null) continue;
-
-                foreach (var vbw in cfg.vertexBoneWeights)
-                {
-                    if (vbw.vertexIndex < 0 || vbw.vertexIndex >= vertexCount)
-                        continue;
-
-                    temp[vbw.vertexIndex].Add((boneIndex, vbw.weight));
-                }
-            }
-
-            // Convert accumulators → BoneWeight array
-            var final = new BoneWeight[vertexCount];
-
-            for (int v = 0; v < vertexCount; v++)
-            {
-                var list = temp[v];
-
-                if (list.Count == 0)
-                {
-                    final[v] = new BoneWeight(); // no weight
-                    continue;
-                }
-
-                // Sort by weight desc
-                list.Sort((a, b) => b.weight.CompareTo(a.weight));
-
-                // Unity supports only 4 weights
-                var count = Mathf.Min(list.Count, 4);
-
-                var total = 0f;
-                for (int i = 0; i < count; i++)
-                    total += list[i].weight;
-                if (total < 1e-6f) total = 1f; // avoid division by zero
-
-                var bw = new BoneWeight();
-
-                if (count > 0) { bw.boneIndex0 = list[0].bone; bw.weight0 = list[0].weight / total; }
-                if (count > 1) { bw.boneIndex1 = list[1].bone; bw.weight1 = list[1].weight / total; }
-                if (count > 2) { bw.boneIndex2 = list[2].bone; bw.weight2 = list[2].weight / total; }
-                if (count > 3) { bw.boneIndex3 = list[3].bone; bw.weight3 = list[3].weight / total; }
-
-                final[v] = bw;
-            }
-
-            return final;
+            var boneMatrices = _boneManager.CreateBoneMatrices();
+            material.SetInt("_BoneCount", boneMatrices.Length);
+            material.SetMatrixArray("_Bones", boneMatrices);
+            Graphics.DrawMesh(_skinningMesh, transform.localToWorldMatrix, material, 0);
         }
 
         // ---------------------------------------------------------
         [Serializable]
         private class BoneConfig
         {
-            public Transform boneTransform;
-            public VertexBoneWeight[] vertexBoneWeights;
+            public Transform transform;
+            public VertexConfig[] vertices;
         }
 
         [Serializable]
-        private class VertexBoneWeight
+        private class VertexConfig
         {
-            public int vertexIndex;
-            public float weight;
+            public int index;
+            public float boneWeight;
         }
     }
 }
