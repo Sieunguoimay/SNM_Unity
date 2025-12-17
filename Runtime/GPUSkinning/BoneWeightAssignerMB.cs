@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Snm.GPUSkinning.BoneWeightTool;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -50,9 +51,6 @@ namespace Snm.Runtime.GPUSkinning
     {
         [SerializeField] private Mesh sharedMesh;
         [SerializeField] private Material material;
-        // [SerializeField] private MeshFilter meshFilter;
-        // [SerializeField] private MeshRenderer meshRenderer;
-        // [SerializeField] private SkinnedMeshRenderer skinnedMeshRenderer;
         [SerializeField] private BoneConfig[] boneConfigs;
 
         private Mesh _skinningMesh;
@@ -78,10 +76,10 @@ namespace Snm.Runtime.GPUSkinning
             _boneManager = new TransformBoneManager(boneTransforms, meshToWorld: transform.localToWorldMatrix);
 
             var boneDatas = boneConfigs
-                .Select(cfg => new BoneData
+                .Select(cfg => new RuntimeBone
                 {
                     vertices = cfg.vertices
-                        .Select(v => new VertexData { index = v.index, boneWeight = v.boneWeight })
+                        .Select(v => new RuntimeVertex { index = v.index, boneWeight = v.boneWeight })
                         .ToList()
                 })
                 .ToArray();
@@ -109,7 +107,14 @@ namespace Snm.Runtime.GPUSkinning
             var boneMatrices = _boneManager.CreateBoneMatrices();
             material.SetInt("_BoneCount", boneMatrices.Length);
             material.SetMatrixArray("_Bones", boneMatrices);
-            Graphics.DrawMesh(_skinningMesh, transform.localToWorldMatrix, material, 0);
+            if (material.enableInstancing)
+            {
+            }
+            else
+            {
+                Graphics.RenderMesh(new RenderParams(material), _skinningMesh, 0, transform.localToWorldMatrix);
+                Graphics.DrawMesh(_skinningMesh, transform.localToWorldMatrix, material, 0);
+            }
         }
 
         // ---------------------------------------------------------

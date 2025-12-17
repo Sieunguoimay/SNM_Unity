@@ -5,16 +5,16 @@ namespace Snm.Runtime.GPUSkinning
 {
     public class BoneDataModifier
     {
-        private readonly BoneData[] bones;
+        private readonly RuntimeBone[] bones;
 
-        public BoneDataModifier(BoneData[] bones)
+        public BoneDataModifier(RuntimeBone[] bones)
         {
             this.bones = bones;
         }
 
-        public void SetVertexWeights(int boneIndex, VertexData[] vertexWeights)
+        public void SetVertexWeights(int boneIndex, RuntimeVertex[] vertexWeights)
         {
-            bones[boneIndex].vertices = new List<VertexData>(vertexWeights);
+            bones[boneIndex].vertices = new List<RuntimeVertex>(vertexWeights);
         }
 
         public void SetVertex(int boneIndex, int vertexIndex, float weight)
@@ -22,7 +22,7 @@ namespace Snm.Runtime.GPUSkinning
             var bone = bones[boneIndex];
             if (bone.vertices == null)
             {
-                bone.vertices = new List<VertexData> { new() { index = vertexIndex, boneWeight = weight } };
+                bone.vertices = new List<RuntimeVertex> { new() { index = vertexIndex, boneWeight = weight } };
             }
             else
             {
@@ -33,7 +33,7 @@ namespace Snm.Runtime.GPUSkinning
 
     public class BoneWeightExtractor
     {
-        public static BoneWeight[] ExtractBoneWeights(BoneData[] bones, int vertexCount)
+        public static BoneWeight[] ExtractBoneWeights(RuntimeBone[] bones, int vertexCount)
         {
             var weights = new List<(int bone, float weight)>[vertexCount];
             for (int i = 0; i < vertexCount; i++)
@@ -107,29 +107,19 @@ namespace Snm.Runtime.GPUSkinning
 
     public class BoneDataCreator
     {
-        public static BoneData[] CreateBones(int boneCount)
+        public static RuntimeBone[] CreateBones(int boneCount)
         {
-            var bones = new BoneData[boneCount];
+            var bones = new RuntimeBone[boneCount];
 
             for (int i = 0; i < boneCount; i++)
             {
-                bones[i] = new BoneData();
+                bones[i] = new RuntimeBone();
             }
 
             return bones;
         }
     }
 
-    public class BoneData
-    {
-        public List<VertexData> vertices;
-    }
-
-    public class VertexData
-    {
-        public int index;
-        public float boneWeight;
-    }
 
     public class SkinnedMeshCreator
     {
