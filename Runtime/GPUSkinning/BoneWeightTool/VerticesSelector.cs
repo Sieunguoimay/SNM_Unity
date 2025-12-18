@@ -1,33 +1,33 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
 {
-    public class VerticesSelector
+    public class VerticesSelectionTool
     {
         private readonly HashSet<int> selectedHashSet = new();
         private readonly Vector3[] vertices;
-        private BoneModifier _boneModifier;
         private bool _isActive;
+        private Action _callback;
 
         public IReadOnlyList<Vector3> AllVertices => vertices;
+        public IEnumerable<int> SelectedVertices => selectedHashSet;
         public bool IsActive => _isActive;
 
-        public VerticesSelector(Vector3[] vertices)
+        public VerticesSelectionTool(Vector3[] vertices)
         {
             this.vertices = vertices;
         }
 
         public void Select(int vertex)
         {
-            selectedHashSet.Add(vertex);
-            _boneModifier?.AddVertex(vertex, 1f);
+            MarkVertexAsSelected(vertex);
         }
 
         public void Unselect(int vertex)
         {
-            selectedHashSet.Remove(vertex);
-            _boneModifier?.RemoveVertex(vertex);
+            MarkVertexAsUnselected(vertex);
         }
 
         public bool IsVertexSelected(int vertexIndex)
@@ -40,22 +40,26 @@ namespace Snm.GPUSkinning.BoneWeightTool
             _isActive = active;
         }
 
-        public void SetBoneModifier(BoneModifier boneModifier)
+        public void MarkVertexAsUnselected(int vertex)
         {
-            selectedHashSet.Clear();
-            _boneModifier = boneModifier;
-
-            if (_boneModifier != null)
-            {
-                for (var i = 0; i < vertices.Length; i++)
-                {
-                    if (_boneModifier.ContainsVertex(i))
-                    {
-                        selectedHashSet.Add(i);
-                    }
-                }
-            }
+            selectedHashSet.Remove(vertex);
+            _callback?.Invoke();
         }
 
+        public void MarkVertexAsSelected(int vertex)
+        {
+            selectedHashSet.Add(vertex);
+            _callback?.Invoke();
+        }
+
+        public void ClearMarks()
+        {
+            selectedHashSet.Clear();
+        }
+
+        public void SetDirtyCallback(Action callback)
+        {
+            _callback = callback;
+        }
     }
 }

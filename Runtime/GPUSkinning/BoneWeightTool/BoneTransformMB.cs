@@ -50,27 +50,35 @@ namespace Snm.GPUSkinning.BoneWeightTool
             if (_boneSelector != null)
             {
                 _boneSelector.OnIsSelectedChangedCallback += BonSelector_OnIsSelectedChangedCallback;
+                UpdateSelection();
             }
         }
 
         private void BonSelector_OnIsSelectedChangedCallback(BoneSelector selector)
         {
-            if (!_boneSelector.IsSelected) return;
-            var selected = Selection.activeObject;
-            if (selected != gameObject)
+            UpdateSelection();
+        }
+
+        private void UpdateSelection()
+        {
+            if (_boneSelector.IsSelected)
             {
-                Selection.activeObject = gameObject;
+                var selected = Selection.activeObject;
+                if (selected != gameObject)
+                {
+                    Selection.activeObject = gameObject;
+                }
             }
         }
 
         public void Select()
         {
-            _boneSelector.Select();
+            _boneSelector?.Select();
         }
 
         public void Unselect()
         {
-            _boneSelector.Unselect();
+            _boneSelector?.Unselect();
         }
 
 #if UNITY_EDITOR
@@ -78,7 +86,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
         private class _Editor : UnityEditor.Editor
         {
             private void OnEnable() => (target as BoneTransformMB).Select();
-            private void OnDisable() => (target as BoneTransformMB).Select();
+            private void OnDisable() => (target as BoneTransformMB).Unselect();
         }
 #endif
     }

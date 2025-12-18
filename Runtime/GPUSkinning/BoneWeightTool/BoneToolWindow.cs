@@ -32,8 +32,9 @@ namespace Snm.GPUSkinning.BoneWeightTool
             SceneView.duringSceneGui -= SceneView_duringSceneGui;
             if (_tool != null)
             {
-                _tool.OnBoneSelectorsChanged -= Tool_OnBoneSelectorsChanged;
-                _tool.Cleanup();
+                _tool.BoneSelectionTool.OnBoneSelectorsChanged -= Tool_OnBonesChanged;
+                _tool.BindposesTool.Hide();
+                _tool.HideVerticesSelector();
                 _tool = null;
             }
             if (_cleanToolVECallback != null) _cleanToolVECallback();
@@ -62,35 +63,24 @@ namespace Snm.GPUSkinning.BoneWeightTool
                     DrawHandleButton(vertexPos, Color.white);
                 }
             }
-
-            foreach (var boneUI in _tool.BoneSelectors)
-            {
-                DrawBoneSelector(boneUI);
-            }
         }
 
-        private void DrawBoneSelector(BoneSelector boneUI)
+        private void DrawVerticesSelector(VerticesSelectionTool verticesSelector)
         {
-        }
-
-        private void DrawVerticesSelector(VerticesSelector verticesUI)
-        {
-            if (verticesUI == null) return;
-
-            var vertices = verticesUI.AllVertices;
+            var vertices = verticesSelector.AllVertices;
             for (int i = 0; i < vertices.Count; i++)
             {
                 var vertexPos = vertices[i];
-                var color = verticesUI.IsVertexSelected(i) ? Color.green : Color.white;
+                var color = verticesSelector.IsVertexSelected(i) ? Color.green : Color.white;
                 if (DrawHandleButton(vertexPos, color))
                 {
-                    if (verticesUI.IsVertexSelected(i))
+                    if (verticesSelector.IsVertexSelected(i))
                     {
-                        verticesUI.Unselect(i);
+                        verticesSelector.Unselect(i);
                     }
                     else
                     {
-                        verticesUI.Select(i);
+                        verticesSelector.Select(i);
                     }
                 }
             }
@@ -113,15 +103,17 @@ namespace Snm.GPUSkinning.BoneWeightTool
         {
             if (_tool != null)
             {
-                _tool.OnBoneSelectorsChanged -= Tool_OnBoneSelectorsChanged;
-                _tool.Cleanup();
+                _tool.BoneSelectionTool.OnBoneSelectorsChanged -= Tool_OnBonesChanged;
+                _tool.BindposesTool.Hide();
+                _tool.HideVerticesSelector();
             }
 
             _tool = tool;
 
             if (_tool != null)
             {
-                _tool.OnBoneSelectorsChanged += Tool_OnBoneSelectorsChanged;
+                _tool.BoneSelectionTool.OnBoneSelectorsChanged += Tool_OnBonesChanged;
+                _tool.BindposesTool.Show();
             }
 
             RefreshVE();
@@ -129,7 +121,6 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
         private void RefreshVE()
         {
-
             var layout_Config = new VisualElement();
             var serialized = new SerializedObject(this);
             layout_Config.Add(new PropertyField(serialized.FindProperty(nameof(mesh))) { bindingPath = nameof(mesh) });
@@ -157,7 +148,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
             }
             if (_tool != null)
             {
-                var toolVE = CreateToolVE(_tool, out _cleanToolVECallback);
+                var toolVE = CreateBoneSelectorsVE(_tool, out _cleanToolVECallback);
                 if (toolVE != null)
                 {
                     rootVisualElement.Add(toolVE);
@@ -173,17 +164,17 @@ namespace Snm.GPUSkinning.BoneWeightTool
             window.SetExportCallback(() => BoneToolCreator.ExportSkinnedMesh(exportFunc(), window.mesh, ref window.outputMesh));
         }
 
-        private void Tool_OnBoneSelectorsChanged()
+        private void Tool_OnBonesChanged()
         {
             RefreshVE();
         }
 
-        public VisualElement CreateToolVE(BoneTool tool, out Action cleanupAction)
+        public VisualElement CreateBoneSelectorsVE(BoneTool tool, out Action cleanupAction)
         {
             var root = new VisualElement();
             var buttons = new VisualElement();
             var buttonDic = new Dictionary<object, VisualElement>();
-            var boneSelectors = tool.BoneSelectors;
+            var boneSelectors = tool.BoneSelectionTool.BoneSelectors;
             for (int i = 0; i < boneSelectors.Count; i++)
             {
                 var boneSelector = boneSelectors[i];
@@ -195,7 +186,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 buttonDic.Add(boneSelector, button);
                 buttons.Add(button);
             }
-            var button_NewBone = new Button() { text = "+", clickable = new(() => { tool.AddNewBone(); }) };
+            var button_NewBone = new Button() { text = "+", clickable = new(tool.AddNewBone) };
             root.Add(buttons);
             root.Add(button_NewBone);
 

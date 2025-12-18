@@ -1,17 +1,17 @@
 using System.Collections.Generic;
-using System.Linq;
-using Snm.GPUSkinning.BoneWeightTool;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
 {
     public class GPUSkinnedMeshRenderer
     {
+        private const int MAX_BONES = 256;
+
         private readonly Mesh mesh;
         private readonly Material material;
         private readonly Transform[] boneTransforms;
         private readonly Transform meshTransform;
-        private readonly Matrix4x4[] boneMatrices;
+        private readonly Matrix4x4[] boneMatrices = new Matrix4x4[MAX_BONES];
 
         public GPUSkinnedMeshRenderer(
             Mesh mesh,
@@ -23,7 +23,6 @@ namespace Snm.Runtime.GPUSkinning
             this.material = material;
             this.boneTransforms = boneTransforms;
             this.meshTransform = meshTransform;
-            boneMatrices = new Matrix4x4[boneTransforms.Length];
         }
 
         public void SetupMesh()
@@ -40,11 +39,7 @@ namespace Snm.Runtime.GPUSkinning
             FillBoneMatrices(boneTransforms, mesh.bindposes, boneMatrices);
 
             material.SetInt("_BoneCount", boneMatrices.Length);
-
-            if (boneMatrices.Length > 0)
-            {
-                material.SetMatrixArray("_Bones", boneMatrices);
-            }
+            material.SetMatrixArray("_Bones", boneMatrices);
         }
 
         public void Render()

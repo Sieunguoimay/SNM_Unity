@@ -1,15 +1,74 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
 {
-    public class BoneTransformTool
+    public class BoneTransformsTool
     {
-        public static BoneTransformMB[] CreateBoneTransforms(Matrix4x4[] bindposes, Matrix4x4 meshToWorld)
+        private Matrix4x4[] _transformMatrices;
+        private IReadOnlyList<BoneSelector> _boneSelectors;
+        private BoneTransformMB[] _boneTransforms;
+
+        public void Show()
         {
-            return bindposes
-                .Select((p, index) => CreateBoneTransform(p, index, meshToWorld))
+            TryCreateBoneTransforms();
+        }
+
+        public void Hide()
+        {
+            TryDestroyBoneTransforms();
+        }
+
+        public void SetBindposes(
+            Matrix4x4[] bindposes,
+            Matrix4x4 meshToWorld,
+            IReadOnlyList<BoneSelector> boneSelectors)
+        {
+            _transformMatrices = bindposes.Select(b => b.inverse * meshToWorld).ToArray();
+            _boneSelectors = boneSelectors;
+
+            TryDestroyBoneTransforms();
+            TryCreateBoneTransforms();
+        }
+
+        private void TryCreateBoneTransforms()
+        {
+            if (_transformMatrices == null) return;
+
+            _boneTransforms = CreateBoneTransforms(_transformMatrices);
+
+            for (int i = 0; i < _boneTransforms.Length; i++)
+            {
+                _boneTransforms[i].SetBoneSelector(_boneSelectors[i]);
+            }
+        }
+
+        private void TryDestroyBoneTransforms()
+        {
+            if (_boneTransforms != null)
+            {
+                foreach (BoneTransformMB v in _boneTransforms)
+                {
+                    v.SetBoneSelector(null);
+                }
+                DestroyBoneTransforms(_boneTransforms);
+                _boneTransforms = null;
+            }
+        }
+
+        public Matrix4x4[] GetBindposes(Matrix4x4 meshToWorld)
+        {
+            return _boneTransforms
+                .Select(bt => bt.GetWorldToLocalMatrix() * meshToWorld)
+                .ToArray();
+        }
+
+        public static BoneTransformMB[] CreateBoneTransforms(Matrix4x4[] transformMatrices)
+        {
+            return transformMatrices
+                .Select((p, index) => CreateBoneTransform(p, index))
                 .ToArray();
         }
 
@@ -18,16 +77,15 @@ namespace Snm.GPUSkinning.BoneWeightTool
             for (int i = 0; i < boneTransforms.Length; i++)
             {
                 var bt = boneTransforms[i];
-                UnityEngine.Object.DestroyImmediate(bt.gameObject);
+                Object.DestroyImmediate(bt.gameObject);
             }
         }
 
-        private static BoneTransformMB CreateBoneTransform(Matrix4x4 bindpose, int index, Matrix4x4 meshToWorld)
+        private static BoneTransformMB CreateBoneTransform(Matrix4x4 transformMatrix, int index)
         {
             var transform = new GameObject($"Bone_{index}").AddComponent<BoneTransformMB>();
-            var boneMatrix = bindpose.inverse * meshToWorld;
 
-            UpdateTransform(transform.transform, boneMatrix);
+            UpdateTransform(transform.transform, transformMatrix);
 
             return transform;
         }

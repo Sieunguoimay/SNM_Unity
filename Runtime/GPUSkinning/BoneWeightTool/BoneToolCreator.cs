@@ -31,13 +31,12 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
             RuntimeBoneImporter.Import(bones, runtimeBoneCollection);
 
-            var verticesSelector = new VerticesSelector(mesh.vertices);
+            var verticesSelector = new VerticesSelectionTool(mesh.vertices);
             var tool = new BoneTool(runtimeBoneCollection, verticesSelector);
 
             SerializeBone[] Export()
             {
-
-                tool.UpdateBindposes(Matrix4x4.identity);
+                tool.UpdateBindposes();
                 return RuntimeBoneImporter.Export(runtimeBoneCollection);
             }
 

@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using Snm.Runtime.GPUSkinning;
-using UnityEditor;
 using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
@@ -10,17 +7,17 @@ namespace Snm.GPUSkinning.BoneWeightTool
     public class BoneTool
     {
         private readonly RuntimeBoneCollection boneCollection;
-        private readonly VerticesSelector verticesSelector;
+        private readonly VerticesSelectionTool verticesSelector;
+        private readonly BoneTransformsTool bindposesTool = new();
+        private readonly BoneSelectionTool boneSelectionTool = new();
 
-        private BoneSelector[] _boneSelectors;
-        private BoneTransformMB[] _boneTransforms;
+        public VerticesSelectionTool VerticesSelector => verticesSelector;
+        public BoneTransformsTool BindposesTool => bindposesTool;
+        public BoneSelectionTool BoneSelectionTool => boneSelectionTool;
 
-        public IReadOnlyList<BoneSelector> BoneSelectors => _boneSelectors;
-        public VerticesSelector VerticesSelector => verticesSelector;
-
-        public event Action OnBoneSelectorsChanged;
-
-        public BoneTool(RuntimeBoneCollection boneCollection, VerticesSelector verticesSelector)
+        public BoneTool(
+            RuntimeBoneCollection boneCollection,
+            VerticesSelectionTool verticesSelector)
         {
             this.boneCollection = boneCollection;
             this.verticesSelector = verticesSelector;
@@ -28,67 +25,42 @@ namespace Snm.GPUSkinning.BoneWeightTool
             UpdateBoneSelectors();
         }
 
-        public void Cleanup()
-        {
-            if (_boneTransforms != null)
-            {
-                BoneTransformTool.DestroyBoneTransforms(_boneTransforms);
-                _boneTransforms = null;
-            }
-            _boneSelectors = null;
-        }
-
         private void UpdateBoneSelectors()
         {
-            Cleanup();
-            var bindposes = boneCollection.Bones.Select(b => b.bindpose).ToArray();
+            var bones = boneCollection.Bones;
+            boneSelectionTool.UpdateBoneSelectors(
+                bones,
+                onSelect: ShowVerticesSelectorForBone,
+                onUnselect: bone => HideVerticesSelector());
 
-            _boneSelectors = GenerateBoneSelectors(boneCollection.Bones);
-            _boneTransforms = BoneTransformTool.CreateBoneTransforms(bindposes, Matrix4x4.identity);
-
-            for (int i = 0; i < _boneSelectors.Length; i++)
-            {
-                var bt = _boneTransforms[i];
-                var boneSelector = _boneSelectors[i];
-                bt.SetBoneSelector(boneSelector);
-            }
-
-            _boneSelectors.FirstOrDefault()?.Select();
-            OnBoneSelectorsChanged?.Invoke();
+            var bindposes = bones.Select(b => b.bindpose).ToArray();
+            bindposesTool.SetBindposes(bindposes, Matrix4x4.identity, boneSelectionTool.BoneSelectors);
         }
 
-        public BoneSelector[] GenerateBoneSelectors(IReadOnlyList<RuntimeBone> bones)
+        private void ShowVerticesSelectorForBone(RuntimeBone bone)
         {
-            return bones.Select((bone, index) => new BoneSelector(onSelected: () =>
+            HideVerticesSelector();
+
+            verticesSelector.SetIsActive(true);
+            foreach (var v in bone.vertices) verticesSelector.MarkVertexAsSelected(v.index);
+            verticesSelector.SetDirtyCallback(() =>
             {
-                var i = index;
-                ClearSelection(i);
-                verticesSelector.SetIsActive(true);
-                verticesSelector.SetBoneModifier(new BoneModifier(bone));
-            }, onUnselected: () =>
-            {
-                verticesSelector.SetIsActive(false);
-                verticesSelector.SetBoneModifier(null);
-            })).ToArray();
+                bone.vertices = verticesSelector.SelectedVertices
+                    .Select(v => new RuntimeVertex { index = v, boneWeight = 1 })
+                    .ToList();
+            });
         }
 
-        private void ClearSelection(int except)
+        public void HideVerticesSelector()
         {
-            if (_boneSelectors == null) return;
-            for (int i = 0; i < _boneSelectors.Length; i++)
-            {
-                if (except == i) continue;
-                var boneSelector = _boneSelectors[i];
-                boneSelector.SetIsSelected(false);
-            }
-        }
-
-        public void AssignBoneToVerticesSelector(RuntimeBone bone)
-        {
+            verticesSelector.SetDirtyCallback(null);
+            verticesSelector.SetIsActive(false);
+            verticesSelector.ClearMarks();
         }
 
         public void AddNewBone()
         {
+            UpdateBindposes();
             var bones = boneCollection.Bones
                 .Append(new RuntimeBone()
                 {
@@ -100,12 +72,13 @@ namespace Snm.GPUSkinning.BoneWeightTool
             UpdateBoneSelectors();
         }
 
-        public void UpdateBindposes(Matrix4x4 meshToWorld)
+        public void UpdateBindposes()
         {
+            var bindposes = bindposesTool.GetBindposes(Matrix4x4.identity);
             for (int i = 0; i < boneCollection.Bones.Count; i++)
             {
                 var b = boneCollection.Bones[i];
-                b.bindpose = _boneTransforms[i].GetWorldToLocalMatrix() * meshToWorld;
+                b.bindpose = bindposes[i];
             }
         }
     }
