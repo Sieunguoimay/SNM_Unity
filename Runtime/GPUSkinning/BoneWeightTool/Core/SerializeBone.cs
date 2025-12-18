@@ -1,10 +1,12 @@
 using System;
+using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning.Serialize
 {
     [Serializable]
     public class SerializeBone
     {
+        public Matrix4x4 bindpose;
         public SerializeVertex[] vertices;
     }
 

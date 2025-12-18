@@ -1,5 +1,4 @@
 using System.Linq;
-using Snm.GPUSkinning.BoneWeightTool;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -25,6 +24,7 @@ namespace Snm.Runtime.GPUSkinning
 
         private void OnValidate()
         {
+            if (!isActiveAndEnabled) return;
             TryCreateRenderer();
         }
 
@@ -32,13 +32,13 @@ namespace Snm.Runtime.GPUSkinning
         {
             _renderer = null;
             if (mesh == null || material == null) return;
+            if (material.shader.name != "Custom/GpuSkin")
+            {
+                Debug.LogError("GPUSkinnedMeshRenderer: Require material with shader Custom/GpuSkin!", this);
+                return;
+            }
             _renderer = new GPUSkinnedMeshRenderer(mesh, material, boneTransforms.Where(t => t != null).ToArray(), transform);
             _renderer.SetupMesh();
-        }
-
-        private void Update()
-        {
-            if (_renderer == null) return;
         }
 
         private void LateUpdate()

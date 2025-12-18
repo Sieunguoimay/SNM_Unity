@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using System.Linq;
 using Snm.GPUSkinning.BoneWeightTool;
-using Snm.Runtime.GPUSkinning.Serialize;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -12,7 +12,6 @@ namespace Snm.Runtime.GPUSkinning
         private readonly Transform[] boneTransforms;
         private readonly Transform meshTransform;
         private readonly Matrix4x4[] boneMatrices;
-        private readonly Matrix4x4[] bindposes;
 
         public GPUSkinnedMeshRenderer(
             Mesh mesh,
@@ -25,12 +24,11 @@ namespace Snm.Runtime.GPUSkinning
             this.boneTransforms = boneTransforms;
             this.meshTransform = meshTransform;
             boneMatrices = new Matrix4x4[boneTransforms.Length];
-            bindposes = this.boneTransforms.Select(bt => bt.worldToLocalMatrix * this.meshTransform.localToWorldMatrix).ToArray();
         }
 
         public void SetupMesh()
         {
-            BoneWeightConverter.ConvertToRaw(mesh.boneWeights, out var boneWeights4, out var boneIndices4);
+            ConvertToRaw(mesh.boneWeights, out var boneWeights4, out var boneIndices4);
 
             mesh.SetUVs(1, boneWeights4);
             mesh.SetUVs(2, boneIndices4);
@@ -39,7 +37,7 @@ namespace Snm.Runtime.GPUSkinning
 
         public void SetupMaterial()
         {
-            FillBoneMatrices(boneTransforms, bindposes, boneMatrices);
+            FillBoneMatrices(boneTransforms, mesh.bindposes, boneMatrices);
 
             material.SetInt("_BoneCount", boneMatrices.Length);
 
@@ -65,6 +63,20 @@ namespace Snm.Runtime.GPUSkinning
                 var bindpose = bindposes[i];
 
                 boneMatrices[i] = boneToWorld * bindpose;
+            }
+        }
+
+        public static void ConvertToRaw(BoneWeight[] boneWeights, out List<Vector4> boneWeights4, out List<Vector4> boneIndices4)
+        {
+            boneWeights4 = new List<Vector4>(boneWeights.Length);
+            boneIndices4 = new List<Vector4>(boneWeights.Length);
+            for (int i = 0; i < boneWeights.Length; i++)
+            {
+                var bw = boneWeights[i];
+                var w = new Vector4(bw.weight0, bw.weight1, bw.weight2, bw.weight3);
+                var idx = new Vector4(bw.boneIndex0, bw.boneIndex1, bw.boneIndex2, bw.boneIndex3);
+                boneWeights4.Add(w);
+                boneIndices4.Add(idx);
             }
         }
     }

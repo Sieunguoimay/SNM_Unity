@@ -1,0 +1,38 @@
+using System.Linq;
+using Snm.Runtime.GPUSkinning;
+using Snm.Runtime.GPUSkinning.Serialize;
+using UnityEditor;
+
+namespace Snm.GPUSkinning.BoneWeightTool
+{
+    public class RuntimeBoneImporter
+    {
+        public static void Import(SerializeBone[] bones, RuntimeBoneCollection boneCollection)
+        {
+            var runtimeBones = bones
+                .Select(bone => new RuntimeBone
+                {
+                    bindpose = bone.bindpose,
+                    vertices = bone.vertices
+                        .Select(v => new RuntimeVertex { index = v.index, boneWeight = v.boneWeight })
+                        .ToList()
+                })
+                .ToArray();
+
+            boneCollection.SetBones(runtimeBones);
+        }
+
+        public static SerializeBone[] Export(RuntimeBoneCollection boneCollection)
+        {
+            return boneCollection.Bones
+                .Select(bone => new SerializeBone
+                {
+                    bindpose = bone.bindpose,
+                    vertices = bone.vertices
+                        .Select(v => new SerializeVertex { index = v.index, boneWeight = v.boneWeight })
+                        .ToArray()
+                })
+                .ToArray();
+        }
+    }
+}

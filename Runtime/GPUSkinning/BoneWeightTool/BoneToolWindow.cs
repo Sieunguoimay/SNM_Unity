@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -11,9 +12,9 @@ namespace Snm.GPUSkinning.BoneWeightTool
         [SerializeField] private Mesh mesh;
         [SerializeField] private Mesh outputMesh;
 
-        private BoneToolUI _toolUI;
+        private BoneTool _tool;
         private Action _exportCallback;
-        private VisualElement _toolVE;
+        private Action _cleanToolVECallback;
 
         [MenuItem("Tools/Open Bone Weight Tool")]
         public static void OpenTool()
@@ -29,11 +30,13 @@ namespace Snm.GPUSkinning.BoneWeightTool
         private void OnDisable()
         {
             SceneView.duringSceneGui -= SceneView_duringSceneGui;
-            if (_toolUI != null)
+            if (_tool != null)
             {
-                _toolUI.OnBoneSelectorsChanged -= ToolUI_OnBoneSelectorsChanged;
-                _toolUI = null;
+                _tool.OnBoneSelectorsChanged -= Tool_OnBoneSelectorsChanged;
+                _tool.Cleanup();
+                _tool = null;
             }
+            if (_cleanToolVECallback != null) _cleanToolVECallback();
         }
 
         private void CreateGUI()
@@ -44,15 +47,15 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
         private void SceneView_duringSceneGui(SceneView view)
         {
-            if (_toolUI == null) return;
+            if (_tool == null) return;
 
-            if (_toolUI.VerticesSelector != null)
+            if (_tool.VerticesSelector.IsActive)
             {
-                DrawVerticesSelectorUI(_toolUI.VerticesSelector);
+                DrawVerticesSelector(_tool.VerticesSelector);
             }
             else
             {
-                var vertices = _toolUI.AllVertices;
+                var vertices = _tool.VerticesSelector.AllVertices;
                 for (int i = 0; i < vertices.Count; i++)
                 {
                     var vertexPos = vertices[i];
@@ -60,17 +63,17 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 }
             }
 
-            foreach (var boneUI in _toolUI.BoneSelectors)
+            foreach (var boneUI in _tool.BoneSelectors)
             {
-                DrawBoneSelectorUI(boneUI);
+                DrawBoneSelector(boneUI);
             }
         }
 
-        private void DrawBoneSelectorUI(BoneSelectorUI boneUI)
+        private void DrawBoneSelector(BoneSelector boneUI)
         {
         }
 
-        private void DrawVerticesSelectorUI(VerticesSelectorUI verticesUI)
+        private void DrawVerticesSelector(VerticesSelector verticesUI)
         {
             if (verticesUI == null) return;
 
@@ -106,20 +109,19 @@ namespace Snm.GPUSkinning.BoneWeightTool
             RefreshVE();
         }
 
-        public void SetBoneToolUI(BoneToolUI toolUI)
+        public void SetBoneTool(BoneTool tool)
         {
-            if (_toolUI != null)
+            if (_tool != null)
             {
-                _toolUI.OnBoneSelectorsChanged -= ToolUI_OnBoneSelectorsChanged;
+                _tool.OnBoneSelectorsChanged -= Tool_OnBoneSelectorsChanged;
+                _tool.Cleanup();
             }
 
-            _toolUI = toolUI;
-            _toolVE = null;
+            _tool = tool;
 
-            if (_toolUI != null)
+            if (_tool != null)
             {
-                _toolUI.OnBoneSelectorsChanged += ToolUI_OnBoneSelectorsChanged;
-                _toolVE = CreateToolVE(_toolUI);
+                _tool.OnBoneSelectorsChanged += Tool_OnBoneSelectorsChanged;
             }
 
             RefreshVE();
@@ -127,6 +129,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
         private void RefreshVE()
         {
+
             var layout_Config = new VisualElement();
             var serialized = new SerializedObject(this);
             layout_Config.Add(new PropertyField(serialized.FindProperty(nameof(mesh))) { bindingPath = nameof(mesh) });
@@ -147,56 +150,65 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 layout_ToolBar.Add(button_Export);
             }
 
-            if (_toolVE != null)
+            if (_cleanToolVECallback != null)
             {
-                rootVisualElement.Add(_toolVE);
+                _cleanToolVECallback();
+                _cleanToolVECallback = null;
+            }
+            if (_tool != null)
+            {
+                var toolVE = CreateToolVE(_tool, out _cleanToolVECallback);
+                if (toolVE != null)
+                {
+                    rootVisualElement.Add(toolVE);
+                }
             }
         }
 
         private static void LoadTool(BoneToolWindow window)
         {
             if (window.mesh == null) return;
-            var toolUI = BoneToolUICreator.CreateToolUI(window.mesh, out var exportFunc);
-            window.SetBoneToolUI(toolUI);
-            window.SetExportCallback(() => BoneToolUICreator.ExportSkinnedMesh(exportFunc(), window.mesh, ref window.outputMesh));
+            BoneToolCreator.CreateTool(window.mesh, out var tool, out var exportFunc);
+            window.SetBoneTool(tool);
+            window.SetExportCallback(() => BoneToolCreator.ExportSkinnedMesh(exportFunc(), window.mesh, ref window.outputMesh));
         }
 
-        private void ToolUI_OnBoneSelectorsChanged()
+        private void Tool_OnBoneSelectorsChanged()
         {
-            _toolVE = CreateToolVE(_toolUI);
             RefreshVE();
         }
 
-        public VisualElement CreateToolVE(BoneToolUI toolUI)
+        public VisualElement CreateToolVE(BoneTool tool, out Action cleanupAction)
         {
-            var boneSelectors = toolUI.BoneSelectors;
             var root = new VisualElement();
             var buttons = new VisualElement();
+            var buttonDic = new Dictionary<object, VisualElement>();
+            var boneSelectors = tool.BoneSelectors;
             for (int i = 0; i < boneSelectors.Count; i++)
             {
                 var boneSelector = boneSelectors[i];
-                var button = new Button() { text = "Bone " + i, clickable = new(ButtonClick) };
+                var button = new Button() { text = "Bone " + i, clickable = new(boneSelector.Select) };
 
-                void ButtonClick()
-                {
-                    ClearSelection();
-                    boneSelector.Select();
-                }
                 button.SetEnabled(!boneSelector.IsSelected);
-                boneSelector.SetIsSelectedChangeCallback(_ => button.SetEnabled(!_.IsSelected));
+                boneSelector.OnIsSelectedChangedCallback += BoneSelector_OnIsSelectedChanged;
+
+                buttonDic.Add(boneSelector, button);
                 buttons.Add(button);
             }
-            var button_NewBone = new Button() { text = "+", clickable = new(() => { toolUI.AddNewBone(); }) };
+            var button_NewBone = new Button() { text = "+", clickable = new(() => { tool.AddNewBone(); }) };
             root.Add(buttons);
             root.Add(button_NewBone);
 
-            void ClearSelection()
+            void BoneSelector_OnIsSelectedChanged(BoneSelector selector) => buttonDic[selector].SetEnabled(!selector.IsSelected);
+
+            cleanupAction = () =>
             {
-                foreach (var boneSelector in boneSelectors)
+                for (int i = 0; i < boneSelectors.Count; i++)
                 {
-                    boneSelector.Unselect();
+                    var boneSelector = boneSelectors[i];
+                    boneSelector.OnIsSelectedChangedCallback -= BoneSelector_OnIsSelectedChanged;
                 }
-            }
+            };
             return root;
         }
     }
