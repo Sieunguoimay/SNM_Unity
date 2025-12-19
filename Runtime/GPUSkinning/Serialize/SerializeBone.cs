@@ -3,6 +3,13 @@ using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning.Serialize
 {
+
+    [Serializable]
+    public class BoneHierarchy
+    {
+        public int[] parentIndices;
+    }
+
     [Serializable]
     public class SerializeBone
     {

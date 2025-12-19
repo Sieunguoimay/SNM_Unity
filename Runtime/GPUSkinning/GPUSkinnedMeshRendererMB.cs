@@ -1,4 +1,11 @@
 using System.Linq;
+using Snm.Runtime.GPUSkinning.Serialize;
+using System;
+
+#if UNITY_EDITOR
+using Snm.GPUSkinning.BoneWeightTool;
+using UnityEditor;
+#endif
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -47,5 +54,21 @@ namespace Snm.Runtime.GPUSkinning
             _renderer.SetupMaterial();
             _renderer.Render();
         }
+
+#if UNITY_EDITOR
+        [ContextMenu("Create Bone Transforms")]
+        private void CreateBoneTransforms()
+        {
+            foreach (var bt in boneTransforms) bt.name += "_OBSOLETE";
+
+            boneTransforms = BoneTransformsTool.CreateBoneHierarchy(
+                mesh.bindposes,
+                transform.localToWorldMatrix,
+                Array.Empty<int>());
+
+            EditorUtility.SetDirty(this);
+            OnValidate();
+        }
+#endif
     }
 }

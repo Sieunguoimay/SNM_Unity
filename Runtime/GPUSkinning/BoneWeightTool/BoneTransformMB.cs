@@ -6,6 +6,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
     public class BoneTransformMB : MonoBehaviour
     {
         private BoneSelector _boneSelector;
+        private int _boneIndex;
 
         private void OnEnable()
         {
@@ -38,6 +39,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
             return transform.worldToLocalMatrix;
         }
 
+        public void SetBoneIndex(int index) { _boneIndex = index; }
         public void SetBoneSelector(BoneSelector boneSelector)
         {
             if (_boneSelector != null)
@@ -79,6 +81,11 @@ namespace Snm.GPUSkinning.BoneWeightTool
         public void Unselect()
         {
             _boneSelector?.Unselect();
+        }
+
+        public int GetBoneIndex()
+        {
+            return _boneIndex;
         }
 
 #if UNITY_EDITOR

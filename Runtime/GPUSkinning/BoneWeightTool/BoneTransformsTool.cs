@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Snm.Runtime.GPUSkinning;
 using UnityEditor;
 using UnityEngine;
 
@@ -7,9 +9,12 @@ namespace Snm.GPUSkinning.BoneWeightTool
 {
     public class BoneTransformsTool
     {
-        private Matrix4x4[] _transformMatrices;
+        private IReadOnlyList<RuntimeBone> _bones;
         private IReadOnlyList<BoneSelector> _boneSelectors;
+        private Matrix4x4 _meshToWorld;
         private BoneTransformMB[] _boneTransforms;
+
+        public BoneTransformMB[] BoneTransforms { get => _boneTransforms; set => _boneTransforms = value; }
 
         public void Show()
         {
@@ -21,13 +26,14 @@ namespace Snm.GPUSkinning.BoneWeightTool
             TryDestroyBoneTransforms();
         }
 
-        public void SetBindposes(
-            Matrix4x4[] bindposes,
+        public void SetBones(
+            IReadOnlyList<RuntimeBone> bones,
             Matrix4x4 meshToWorld,
             IReadOnlyList<BoneSelector> boneSelectors)
         {
-            _transformMatrices = bindposes.Select(b => b.inverse * meshToWorld).ToArray();
+            _bones = bones;
             _boneSelectors = boneSelectors;
+            _meshToWorld = meshToWorld;
 
             TryDestroyBoneTransforms();
             TryCreateBoneTransforms();
@@ -35,14 +41,42 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
         private void TryCreateBoneTransforms()
         {
-            if (_transformMatrices == null) return;
+            if (_bones == null || _boneTransforms != null) return;
 
-            _boneTransforms = CreateBoneTransforms(_transformMatrices);
+            var transforms = CreateBoneHierarchy(
+                _bones.Select(b => b.bindpose).ToArray(),
+                _meshToWorld,
+                Array.Empty<int>());
 
-            for (int i = 0; i < _boneTransforms.Length; i++)
+            _boneTransforms = new BoneTransformMB[_bones.Count];
+
+            for (int i = 0; i < transforms.Length; i++)
             {
+                _boneTransforms[i] = transforms[i].gameObject.AddComponent<BoneTransformMB>();
                 _boneTransforms[i].SetBoneSelector(_boneSelectors[i]);
             }
+        }
+
+        public static Transform[] CreateBoneHierarchy(Matrix4x4[] bindposes, Matrix4x4 meshToWorld, int[] parents)
+        {
+            var transforms = new Transform[bindposes.Length];
+            for (int i = 0; i < bindposes.Length; i++)
+            {
+                var bp = bindposes[i];
+                var tr = new GameObject($"bone_{i}").transform;
+                UpdateTransform(tr, bp.inverse * meshToWorld);
+                transforms[i] = tr;
+            }
+
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                var tr = transforms[i];
+                var parent = i < parents.Length ? parents[i] : -1;
+                if (parent < 0) continue;
+
+                tr.SetParent(transforms[parent]);
+            }
+            return transforms;
         }
 
         private void TryDestroyBoneTransforms()
@@ -58,17 +92,26 @@ namespace Snm.GPUSkinning.BoneWeightTool
             }
         }
 
+        public int[] GetParents()
+        {
+            return _boneTransforms
+                .Select(bt =>
+                {
+                    var parent = bt.transform.parent;
+                    for (int i = 0; i < _boneTransforms.Length; i++)
+                    {
+                        BoneTransformMB bt2 = _boneTransforms[i];
+                        if (bt2.transform == parent) return i;
+                    }
+                    return -1;
+                })
+                .ToArray();
+        }
+
         public Matrix4x4[] GetBindposes(Matrix4x4 meshToWorld)
         {
             return _boneTransforms
                 .Select(bt => bt.GetWorldToLocalMatrix() * meshToWorld)
-                .ToArray();
-        }
-
-        public static BoneTransformMB[] CreateBoneTransforms(Matrix4x4[] transformMatrices)
-        {
-            return transformMatrices
-                .Select((p, index) => CreateBoneTransform(p, index))
                 .ToArray();
         }
 
@@ -77,17 +120,8 @@ namespace Snm.GPUSkinning.BoneWeightTool
             for (int i = 0; i < boneTransforms.Length; i++)
             {
                 var bt = boneTransforms[i];
-                Object.DestroyImmediate(bt.gameObject);
+                if (bt && bt.gameObject) UnityEngine.Object.DestroyImmediate(bt.gameObject);
             }
-        }
-
-        private static BoneTransformMB CreateBoneTransform(Matrix4x4 transformMatrix, int index)
-        {
-            var transform = new GameObject($"Bone_{index}").AddComponent<BoneTransformMB>();
-
-            UpdateTransform(transform.transform, transformMatrix);
-
-            return transform;
         }
 
         public static void DecomposeMatrix(

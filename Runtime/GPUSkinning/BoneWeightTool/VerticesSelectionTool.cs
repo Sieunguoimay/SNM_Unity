@@ -7,12 +7,13 @@ namespace Snm.GPUSkinning.BoneWeightTool
     public class VerticesSelectionTool
     {
         private readonly HashSet<int> selectedHashSet = new();
+        private readonly List<int> selectedList = new();
         private readonly Vector3[] vertices;
         private bool _isActive;
         private Action _callback;
 
         public IReadOnlyList<Vector3> AllVertices => vertices;
-        public IEnumerable<int> SelectedVertices => selectedHashSet;
+        public IReadOnlyList<int> SelectedVertices => selectedList;
         public bool IsActive => _isActive;
 
         public VerticesSelectionTool(Vector3[] vertices)
@@ -42,18 +43,21 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
         public void MarkVertexAsUnselected(int vertex)
         {
+            selectedList.Remove(vertex);
             selectedHashSet.Remove(vertex);
             _callback?.Invoke();
         }
 
         public void MarkVertexAsSelected(int vertex)
         {
+            selectedList.Add(vertex);
             selectedHashSet.Add(vertex);
             _callback?.Invoke();
         }
 
         public void ClearMarks()
         {
+            selectedList.Clear();
             selectedHashSet.Clear();
         }
 

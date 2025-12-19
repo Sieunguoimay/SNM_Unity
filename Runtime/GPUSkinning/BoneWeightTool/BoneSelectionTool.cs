@@ -14,18 +14,18 @@ namespace Snm.GPUSkinning.BoneWeightTool
         public event Action OnBoneSelectorsChanged;
 
         public void UpdateBoneSelectors(
-            IReadOnlyList<RuntimeBone> bones,
-            Action<RuntimeBone> onSelect,
-            Action<RuntimeBone> onUnselect)
+            int boneCount,
+            Action<int> onSelect,
+            Action<int> onUnselect)
         {
-            _boneSelectors = bones
-                .Select((bone, index) => new BoneSelector(onSelected: () =>
+            _boneSelectors = Enumerable.Range(0, boneCount)
+                .Select(boneIndex => new BoneSelector(onSelected: () =>
                     {
-                        ClearSelection(index);
-                        onSelect(bone);
+                        ClearSelection(boneIndex);
+                        onSelect(boneIndex);
                     }, onUnselected: () =>
                     {
-                        onUnselect(bone);
+                        onUnselect(boneIndex);
                     }))
                 .ToArray();
             _boneSelectors.FirstOrDefault()?.Select();

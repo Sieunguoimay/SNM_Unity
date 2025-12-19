@@ -7,16 +7,29 @@ using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
 {
-    public class BoneToolCreator
+    public class AssetExportTool
     {
-        public static void ExportSkinnedMesh(SerializeBone[] bones, Mesh mesh, ref Mesh outputMesh)
+        public static void ExportBoneHierarchy(int[] parents, string name, ref BoneHierarchyAsset hierarchyAsset)
+        {
+            if (hierarchyAsset == null)
+            {
+                hierarchyAsset = ScriptableObject.CreateInstance<BoneHierarchyAsset>();
+                hierarchyAsset.name = name;
+                CreateAsset(hierarchyAsset);
+            }
+            hierarchyAsset.boneHierarchy.parentIndices = parents;
+            EditorUtility.SetDirty(hierarchyAsset);
+            AssetDatabase.SaveAssetIfDirty(hierarchyAsset);
+        }
+
+        public static void ExportBoneDataAsSkinnedMesh(SerializeBone[] bones, Mesh mesh, ref Mesh outputMesh)
         {
             if (outputMesh == null)
             {
                 outputMesh = UnityEngine.Object.Instantiate(mesh);
-                var p = AssetDatabase.GetAssetPath(mesh);
-                p = p.StartsWith("Assets/") ? p : "Assets/";
-                AssetDatabase.CreateAsset(outputMesh, AssetDatabase.GenerateUniqueAssetPath(Path.GetDirectoryName(p) + "/" + mesh.name + ".asset"));
+                outputMesh.name = mesh.name;
+
+                CreateAsset(outputMesh);
             }
             outputMesh.bindposes = bones.Select(b => b.bindpose).ToArray();
             outputMesh.boneWeights = BoneWeightConverter.ExtractBoneWeights(bones, outputMesh.vertices.Length);
@@ -24,24 +37,25 @@ namespace Snm.GPUSkinning.BoneWeightTool
             AssetDatabase.SaveAssetIfDirty(outputMesh);
         }
 
-        public static void CreateTool(Mesh mesh, out BoneTool outTool, out Func<SerializeBone[]> export)
+        private static void CreateAsset(UnityEngine.Object outputMesh)
         {
-            var bones = BoneWeightConverter.ConvertToBoneDatas(mesh.boneWeights, mesh.bindposes);
-            var runtimeBoneCollection = new RuntimeBoneCollection();
+            var p = AssetDatabase.GetAssetPath(Selection.activeObject);
+            p = p.StartsWith("Assets/") ? p : "Assets/";
+            AssetDatabase.CreateAsset(outputMesh, AssetDatabase.GenerateUniqueAssetPath(Path.GetDirectoryName(p) + "/" + outputMesh.name + ".asset"));
+        }
+    }
+    public class BoneToolCreator
+    {
 
-            RuntimeBoneImporter.Import(bones, runtimeBoneCollection);
+        public static void CreateTool(Mesh inputMesh, out BoneTool outTool)
+        {
+            var serializeBones = BoneWeightConverter.ConvertToBoneDatas(inputMesh.boneWeights, inputMesh.bindposes);
+            var bones = RuntimeBoneImporter.Import(serializeBones);
 
-            var verticesSelector = new VerticesSelectionTool(mesh.vertices);
-            var tool = new BoneTool(runtimeBoneCollection, verticesSelector);
-
-            SerializeBone[] Export()
-            {
-                tool.UpdateBindposes();
-                return RuntimeBoneImporter.Export(runtimeBoneCollection);
-            }
+            var verticesSelector = new VerticesSelectionTool(inputMesh.vertices);
+            var tool = new BoneTool(bones, verticesSelector);
 
             outTool = tool;
-            export = Export;
         }
     }
 }

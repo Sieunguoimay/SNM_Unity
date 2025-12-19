@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Snm.Runtime.GPUSkinning;
 using UnityEngine;
@@ -6,49 +7,47 @@ namespace Snm.GPUSkinning.BoneWeightTool
 {
     public class BoneTool
     {
-        private readonly RuntimeBoneCollection boneCollection;
+        private RuntimeBone[] _bones;
         private readonly VerticesSelectionTool verticesSelector;
-        private readonly BoneTransformsTool bindposesTool = new();
+        private readonly BoneTransformsTool boneTransformsTool = new();
         private readonly BoneSelectionTool boneSelectionTool = new();
 
         public VerticesSelectionTool VerticesSelector => verticesSelector;
-        public BoneTransformsTool BindposesTool => bindposesTool;
+        public BoneTransformsTool BoneTransformsTool => boneTransformsTool;
         public BoneSelectionTool BoneSelectionTool => boneSelectionTool;
 
+        public RuntimeBone[] Bones => _bones;
+
         public BoneTool(
-            RuntimeBoneCollection boneCollection,
+            RuntimeBone[] bones,
             VerticesSelectionTool verticesSelector)
         {
-            this.boneCollection = boneCollection;
             this.verticesSelector = verticesSelector;
+            _bones = bones;
 
             UpdateBoneSelectors();
         }
 
         private void UpdateBoneSelectors()
         {
-            var bones = boneCollection.Bones;
-            boneSelectionTool.UpdateBoneSelectors(
-                bones,
+            boneSelectionTool.UpdateBoneSelectors(_bones.Length,
                 onSelect: ShowVerticesSelectorForBone,
                 onUnselect: bone => HideVerticesSelector());
 
-            var bindposes = bones.Select(b => b.bindpose).ToArray();
-            bindposesTool.SetBindposes(bindposes, Matrix4x4.identity, boneSelectionTool.BoneSelectors);
+            boneTransformsTool.SetBones(_bones, Matrix4x4.identity, boneSelectionTool.BoneSelectors);
         }
 
-        private void ShowVerticesSelectorForBone(RuntimeBone bone)
+        private void ShowVerticesSelectorForBone(int boneIndex)
         {
+            var bone = _bones[boneIndex];
+
             HideVerticesSelector();
 
             verticesSelector.SetIsActive(true);
+
             foreach (var v in bone.vertices) verticesSelector.MarkVertexAsSelected(v.index);
-            verticesSelector.SetDirtyCallback(() =>
-            {
-                bone.vertices = verticesSelector.SelectedVertices
-                    .Select(v => new RuntimeVertex { index = v, boneWeight = 1 })
-                    .ToList();
-            });
+
+            verticesSelector.SetDirtyCallback(() => SetBoneVertices(boneIndex, verticesSelector.SelectedVertices));
         }
 
         public void HideVerticesSelector()
@@ -61,23 +60,36 @@ namespace Snm.GPUSkinning.BoneWeightTool
         public void AddNewBone()
         {
             UpdateBindposes();
-            var bones = boneCollection.Bones
+            var nbones = _bones
                 .Append(new RuntimeBone()
                 {
                     vertices = new(),
-                    bindpose = Matrix4x4.identity
+                    bindpose = Matrix4x4.identity,
                 })
                 .ToArray();
-            boneCollection.SetBones(bones);
+            _bones = nbones;
             UpdateBoneSelectors();
         }
 
         public void UpdateBindposes()
         {
-            var bindposes = bindposesTool.GetBindposes(Matrix4x4.identity);
-            for (int i = 0; i < boneCollection.Bones.Count; i++)
+            var bindposes = boneTransformsTool.GetBindposes(Matrix4x4.identity);
+            SetBindposes(bindposes);
+        }
+
+        public void SetBoneVertices(int boneIndex, IReadOnlyList<int> vertices)
+        {
+            var bone = _bones[boneIndex];
+            bone.vertices = vertices
+                .Select(v => new RuntimeVertex { index = v, boneWeight = 1 })
+                .ToList();
+        }
+
+        public void SetBindposes(Matrix4x4[] bindposes)
+        {
+            for (int i = 0; i < _bones.Length; i++)
             {
-                var b = boneCollection.Bones[i];
+                var b = _bones[i];
                 b.bindpose = bindposes[i];
             }
         }

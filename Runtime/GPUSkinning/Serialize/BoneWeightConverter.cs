@@ -8,16 +8,18 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
     public static class BoneWeightConverter
     {
-        public static SerializeBone[] ConvertToBoneDatas(BoneWeight[] boneWeights, Matrix4x4[] bindposes)
+        public static SerializeBone[] ConvertToBoneDatas(
+            BoneWeight[] boneWeights,
+            Matrix4x4[] bindposes)
         {
             var bones = new SerializeBone[bindposes.Length];
 
             for (int i = 0; i < bones.Length; i++)
             {
-                bones[i] = new SerializeBone()
+                bones[i] = new SerializeBone
                 {
                     bindpose = bindposes[i],
-                    vertices = Array.Empty<SerializeVertex>()
+                    vertices = Array.Empty<SerializeVertex>(),
                 };
             }
 
