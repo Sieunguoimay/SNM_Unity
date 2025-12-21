@@ -4,18 +4,20 @@ using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning.Serialize
 {
-    public class BoneTransformHierarchyTool
+    public class BoneHierarchyTool
     {
-        private readonly BoneTransformMB[] boneTransforms;
+        private int[] _parents;
 
-        public BoneTransformHierarchyTool(BoneTransformMB[] boneTransforms)
+        public int[] Parents => _parents;
+
+        public void AddNew()
         {
-            this.boneTransforms = boneTransforms;
+            _parents = _parents.Append(-1).ToArray();
         }
 
-        public void ApplyHierarchy(int[] parents)
+        public void SetParents(int[] parents)
         {
-            ApplyHierarchy(parents, boneTransforms.Select(bt => bt.transform).ToArray());
+            _parents = parents;
         }
 
         public static void ApplyHierarchy(int[] parents, Transform[] transforms)
@@ -26,27 +28,27 @@ namespace Snm.Runtime.GPUSkinning.Serialize
                 if (i >= parents.Length) continue;
 
                 var parent = parents[i];
-                if (parent >= transforms.Length) continue;
+                if (parent < 0 || parent >= transforms.Length) continue;
 
                 tr.SetParent(transforms[parent]);
             }
         }
 
-        public int[] GetHierarchy()
+        public static int[] ExtractHierarchy(Transform[] boneTransforms)
         {
             var parents = new int[boneTransforms.Length];
 
             for (int i = 0; i < boneTransforms.Length; i++)
             {
                 var bt = boneTransforms[i];
-                var parent = bt.transform.parent;
+                var parent = bt.parent;
 
                 parents[i] = -1;
 
                 for (int boneIndex = 0; boneIndex < boneTransforms.Length; boneIndex++)
                 {
-                    BoneTransformMB bt2 = boneTransforms[boneIndex];
-                    if (bt2.transform == parent)
+                    var bt2 = boneTransforms[boneIndex];
+                    if (bt2 == parent)
                     {
                         parents[i] = boneIndex;
                     }

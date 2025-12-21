@@ -7,7 +7,7 @@ namespace Snm.Runtime.GPUSkinning.Serialize
     [Serializable]
     public class BoneHierarchy
     {
-        public int[] parentIndices;
+        public int[] parents;
     }
 
     [Serializable]

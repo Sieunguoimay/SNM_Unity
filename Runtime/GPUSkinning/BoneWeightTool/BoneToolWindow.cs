@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Snm.Runtime.GPUSkinning;
 using Snm.Runtime.GPUSkinning.Serialize;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -10,13 +12,15 @@ namespace Snm.GPUSkinning.BoneWeightTool
 {
     public class BoneToolWindow : EditorWindow
     {
-        [SerializeField] private Mesh inputMesh;
-        [SerializeField] private Mesh outputMesh;
+        [SerializeField] private Mesh mesh;
+        [SerializeField] private BoneHierarchyAsset boneHierarchy;
 
         private BoneTool _tool;
         private Action _exportCallback_ToAsset;
-        private Action _exportCallback_ToMesh;
+        private Action<bool> _exportCallback_ToMesh;
         private Action _cleanToolVECallback;
+        private Material _material;
+        private GPUSkinnedMeshRendererCore _renderer;
 
         [MenuItem("Tools/Open Bone Weight Tool")]
         public static void OpenTool()
@@ -27,15 +31,18 @@ namespace Snm.GPUSkinning.BoneWeightTool
         private void OnEnable()
         {
             SceneView.duringSceneGui += SceneView_duringSceneGui;
+            TryCleanupRenderer();
+            TryCreateRenderer();
         }
 
         private void OnDisable()
         {
+            TryCleanupRenderer();
             SceneView.duringSceneGui -= SceneView_duringSceneGui;
             if (_tool != null)
             {
                 _tool.BoneSelectionTool.OnBoneSelectorsChanged -= Tool_OnBonesChanged;
-                _tool.BoneTransformsTool.Hide();
+                _tool.BindposeTransformsTool.Hide();
                 _tool.HideVerticesSelector();
                 _tool = null;
             }
@@ -52,6 +59,8 @@ namespace Snm.GPUSkinning.BoneWeightTool
         {
             if (_tool == null) return;
 
+            DrawMesh();
+
             if (_tool.VerticesSelector.IsActive)
             {
                 DrawVerticesSelector(_tool.VerticesSelector);
@@ -65,6 +74,46 @@ namespace Snm.GPUSkinning.BoneWeightTool
                     DrawHandleButton(vertexPos, Color.white);
                 }
             }
+        }
+
+        private void OnValidate()
+        {
+            TryCleanupRenderer();
+            TryCreateRenderer();
+        }
+
+        private void DrawMesh()
+        {
+            if (_renderer != null && _tool != null)
+            {
+                for (int i = 0; i < _tool.BindposeTransformsTool.BindposeTransforms.Length; i++)
+                {
+                    var bt = _tool.BindposeTransformsTool.BindposeTransforms[i];
+                    _renderer.SetBoneMatrix(i, bt.transform.localToWorldMatrix);
+                }
+                _renderer.UploadBoneMatricesViaMaterial();
+                _renderer.Render(Matrix4x4.identity);
+            }
+        }
+
+        private void TryCreateRenderer()
+        {
+            if (mesh == null) return;
+
+            _material = new Material(
+                AssetDatabase.LoadAssetAtPath<Shader>("Assets/SNM_Unity/Runtime/GPUSkinning/GPUSkin.shader"));
+            _renderer = new GPUSkinnedMeshRendererCore(mesh, _material);
+            _renderer.UploadMeshDataViaMesh();
+        }
+
+        private void TryCleanupRenderer()
+        {
+            if (_material != null)
+            {
+                DestroyImmediate(_material);
+                _material = null;
+            }
+            _renderer = null;
         }
 
         private void DrawVerticesSelector(VerticesSelectionTool verticesSelector)
@@ -91,11 +140,14 @@ namespace Snm.GPUSkinning.BoneWeightTool
         private bool DrawHandleButton(Vector3 vertexPos, Color color)
         {
             var handleSize = HandleUtility.GetHandleSize(vertexPos) * 0.04f;
+            var old = Handles.color;
             Handles.color = color;
-            return Handles.Button(vertexPos, Quaternion.identity, handleSize, handleSize, Handles.SphereHandleCap);
+            var clicked = Handles.Button(vertexPos, Quaternion.identity, handleSize, handleSize, Handles.SphereHandleCap);
+            Handles.color = old;
+            return clicked;
         }
 
-        public void SetExportCallback(Action exportCallback_ToAsset, Action exportCallback_ToMesh)
+        public void SetExportCallback(Action exportCallback_ToAsset, Action<bool> exportCallback_ToMesh)
         {
             _exportCallback_ToAsset = exportCallback_ToAsset;
             _exportCallback_ToMesh = exportCallback_ToMesh;
@@ -107,7 +159,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
             if (_tool != null)
             {
                 _tool.BoneSelectionTool.OnBoneSelectorsChanged -= Tool_OnBonesChanged;
-                _tool.BoneTransformsTool.Hide();
+                _tool.BindposeTransformsTool.Hide();
                 _tool.HideVerticesSelector();
             }
 
@@ -116,7 +168,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
             if (_tool != null)
             {
                 _tool.BoneSelectionTool.OnBoneSelectorsChanged += Tool_OnBonesChanged;
-                _tool.BoneTransformsTool.Show();
+                _tool.BindposeTransformsTool.Show();
             }
 
             RefreshVE();
@@ -124,31 +176,38 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
         private void RefreshVE()
         {
+            var root = new VisualElement();
             var layout_Config = new VisualElement();
             var serialized = new SerializedObject(this);
-            layout_Config.Add(new PropertyField(serialized.FindProperty(nameof(inputMesh))) { bindingPath = nameof(inputMesh) });
-            layout_Config.Add(new PropertyField(serialized.FindProperty(nameof(outputMesh))) { bindingPath = nameof(outputMesh) });
+            layout_Config.Add(new PropertyField(serialized.FindProperty(nameof(mesh))) { bindingPath = nameof(mesh) });
+            layout_Config.Add(new PropertyField(serialized.FindProperty(nameof(boneHierarchy))) { bindingPath = nameof(boneHierarchy) });
             layout_Config.Bind(serialized);
+            var button_Load = new Button() { text = "Load", clickable = new(() => LoadTool(this)) };
 
-            var layout_ToolBar = new VisualElement() { style = { flexDirection = FlexDirection.Row } };
-            layout_ToolBar.Add(new Button() { text = "Load", clickable = new(() => LoadTool(this)) });
+            var layout_BindposesAndBoneWeights = new Foldout() { text = "Bindposes & Boneweights", value = true };
+            if (_exportCallback_ToMesh != null)
+            {
+                var layout_Horizontal = new VisualElement() { style = { flexDirection = FlexDirection.Row } };
+                var button_Export = new Button { text = "Export to Mesh", clickable = new(() => _exportCallback_ToMesh(false)) };
+                var button_ExportAs = new Button { text = "Export As New Mesh", clickable = new(() => _exportCallback_ToMesh(true)) };
 
-            rootVisualElement.Clear();
-            rootVisualElement.Add(layout_Config);
-            rootVisualElement.Add(layout_ToolBar);
+                layout_Horizontal.Add(button_Export);
+                layout_Horizontal.Add(button_ExportAs);
+                layout_BindposesAndBoneWeights.Add(layout_Horizontal);
+            }
 
+            var layout_BoneHierarchy = new Foldout() { text = "Bone Hierarchy", value = true };
             if (_exportCallback_ToAsset != null)
             {
                 var button_Export = new Button { text = "Export to Asset", clickable = new(_exportCallback_ToAsset) };
 
-                layout_ToolBar.Add(button_Export);
+                layout_BoneHierarchy.Add(button_Export);
             }
-            if (_exportCallback_ToMesh != null)
-            {
-                var button_Export = new Button { text = "Export to Mesh (no parenting)", clickable = new(_exportCallback_ToMesh) };
 
-                layout_ToolBar.Add(button_Export);
-            }
+            root.Add(layout_Config);
+            root.Add(button_Load);
+            root.Add(layout_BindposesAndBoneWeights);
+            root.Add(layout_BoneHierarchy);
 
             if (_cleanToolVECallback != null)
             {
@@ -160,24 +219,44 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 var toolVE = CreateBoneSelectorsVE(_tool, out _cleanToolVECallback);
                 if (toolVE != null)
                 {
-                    rootVisualElement.Add(toolVE);
+                    root.Add(toolVE);
                 }
             }
+
+            rootVisualElement.Clear();
+            rootVisualElement.Add(root);
         }
 
         private static void LoadTool(BoneToolWindow window)
         {
-            if (window.inputMesh == null) return;
-            BoneToolCreator.CreateTool(window.inputMesh, out var tool);
+            if (window.mesh == null) return;
+
+            var boneHierarchy = window.boneHierarchy != null
+                ? window.boneHierarchy.boneHierarchy.parents
+                : Enumerable.Range(0, window.mesh.bindposeCount).Select(i => -1).ToArray();
+
+            BoneToolCreator.CreateTool(window.mesh, boneHierarchy, out var tool, out var exportFunc);
+
             window.SetBoneTool(tool);
             window.SetExportCallback(
                 exportCallback_ToAsset: () =>
                 {
-                    tool.UpdateBindposes();
-                    AssetExportTool.ExportBoneDataAsSkinnedMesh(RuntimeBoneImporter.Export(tool.Bones), window.inputMesh, ref window.outputMesh);
-                    // AssetExportTool.ExportBoneHierarchy(new BoneTransformHierarchyTool(tool.BoneTransformsTool.BoneTransforms).GetHierarchy(),"",)
+                    var (bones, hierarchy) = exportFunc();
+                    AssetExportTool.ExportBoneHierarchy(hierarchy, (string)window.mesh.name, ref window.boneHierarchy);
                 },
-                exportCallback_ToMesh: () => { });
+                exportCallback_ToMesh: (toNewMesh) =>
+                {
+                    var (bones, hierarchy) = exportFunc();
+                    if (toNewMesh)
+                    {
+                        Mesh newMesh = null;
+                        AssetExportTool.ExportBoneDataAsSkinnedMesh(RuntimeBoneImporter.Export(bones), window.mesh, ref newMesh);
+                    }
+                    else
+                    {
+                        AssetExportTool.ExportBoneDataAsSkinnedMesh(RuntimeBoneImporter.Export(bones), window.mesh, ref window.mesh);
+                    }
+                });
         }
 
         private void Tool_OnBonesChanged()

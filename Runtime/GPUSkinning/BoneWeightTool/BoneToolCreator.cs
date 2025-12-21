@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using Snm.Runtime.GPUSkinning;
 using Snm.Runtime.GPUSkinning.Serialize;
 using UnityEditor;
 using UnityEngine;
@@ -17,7 +18,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 hierarchyAsset.name = name;
                 CreateAsset(hierarchyAsset);
             }
-            hierarchyAsset.boneHierarchy.parentIndices = parents;
+            hierarchyAsset.boneHierarchy.parents = parents;
             EditorUtility.SetDirty(hierarchyAsset);
             AssetDatabase.SaveAssetIfDirty(hierarchyAsset);
         }
@@ -44,18 +45,24 @@ namespace Snm.GPUSkinning.BoneWeightTool
             AssetDatabase.CreateAsset(outputMesh, AssetDatabase.GenerateUniqueAssetPath(Path.GetDirectoryName(p) + "/" + outputMesh.name + ".asset"));
         }
     }
+
     public class BoneToolCreator
     {
-
-        public static void CreateTool(Mesh inputMesh, out BoneTool outTool)
+        public static void CreateTool(Mesh inputMesh, int[] boneHierarchy, out BoneTool outTool, out Func<(RuntimeBone[], int[])> exportFunc)
         {
-            var serializeBones = BoneWeightConverter.ConvertToBoneDatas(inputMesh.boneWeights, inputMesh.bindposes);
-            var bones = RuntimeBoneImporter.Import(serializeBones);
+            var bones = RuntimeBoneImporter.Import(BoneWeightConverter.ConvertToBoneDatas(inputMesh.boneWeights, inputMesh.bindposes));
+            var verticesSelector = new VerticesSelectionTool(inputMesh);
+            var hierarchyTool = new BoneHierarchyTool();
 
-            var verticesSelector = new VerticesSelectionTool(inputMesh.vertices);
-            var tool = new BoneTool(bones, verticesSelector);
+            hierarchyTool.SetParents(boneHierarchy);
 
+            var tool = new BoneTool(bones, verticesSelector, hierarchyTool);
             outTool = tool;
+            exportFunc = () =>
+            {
+                tool.ReadFromBoneTransforms();
+                return (tool.Bones, hierarchyTool.Parents);
+            };
         }
     }
 }

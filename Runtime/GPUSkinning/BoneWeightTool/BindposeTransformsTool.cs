@@ -7,23 +7,23 @@ using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
 {
-    public class BoneTransformsTool
+    public class BindposeTransformsTool
     {
         private IReadOnlyList<RuntimeBone> _bones;
         private IReadOnlyList<BoneSelector> _boneSelectors;
         private Matrix4x4 _meshToWorld;
-        private BoneTransformMB[] _boneTransforms;
+        private BindposeTransformMB[] _bindposeTransforms;
 
-        public BoneTransformMB[] BoneTransforms { get => _boneTransforms; set => _boneTransforms = value; }
+        public BindposeTransformMB[] BindposeTransforms => _bindposeTransforms;
 
         public void Show()
         {
-            TryCreateBoneTransforms();
+            TryCreateBindposeTransforms();
         }
 
         public void Hide()
         {
-            TryDestroyBoneTransforms();
+            TryDestroyBindposeTransforms();
         }
 
         public void SetBones(
@@ -35,25 +35,25 @@ namespace Snm.GPUSkinning.BoneWeightTool
             _boneSelectors = boneSelectors;
             _meshToWorld = meshToWorld;
 
-            TryDestroyBoneTransforms();
-            TryCreateBoneTransforms();
+            TryDestroyBindposeTransforms();
+            TryCreateBindposeTransforms();
         }
 
-        private void TryCreateBoneTransforms()
+        private void TryCreateBindposeTransforms()
         {
-            if (_bones == null || _boneTransforms != null) return;
+            if (_bones == null || _bindposeTransforms != null) return;
 
             var transforms = CreateBoneHierarchy(
                 _bones.Select(b => b.bindpose).ToArray(),
                 _meshToWorld,
                 Array.Empty<int>());
 
-            _boneTransforms = new BoneTransformMB[_bones.Count];
+            _bindposeTransforms = new BindposeTransformMB[_bones.Count];
 
             for (int i = 0; i < transforms.Length; i++)
             {
-                _boneTransforms[i] = transforms[i].gameObject.AddComponent<BoneTransformMB>();
-                _boneTransforms[i].SetBoneSelector(_boneSelectors[i]);
+                _bindposeTransforms[i] = transforms[i].gameObject.AddComponent<BindposeTransformMB>();
+                _bindposeTransforms[i].SetBoneSelector(_boneSelectors[i]);
             }
         }
 
@@ -79,43 +79,27 @@ namespace Snm.GPUSkinning.BoneWeightTool
             return transforms;
         }
 
-        private void TryDestroyBoneTransforms()
+        private void TryDestroyBindposeTransforms()
         {
-            if (_boneTransforms != null)
+            if (_bindposeTransforms != null)
             {
-                foreach (BoneTransformMB v in _boneTransforms)
+                foreach (BindposeTransformMB v in _bindposeTransforms)
                 {
                     v.SetBoneSelector(null);
                 }
-                DestroyBoneTransforms(_boneTransforms);
-                _boneTransforms = null;
+                DestroyBoneTransforms(_bindposeTransforms);
+                _bindposeTransforms = null;
             }
-        }
-
-        public int[] GetParents()
-        {
-            return _boneTransforms
-                .Select(bt =>
-                {
-                    var parent = bt.transform.parent;
-                    for (int i = 0; i < _boneTransforms.Length; i++)
-                    {
-                        BoneTransformMB bt2 = _boneTransforms[i];
-                        if (bt2.transform == parent) return i;
-                    }
-                    return -1;
-                })
-                .ToArray();
         }
 
         public Matrix4x4[] GetBindposes(Matrix4x4 meshToWorld)
         {
-            return _boneTransforms
+            return _bindposeTransforms
                 .Select(bt => bt.GetWorldToLocalMatrix() * meshToWorld)
                 .ToArray();
         }
 
-        public static void DestroyBoneTransforms(BoneTransformMB[] boneTransforms)
+        public static void DestroyBoneTransforms(BindposeTransformMB[] boneTransforms)
         {
             for (int i = 0; i < boneTransforms.Length; i++)
             {

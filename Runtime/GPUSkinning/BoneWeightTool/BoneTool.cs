@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Snm.Runtime.GPUSkinning;
+using Snm.Runtime.GPUSkinning.Serialize;
 using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
@@ -9,32 +10,26 @@ namespace Snm.GPUSkinning.BoneWeightTool
     {
         private RuntimeBone[] _bones;
         private readonly VerticesSelectionTool verticesSelector;
-        private readonly BoneTransformsTool boneTransformsTool = new();
+        private readonly BoneHierarchyTool hierarchyTool;
+        private readonly BindposeTransformsTool bindposeTransformsTool = new();
         private readonly BoneSelectionTool boneSelectionTool = new();
 
         public VerticesSelectionTool VerticesSelector => verticesSelector;
-        public BoneTransformsTool BoneTransformsTool => boneTransformsTool;
+        public BindposeTransformsTool BindposeTransformsTool => bindposeTransformsTool;
         public BoneSelectionTool BoneSelectionTool => boneSelectionTool;
 
         public RuntimeBone[] Bones => _bones;
 
         public BoneTool(
             RuntimeBone[] bones,
-            VerticesSelectionTool verticesSelector)
+            VerticesSelectionTool verticesSelector,
+            BoneHierarchyTool hierarchyTool)
         {
             this.verticesSelector = verticesSelector;
+            this.hierarchyTool = hierarchyTool;
             _bones = bones;
 
-            UpdateBoneSelectors();
-        }
-
-        private void UpdateBoneSelectors()
-        {
-            boneSelectionTool.UpdateBoneSelectors(_bones.Length,
-                onSelect: ShowVerticesSelectorForBone,
-                onUnselect: bone => HideVerticesSelector());
-
-            boneTransformsTool.SetBones(_bones, Matrix4x4.identity, boneSelectionTool.BoneSelectors);
+            UpdateBoneTransforms();
         }
 
         private void ShowVerticesSelectorForBone(int boneIndex)
@@ -59,22 +54,41 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
         public void AddNewBone()
         {
-            UpdateBindposes();
-            var nbones = _bones
+            ReadFromBoneTransforms();
+            _bones = _bones
                 .Append(new RuntimeBone()
                 {
                     vertices = new(),
                     bindpose = Matrix4x4.identity,
                 })
                 .ToArray();
-            _bones = nbones;
-            UpdateBoneSelectors();
+            hierarchyTool.AddNew();
+            UpdateBoneTransforms();
         }
 
-        public void UpdateBindposes()
+        public void ReadFromBoneTransforms()
         {
-            var bindposes = boneTransformsTool.GetBindposes(Matrix4x4.identity);
+            var hierarchy = BoneHierarchyTool.ExtractHierarchy(bindposeTransformsTool.BindposeTransforms.Select(bt => bt.transform).ToArray());
+            hierarchyTool.SetParents(hierarchy);
+
+            var bindposes = bindposeTransformsTool.GetBindposes(Matrix4x4.identity);
             SetBindposes(bindposes);
+        }
+
+        private void UpdateBoneTransforms()
+        {
+            boneSelectionTool.UpdateBoneSelectors(_bones.Length,
+                onSelect: ShowVerticesSelectorForBone,
+                onUnselect: bone => HideVerticesSelector());
+
+            bindposeTransformsTool.SetBones(
+                _bones,
+                Matrix4x4.identity,
+                boneSelectionTool.BoneSelectors);
+
+            BoneHierarchyTool.ApplyHierarchy(
+                hierarchyTool.Parents,
+                bindposeTransformsTool.BindposeTransforms.Select(bt => bt.transform).ToArray());
         }
 
         public void SetBoneVertices(int boneIndex, IReadOnlyList<int> vertices)

@@ -8,17 +8,17 @@ namespace Snm.GPUSkinning.BoneWeightTool
     {
         private readonly HashSet<int> selectedHashSet = new();
         private readonly List<int> selectedList = new();
-        private readonly Vector3[] vertices;
+        private readonly Mesh mesh;
         private bool _isActive;
         private Action _callback;
 
-        public IReadOnlyList<Vector3> AllVertices => vertices;
+        public IReadOnlyList<Vector3> AllVertices => mesh.vertices;
         public IReadOnlyList<int> SelectedVertices => selectedList;
         public bool IsActive => _isActive;
 
-        public VerticesSelectionTool(Vector3[] vertices)
+        public VerticesSelectionTool(Mesh mesh)
         {
-            this.vertices = vertices;
+            this.mesh = mesh;
         }
 
         public void Select(int vertex)

@@ -15,6 +15,7 @@ namespace Snm.Runtime.GPUSkinning
     {
         [SerializeField] private Mesh mesh;
         [SerializeField] private Material material;
+        [SerializeField] private BoneHierarchyAsset boneHierarchy;
         [SerializeField] private Transform[] boneTransforms;
 
         private GPUSkinnedMeshRenderer _renderer;
@@ -60,11 +61,13 @@ namespace Snm.Runtime.GPUSkinning
         private void CreateBoneTransforms()
         {
             foreach (var bt in boneTransforms) bt.name += "_OBSOLETE";
-
-            boneTransforms = BoneTransformsTool.CreateBoneHierarchy(
+            var hierarchy = boneHierarchy != null
+                ? boneHierarchy.boneHierarchy.parents
+                : Array.Empty<int>();
+            boneTransforms = BindposeTransformsTool.CreateBoneHierarchy(
                 mesh.bindposes,
                 transform.localToWorldMatrix,
-                Array.Empty<int>());
+                hierarchy);
 
             EditorUtility.SetDirty(this);
             OnValidate();
