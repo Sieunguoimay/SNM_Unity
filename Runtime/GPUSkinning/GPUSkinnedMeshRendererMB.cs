@@ -14,8 +14,8 @@ namespace Snm.Runtime.GPUSkinning
     public class GPUSkinnedMeshRendererMB : MonoBehaviour
     {
         [SerializeField] private Mesh mesh;
+        [SerializeField] private SkeletonAsset skeleton;
         [SerializeField] private Material material;
-        [SerializeField] private BoneHierarchyAsset boneHierarchy;
         [SerializeField] private Transform[] boneTransforms;
 
         private GPUSkinnedMeshRenderer _renderer;
@@ -45,7 +45,8 @@ namespace Snm.Runtime.GPUSkinning
                 Debug.LogError("GPUSkinnedMeshRenderer: Require material with shader Custom/GpuSkin!", this);
                 return;
             }
-            _renderer = new GPUSkinnedMeshRenderer(mesh, material, boneTransforms.Where(t => t != null).ToArray(), transform);
+            var bindposes = skeleton.skeleton.bones.Select(b => b.bindpose).ToArray();
+            _renderer = new GPUSkinnedMeshRenderer(mesh, bindposes, material, boneTransforms.Where(t => t != null).ToArray(), transform);
             _renderer.SetupMesh();
         }
 
@@ -61,10 +62,15 @@ namespace Snm.Runtime.GPUSkinning
         private void CreateBoneTransforms()
         {
             foreach (var bt in boneTransforms) bt.name += "_OBSOLETE";
-            var hierarchy = boneHierarchy != null
-                ? boneHierarchy.boneHierarchy.parents
+            var hierarchy = skeleton != null
+                ? skeleton.skeleton.bones.Select(b => b.parent).ToArray()
                 : Array.Empty<int>();
-            boneTransforms = BindposeTransformsTool.CreateBoneHierarchy(
+
+            var bindposes = skeleton != null
+                ? skeleton.skeleton.bones.Select(b => b.bindpose).ToArray()
+                : mesh.bindposes;
+
+            boneTransforms = BoneTransformsTool.CreateBoneHierarchy(
                 mesh.bindposes,
                 transform.localToWorldMatrix,
                 hierarchy);

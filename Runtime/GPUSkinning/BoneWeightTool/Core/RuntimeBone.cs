@@ -5,6 +5,7 @@ namespace Snm.Runtime.GPUSkinning
 {
     public class RuntimeBone
     {
+        public int parent;
         public Matrix4x4 bindpose;
         public List<RuntimeVertex> vertices;
     }

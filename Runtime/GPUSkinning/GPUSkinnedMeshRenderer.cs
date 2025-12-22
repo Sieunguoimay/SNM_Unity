@@ -9,7 +9,7 @@ namespace Snm.Runtime.GPUSkinning
 
         private readonly Mesh mesh;
         private readonly Material material;
-        private readonly Matrix4x4[] boneMatrices = new Matrix4x4[MAX_BONES];
+        private readonly Matrix4x4[] skinningMatrices = new Matrix4x4[MAX_BONES];
 
         public GPUSkinnedMeshRendererCore(
             Mesh mesh,
@@ -21,22 +21,21 @@ namespace Snm.Runtime.GPUSkinning
 
         public void UploadMeshDataViaMesh()
         {
-            ConvertToRaw(mesh.boneWeights, out var boneWeights4, out var boneIndices4);
-
+            ConvertToRaw(mesh.vertexCount, mesh.boneWeights, out var boneWeights4, out var boneIndices4);
             mesh.SetUVs(1, boneWeights4);
             mesh.SetUVs(2, boneIndices4);
             mesh.UploadMeshData(true);
         }
 
-        public void SetBoneMatrix(int boneIndex, Matrix4x4 boneToWorld)
+        public void SetSkinningMatrix(int boneIndex, Matrix4x4 matrix)
         {
-            boneMatrices[boneIndex] = boneToWorld * mesh.bindposes[boneIndex];
+            skinningMatrices[boneIndex] = matrix;
         }
 
-        public void UploadBoneMatricesViaMaterial()
+        public void UploadBoneMatricesViaMaterial(int boneCount)
         {
-            material.SetInt("_BoneCount", boneMatrices.Length);
-            material.SetMatrixArray("_Bones", boneMatrices);
+            material.SetInt("_BoneCount", boneCount);
+            material.SetMatrixArray("_Bones", skinningMatrices);
         }
 
         public void Render(Matrix4x4 meshToWorld)
@@ -44,15 +43,23 @@ namespace Snm.Runtime.GPUSkinning
             Graphics.DrawMesh(mesh, meshToWorld, material, 0);
         }
 
-        public static void ConvertToRaw(BoneWeight[] boneWeights, out List<Vector4> boneWeights4, out List<Vector4> boneIndices4)
+        public static void ConvertToRaw(int vertexCount, BoneWeight[] boneWeights, out List<Vector4> boneWeights4, out List<Vector4> boneIndices4)
         {
-            boneWeights4 = new List<Vector4>(boneWeights.Length);
-            boneIndices4 = new List<Vector4>(boneWeights.Length);
-            for (int i = 0; i < boneWeights.Length; i++)
+            boneWeights4 = new List<Vector4>(vertexCount);
+            boneIndices4 = new List<Vector4>(vertexCount);
+
+            for (int i = 0; i < vertexCount; i++)
             {
-                var bw = boneWeights[i];
-                var w = new Vector4(bw.weight0, bw.weight1, bw.weight2, bw.weight3);
-                var idx = new Vector4(bw.boneIndex0, bw.boneIndex1, bw.boneIndex2, bw.boneIndex3);
+                var w = Vector4.zero;
+                var idx = Vector4.zero;
+
+                if (i < boneWeights.Length)
+                {
+                    var bw = boneWeights[i];
+                    w = new Vector4(bw.weight0, bw.weight1, bw.weight2, bw.weight3);
+                    idx = new Vector4(bw.boneIndex0, bw.boneIndex1, bw.boneIndex2, bw.boneIndex3);
+                }
+
                 boneWeights4.Add(w);
                 boneIndices4.Add(idx);
             }
@@ -62,17 +69,19 @@ namespace Snm.Runtime.GPUSkinning
     public class GPUSkinnedMeshRenderer
     {
         private readonly GPUSkinnedMeshRendererCore core;
+        private readonly Matrix4x4[] bindposes;
         private readonly Transform[] boneTransforms;
         private readonly Transform meshTransform;
 
         public GPUSkinnedMeshRenderer(
             Mesh mesh,
+            Matrix4x4[] bindposes,
             Material material,
             Transform[] boneTransforms,
             Transform meshTransform)
         {
             core = new(mesh, material);
-
+            this.bindposes = bindposes;
             this.boneTransforms = boneTransforms;
             this.meshTransform = meshTransform;
         }
@@ -86,7 +95,7 @@ namespace Snm.Runtime.GPUSkinning
         {
             FillBoneMatrices(boneTransforms);
 
-            core.UploadBoneMatricesViaMaterial();
+            core.UploadBoneMatricesViaMaterial(boneTransforms.Length);
         }
 
         public void Render()
@@ -98,8 +107,8 @@ namespace Snm.Runtime.GPUSkinning
         {
             for (int i = 0; i < boneTransforms.Length; i++)
             {
-                var boneToWorld = boneTransforms[i].localToWorldMatrix;
-                core.SetBoneMatrix(i, boneToWorld);
+                var boneToWorld = boneTransforms[i].localToWorldMatrix * bindposes[i];
+                core.SetSkinningMatrix(i, boneToWorld);
             }
         }
     }

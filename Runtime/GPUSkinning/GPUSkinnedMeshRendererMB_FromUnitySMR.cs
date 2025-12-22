@@ -1,4 +1,6 @@
+using System;
 using System.Linq;
+using Snm.Runtime.GPUSkinning.Serialize;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -53,8 +55,9 @@ namespace Snm.Runtime.GPUSkinning
             var mesh = unitySMR.sharedMesh;
             var boneTransforms = unitySMR.bones;
             var meshTransform = unitySMR.transform;
+            var bones = unitySMR.bones;
 
-            _gpuSMR = new GPUSkinnedMeshRenderer(mesh, _material, boneTransforms.Where(t => t != null).ToArray(), meshTransform);
+            _gpuSMR = new GPUSkinnedMeshRenderer(mesh, mesh.bindposes, _material, boneTransforms.Where(t => t != null).ToArray(), meshTransform);
             _gpuSMR.SetupMesh();
 
             unitySMR.enabled = false;

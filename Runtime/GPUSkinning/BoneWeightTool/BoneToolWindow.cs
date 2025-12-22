@@ -13,11 +13,11 @@ namespace Snm.GPUSkinning.BoneWeightTool
     public class BoneToolWindow : EditorWindow
     {
         [SerializeField] private Mesh mesh;
-        [SerializeField] private BoneHierarchyAsset boneHierarchy;
+        [SerializeField] private SkeletonAsset skeleton;
+        [SerializeField] private BoneToolMode toolMode;
 
-        private BoneTool _tool;
-        private Action _exportCallback_ToAsset;
-        private Action<bool> _exportCallback_ToMesh;
+        private readonly BoneTool tool = new();
+
         private Action _cleanToolVECallback;
         private Material _material;
         private GPUSkinnedMeshRendererCore _renderer;
@@ -39,40 +39,69 @@ namespace Snm.GPUSkinning.BoneWeightTool
         {
             TryCleanupRenderer();
             SceneView.duringSceneGui -= SceneView_duringSceneGui;
-            if (_tool != null)
-            {
-                _tool.BoneSelectionTool.OnBoneSelectorsChanged -= Tool_OnBonesChanged;
-                _tool.BindposeTransformsTool.Hide();
-                _tool.HideVerticesSelector();
-                _tool = null;
-            }
-            if (_cleanToolVECallback != null) _cleanToolVECallback();
+            tool.BoneTransformsTool.Hide();
+            tool.HideVerticesSelector();
+            ClearToolVE();
         }
 
         private void CreateGUI()
         {
-            LoadTool(this);
-            RefreshVE();
+            LoadTool();
         }
 
         private void SceneView_duringSceneGui(SceneView view)
         {
-            if (_tool == null) return;
+            if (mesh == null) return;
 
             DrawMesh();
+            DrawVertexSeletors();
+        }
 
-            if (_tool.VerticesSelector.IsActive)
+        private void DrawVertexSeletors()
+        {
+            if (toolMode != BoneToolMode.WeightPainter) return;
+
+            if (tool.VerticesSelector.IsActive)
             {
-                DrawVerticesSelector(_tool.VerticesSelector);
+                DrawVerticesSelector(tool.VerticesSelector);
             }
             else
             {
-                var vertices = _tool.VerticesSelector.AllVertices;
-                for (int i = 0; i < vertices.Count; i++)
+                var vertices = mesh.vertices;
+                var boneWeights = mesh.boneWeights;
+
+                for (int i = 0; i < vertices.Length; i++)
                 {
                     var vertexPos = vertices[i];
+                    if (i < boneWeights.Length)
+                    {
+                        var boneWeight = boneWeights[i];
+
+                        vertexPos = Skin(vertexPos, boneWeight);
+                    }
                     DrawHandleButton(vertexPos, Color.white);
                 }
+            }
+        }
+
+        private void DrawMesh()
+        {
+            if (_renderer != null)
+            {
+                if (toolMode == BoneToolMode.WeightPainter)
+                {
+                    for (int i = 0; i < tool.BoneTransformsTool.BoneTransforms.Length; i++)
+                    {
+                        var bt = tool.BoneTransformsTool.BoneTransforms[i];
+                        _renderer.SetSkinningMatrix(i, bt.transform.localToWorldMatrix * tool.Bones[i].bindpose);
+                    }
+                    _renderer.UploadBoneMatricesViaMaterial(tool.Bones.Length);
+                }
+                else
+                {
+                    _renderer.UploadBoneMatricesViaMaterial(0);
+                }
+                _renderer.Render(Matrix4x4.identity);
             }
         }
 
@@ -80,20 +109,6 @@ namespace Snm.GPUSkinning.BoneWeightTool
         {
             TryCleanupRenderer();
             TryCreateRenderer();
-        }
-
-        private void DrawMesh()
-        {
-            if (_renderer != null && _tool != null)
-            {
-                for (int i = 0; i < _tool.BindposeTransformsTool.BindposeTransforms.Length; i++)
-                {
-                    var bt = _tool.BindposeTransformsTool.BindposeTransforms[i];
-                    _renderer.SetBoneMatrix(i, bt.transform.localToWorldMatrix);
-                }
-                _renderer.UploadBoneMatricesViaMaterial();
-                _renderer.Render(Matrix4x4.identity);
-            }
         }
 
         private void TryCreateRenderer()
@@ -118,10 +133,20 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
         private void DrawVerticesSelector(VerticesSelectionTool verticesSelector)
         {
-            var vertices = verticesSelector.AllVertices;
-            for (int i = 0; i < vertices.Count; i++)
+            var vertices = mesh.vertices;
+            var boneWeights = mesh.boneWeights;
+
+            for (int i = 0; i < vertices.Length; i++)
             {
                 var vertexPos = vertices[i];
+
+                if (i < boneWeights.Length)
+                {
+                    var boneWeight = boneWeights[i];
+
+                    vertexPos = Skin(vertexPos, boneWeight);
+                }
+
                 var color = verticesSelector.IsVertexSelected(i) ? Color.green : Color.white;
                 if (DrawHandleButton(vertexPos, color))
                 {
@@ -133,11 +158,50 @@ namespace Snm.GPUSkinning.BoneWeightTool
                     {
                         verticesSelector.Select(i);
                     }
+                    RefreshVE();
                 }
             }
         }
 
-        private bool DrawHandleButton(Vector3 vertexPos, Color color)
+        private Vector3 Skin(Vector3 pos, BoneWeight boneWeight)
+        {
+
+            var w0 = boneWeight.weight0;
+            var w1 = boneWeight.weight1;
+            var w2 = boneWeight.weight2;
+            var w3 = boneWeight.weight3;
+
+            if (w0 + w1 + w2 + w3 < 0.01f) return pos;
+
+            var boneIndex0 = boneWeight.boneIndex0;
+            var boneIndex1 = boneWeight.boneIndex1;
+            var boneIndex2 = boneWeight.boneIndex2;
+            var boneIndex3 = boneWeight.boneIndex3;
+
+            var boneMatrix0 = tool.BoneTransformsTool.BoneTransforms[boneIndex0].transform.localToWorldMatrix;
+            var boneMatrix1 = tool.BoneTransformsTool.BoneTransforms[boneIndex1].transform.localToWorldMatrix;
+            var boneMatrix2 = tool.BoneTransformsTool.BoneTransforms[boneIndex2].transform.localToWorldMatrix;
+            var boneMatrix3 = tool.BoneTransformsTool.BoneTransforms[boneIndex3].transform.localToWorldMatrix;
+
+            var bindpose0 = boneIndex0 < mesh.bindposeCount ? mesh.bindposes[boneIndex0] : Matrix4x4.identity;
+            var bindpose1 = boneIndex1 < mesh.bindposeCount ? mesh.bindposes[boneIndex1] : Matrix4x4.identity;
+            var bindpose2 = boneIndex2 < mesh.bindposeCount ? mesh.bindposes[boneIndex2] : Matrix4x4.identity;
+            var bindpose3 = boneIndex3 < mesh.bindposeCount ? mesh.bindposes[boneIndex3] : Matrix4x4.identity;
+
+            if (skeleton != null)
+            {
+                bindpose0 = skeleton.skeleton.bones[boneIndex0].bindpose;
+                bindpose1 = skeleton.skeleton.bones[boneIndex1].bindpose;
+                bindpose2 = skeleton.skeleton.bones[boneIndex2].bindpose;
+                bindpose3 = skeleton.skeleton.bones[boneIndex3].bindpose;
+            }
+            return (boneMatrix0 * bindpose0).MultiplyPoint3x4(pos) * w0
+                + (boneMatrix1 * bindpose1).MultiplyPoint3x4(pos) * w1
+                + (boneMatrix2 * bindpose2).MultiplyPoint3x4(pos) * w2
+                + (boneMatrix3 * bindpose3).MultiplyPoint3x4(pos) * w3;
+        }
+
+        private static bool DrawHandleButton(Vector3 vertexPos, Color color)
         {
             var handleSize = HandleUtility.GetHandleSize(vertexPos) * 0.04f;
             var old = Handles.color;
@@ -147,143 +211,188 @@ namespace Snm.GPUSkinning.BoneWeightTool
             return clicked;
         }
 
-        public void SetExportCallback(Action exportCallback_ToAsset, Action<bool> exportCallback_ToMesh)
+        private void _exportCallback_ToAsset()
         {
-            _exportCallback_ToAsset = exportCallback_ToAsset;
-            _exportCallback_ToMesh = exportCallback_ToMesh;
-            RefreshVE();
+            tool.UpdateSkeletonWithBoneTransforms(Matrix4x4.identity);
+            AssetExportTool.ExportToSkeletonAsset(tool.Bones.Select(b => new Bone { parent = b.parent, bindpose = b.bindpose }).ToArray(), ref skeleton);
         }
 
-        public void SetBoneTool(BoneTool tool)
+        private void _exportCallback_ToMesh(bool exportBindposes)
         {
-            if (_tool != null)
+            if (exportBindposes)
             {
-                _tool.BoneSelectionTool.OnBoneSelectorsChanged -= Tool_OnBonesChanged;
-                _tool.BindposeTransformsTool.Hide();
-                _tool.HideVerticesSelector();
+                tool.UpdateSkeletonWithBoneTransforms(Matrix4x4.identity);
+                var bindposes = tool.Bones.Select(b => b.bindpose).ToArray();
+                AssetExportTool.ExportBindposesToMesh(bindposes, mesh, ref mesh);
             }
-
-            _tool = tool;
-
-            if (_tool != null)
+            else
             {
-                _tool.BoneSelectionTool.OnBoneSelectorsChanged += Tool_OnBonesChanged;
-                _tool.BindposeTransformsTool.Show();
+                var boneWeights = BoneWeightConverter.ExtractBoneWeights(RuntimeBoneImporter.Export(tool.Bones).Item1, mesh.vertexCount);
+                AssetExportTool.ExportBoneWeightsToMesh(boneWeights, mesh, ref mesh);
+                TryCleanupRenderer();
+                TryCreateRenderer();
             }
-
-            RefreshVE();
         }
 
         private void RefreshVE()
         {
-            var root = new VisualElement();
-            var layout_Config = new VisualElement();
-            var serialized = new SerializedObject(this);
-            layout_Config.Add(new PropertyField(serialized.FindProperty(nameof(mesh))) { bindingPath = nameof(mesh) });
-            layout_Config.Add(new PropertyField(serialized.FindProperty(nameof(boneHierarchy))) { bindingPath = nameof(boneHierarchy) });
-            layout_Config.Bind(serialized);
-            var button_Load = new Button() { text = "Load", clickable = new(() => LoadTool(this)) };
+            ClearToolVE();
+            rootVisualElement.Clear();
+            rootVisualElement.Add(CreateConfigVE());
+            rootVisualElement.Add(CreateToolVE());
+        }
 
-            var layout_BindposesAndBoneWeights = new Foldout() { text = "Bindposes & Boneweights", value = true };
-            if (_exportCallback_ToMesh != null)
-            {
-                var layout_Horizontal = new VisualElement() { style = { flexDirection = FlexDirection.Row } };
-                var button_Export = new Button { text = "Export to Mesh", clickable = new(() => _exportCallback_ToMesh(false)) };
-                var button_ExportAs = new Button { text = "Export As New Mesh", clickable = new(() => _exportCallback_ToMesh(true)) };
-
-                layout_Horizontal.Add(button_Export);
-                layout_Horizontal.Add(button_ExportAs);
-                layout_BindposesAndBoneWeights.Add(layout_Horizontal);
-            }
-
-            var layout_BoneHierarchy = new Foldout() { text = "Bone Hierarchy", value = true };
-            if (_exportCallback_ToAsset != null)
-            {
-                var button_Export = new Button { text = "Export to Asset", clickable = new(_exportCallback_ToAsset) };
-
-                layout_BoneHierarchy.Add(button_Export);
-            }
-
-            root.Add(layout_Config);
-            root.Add(button_Load);
-            root.Add(layout_BindposesAndBoneWeights);
-            root.Add(layout_BoneHierarchy);
-
+        private void ClearToolVE()
+        {
             if (_cleanToolVECallback != null)
             {
                 _cleanToolVECallback();
                 _cleanToolVECallback = null;
             }
-            if (_tool != null)
+        }
+
+        private VisualElement CreateToolVE()
+        {
+            var root = new VisualElement();
+
+            var toolVE = CreateBoneVEs(tool, out _cleanToolVECallback);
+            if (toolVE != null)
             {
-                var toolVE = CreateBoneSelectorsVE(_tool, out _cleanToolVECallback);
-                if (toolVE != null)
-                {
-                    root.Add(toolVE);
-                }
+                root.Add(toolVE);
             }
 
-            rootVisualElement.Clear();
-            rootVisualElement.Add(root);
+            return root;
         }
 
-        private static void LoadTool(BoneToolWindow window)
+        private VisualElement CreateConfigVE()
         {
-            if (window.mesh == null) return;
+            var root = new VisualElement();
+            var layout_Config = new VisualElement();
 
-            var boneHierarchy = window.boneHierarchy != null
-                ? window.boneHierarchy.boneHierarchy.parents
-                : Enumerable.Range(0, window.mesh.bindposeCount).Select(i => -1).ToArray();
+            var objectField_Mesh = new ObjectField { label = "Mesh", value = mesh, objectType = typeof(Mesh) };
+            objectField_Mesh.RegisterValueChangedCallback(evt => { mesh = (Mesh)evt.newValue; LoadTool(); });
 
-            BoneToolCreator.CreateTool(window.mesh, boneHierarchy, out var tool, out var exportFunc);
+            var objectField_Skeleton = new ObjectField { label = "Skeleton", value = skeleton, objectType = typeof(SkeletonAsset) };
+            objectField_Skeleton.RegisterValueChangedCallback(evt => { skeleton = (SkeletonAsset)evt.newValue; LoadTool(); });
 
-            window.SetBoneTool(tool);
-            window.SetExportCallback(
-                exportCallback_ToAsset: () =>
-                {
-                    var (bones, hierarchy) = exportFunc();
-                    AssetExportTool.ExportBoneHierarchy(hierarchy, (string)window.mesh.name, ref window.boneHierarchy);
-                },
-                exportCallback_ToMesh: (toNewMesh) =>
-                {
-                    var (bones, hierarchy) = exportFunc();
-                    if (toNewMesh)
-                    {
-                        Mesh newMesh = null;
-                        AssetExportTool.ExportBoneDataAsSkinnedMesh(RuntimeBoneImporter.Export(bones), window.mesh, ref newMesh);
-                    }
-                    else
-                    {
-                        AssetExportTool.ExportBoneDataAsSkinnedMesh(RuntimeBoneImporter.Export(bones), window.mesh, ref window.mesh);
-                    }
-                });
+            var enumField_ToolMode = new EnumField(toolMode);
+            enumField_ToolMode.RegisterValueChangedCallback(evt => { toolMode = (BoneToolMode)evt.newValue; RefreshVE(); });
+
+            var layout_Horizontal = new VisualElement() { style = { flexDirection = FlexDirection.Row } };
+            var button_Load = new Button() { text = "Load Bones", clickable = new(LoadTool) };
+
+            layout_Config.Add(objectField_Mesh);
+            layout_Config.Add(objectField_Skeleton);
+            root.Add(layout_Config);
+            layout_Horizontal.Add(enumField_ToolMode);
+            layout_Horizontal.Add(button_Load);
+            root.Add(layout_Horizontal);
+
+            if (toolMode == BoneToolMode.WeightPainter)
+            {
+                var button_ExportBoneWeights = new Button { text = "Save BoneWeights to Mesh", clickable = new(() => _exportCallback_ToMesh(false)) };
+                var button_ExportBindposes = new Button { text = "Save Bindposes to Mesh", clickable = new(() => _exportCallback_ToMesh(true)) };
+
+                layout_Horizontal.Add(button_ExportBoneWeights);
+                layout_Horizontal.Add(button_ExportBindposes);
+            }
+            else
+            {
+                var button_Export = new Button { text = "Save Skeleton", clickable = new(_exportCallback_ToAsset) };
+
+                layout_Horizontal.Add(button_Export);
+            }
+
+            return root;
         }
 
-        private void Tool_OnBonesChanged()
+        private void LoadTool()
         {
+            if (mesh != null)
+            {
+                var runtimeBones = skeleton != null
+                    ? RuntimeBoneImporter.Import(BoneWeightConverter.ConvertToBoneDatas(mesh.boneWeights, skeleton.skeleton.bones.Length), skeleton.skeleton.bones.Select(b => b.bindpose).ToArray(), skeleton.skeleton.bones.Select(b => b.parent).ToArray())
+                    : RuntimeBoneImporter.Import(BoneWeightConverter.ConvertToBoneDatas(mesh.boneWeights, mesh.bindposes.Length), mesh.bindposes, mesh.bindposes.Select(b => -1).ToArray());
+
+                tool.SetRuntimeBones(runtimeBones);
+
+                TryCleanupRenderer();
+                TryCreateRenderer();
+            }
+            else
+            {
+                tool.SetRuntimeBones(Array.Empty<RuntimeBone>());
+            }
             RefreshVE();
         }
 
-        public VisualElement CreateBoneSelectorsVE(BoneTool tool, out Action cleanupAction)
+        public VisualElement CreateBoneVEs(BoneTool tool, out Action cleanupAction)
         {
             var root = new VisualElement();
             var buttons = new VisualElement();
             var buttonDic = new Dictionary<object, VisualElement>();
-            var boneSelectors = tool.BoneSelectionTool.BoneSelectors;
+            var boneSelectors = tool.BoneSelectionTool.BoneSelectors ?? Array.Empty<BoneSelector>();
             for (int i = 0; i < boneSelectors.Count; i++)
             {
                 var boneSelector = boneSelectors[i];
-                var button = new Button() { text = "Bone " + i, clickable = new(boneSelector.Select) };
+                var boneIndex = i;
 
-                button.SetEnabled(!boneSelector.IsSelected);
                 boneSelector.OnIsSelectedChangedCallback += BoneSelector_OnIsSelectedChanged;
 
-                buttonDic.Add(boneSelector, button);
-                buttons.Add(button);
+                if (toolMode == BoneToolMode.WeightPainter)
+                {
+                    var layout_Horizontal = new VisualElement() { style = { flexDirection = FlexDirection.Row } };
+                    var button_Select = new Button() { text = "Bone " + i + $" ({tool.Bones[i].vertices.Count})", clickable = new(boneSelector.Select), style = { flexGrow = 1 } };
+                    var button_Clear = new Button() { text = "Clear Weight", clickable = new(() => tool.ClearBoneVertices(boneIndex)) };
+
+                    button_Select.SetEnabled(!boneSelector.IsSelected);
+                    buttonDic.Add(boneSelector, button_Select);
+
+                    layout_Horizontal.Add(button_Select);
+                    layout_Horizontal.Add(button_Clear);
+                    buttons.Add(layout_Horizontal);
+                }
+                else
+                {
+                    var layout_Horizontal = new VisualElement() { style = { flexDirection = FlexDirection.Row } };
+                    var button_Select = new Button() { text = "Bone " + i, clickable = new(boneSelector.Select), style = { flexGrow = 1 } };
+                    var button_Clear = new Button()
+                    {
+                        text = "X",
+                        clickable = new(() =>
+                    {
+                        tool.UpdateSkeletonWithBoneTransforms(Matrix4x4.identity);
+                        tool.DeleteBone(boneIndex);
+                        RefreshVE();
+                    })
+                    };
+
+                    layout_Horizontal.Add(button_Select);
+                    layout_Horizontal.Add(button_Clear);
+
+                    buttons.Add(layout_Horizontal);
+
+                    button_Select.SetEnabled(!boneSelector.IsSelected);
+                    buttonDic.Add(boneSelector, button_Select);
+                }
             }
-            var button_NewBone = new Button() { text = "+", clickable = new(tool.AddNewBone) };
             root.Add(buttons);
-            root.Add(button_NewBone);
+
+            if (toolMode == BoneToolMode.BoneCreator)
+            {
+                var button_NewBone = new Button
+                {
+                    text = "Add New",
+                    clickable = new(() =>
+                {
+                    tool.UpdateSkeletonWithBoneTransforms(Matrix4x4.identity);
+                    tool.AddNew();
+                    RefreshVE();
+                })
+                };
+
+                buttons.Add(button_NewBone);
+            }
 
             void BoneSelector_OnIsSelectedChanged(BoneSelector selector) => buttonDic[selector].SetEnabled(!selector.IsSelected);
 

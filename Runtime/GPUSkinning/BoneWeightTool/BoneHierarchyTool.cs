@@ -20,6 +20,20 @@ namespace Snm.Runtime.GPUSkinning.Serialize
             _parents = parents;
         }
 
+        public static void ApplySkeletonPoses(int[] parents, Matrix4x4[] bindposes, Transform[] transforms)
+        {
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                var tr = transforms[i];
+                if (i >= parents.Length) continue;
+
+                var parent = parents[i];
+                if (parent < 0 || parent >= transforms.Length) continue;
+
+                tr.SetParent(transforms[parent]);
+            }
+        }
+
         public static void ApplyHierarchy(int[] parents, Transform[] transforms)
         {
             for (int i = 0; i < transforms.Length; i++)

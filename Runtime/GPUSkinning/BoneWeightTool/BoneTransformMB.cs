@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
 {
-    public class BindposeTransformMB : MonoBehaviour
+    public class BoneTransformMB : MonoBehaviour
     {
         private BoneSelector _boneSelector;
         private int _boneIndex;
@@ -89,11 +89,11 @@ namespace Snm.GPUSkinning.BoneWeightTool
         }
 
 #if UNITY_EDITOR
-        [UnityEditor.CustomEditor(typeof(BindposeTransformMB))]
+        [UnityEditor.CustomEditor(typeof(BoneTransformMB))]
         private class _Editor : UnityEditor.Editor
         {
-            private void OnEnable() => (target as BindposeTransformMB).Select();
-            private void OnDisable() => (target as BindposeTransformMB).Unselect();
+            private void OnEnable() => (target as BoneTransformMB).Select();
+            private void OnDisable() => (target as BoneTransformMB).Unselect();
         }
 #endif
     }

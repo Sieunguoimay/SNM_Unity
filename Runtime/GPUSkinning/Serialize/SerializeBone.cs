@@ -5,15 +5,8 @@ namespace Snm.Runtime.GPUSkinning.Serialize
 {
 
     [Serializable]
-    public class BoneHierarchy
-    {
-        public int[] parents;
-    }
-
-    [Serializable]
     public class SerializeBone
     {
-        public Matrix4x4 bindpose;
         public SerializeVertex[] vertices;
     }
 

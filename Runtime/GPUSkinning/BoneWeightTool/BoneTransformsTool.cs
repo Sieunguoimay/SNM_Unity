@@ -2,58 +2,87 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Snm.Runtime.GPUSkinning;
+using Snm.Runtime.GPUSkinning.Serialize;
 using UnityEditor;
 using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
 {
-    public class BindposeTransformsTool
+    public class BoneTransformsTool
     {
-        private IReadOnlyList<RuntimeBone> _bones;
         private IReadOnlyList<BoneSelector> _boneSelectors;
-        private Matrix4x4 _meshToWorld;
-        private BindposeTransformMB[] _bindposeTransforms;
+        private BoneTransformMB[] _boneTransforms;
 
-        public BindposeTransformMB[] BindposeTransforms => _bindposeTransforms;
+        public BoneTransformMB[] BoneTransforms => _boneTransforms;
 
         public void Show()
         {
-            TryCreateBindposeTransforms();
+            TryCreateBoneTransforms();
         }
 
         public void Hide()
         {
-            TryDestroyBindposeTransforms();
+            TryDestroyBoneTransforms();
         }
 
-        public void SetBones(
-            IReadOnlyList<RuntimeBone> bones,
-            Matrix4x4 meshToWorld,
+        public void SetBoneSelectors(
             IReadOnlyList<BoneSelector> boneSelectors)
         {
-            _bones = bones;
             _boneSelectors = boneSelectors;
-            _meshToWorld = meshToWorld;
 
-            TryDestroyBindposeTransforms();
-            TryCreateBindposeTransforms();
+            TryDestroyBoneTransforms();
+            TryCreateBoneTransforms();
         }
 
-        private void TryCreateBindposeTransforms()
+        private void TryCreateBoneTransforms()
         {
-            if (_bones == null || _bindposeTransforms != null) return;
+            if (_boneSelectors == null || _boneTransforms != null) return;
 
-            var transforms = CreateBoneHierarchy(
-                _bones.Select(b => b.bindpose).ToArray(),
-                _meshToWorld,
-                Array.Empty<int>());
+            var transforms = Enumerable.Range(0, _boneSelectors.Count)
+                .Select(i => new GameObject($"bone_{i}").transform)
+                .ToArray();
 
-            _bindposeTransforms = new BindposeTransformMB[_bones.Count];
+            _boneTransforms = new BoneTransformMB[_boneSelectors.Count];
 
             for (int i = 0; i < transforms.Length; i++)
             {
-                _bindposeTransforms[i] = transforms[i].gameObject.AddComponent<BindposeTransformMB>();
-                _bindposeTransforms[i].SetBoneSelector(_boneSelectors[i]);
+                _boneTransforms[i] = transforms[i].gameObject.AddComponent<BoneTransformMB>();
+                _boneTransforms[i].SetBoneSelector(_boneSelectors[i]);
+            }
+        }
+
+        private void TryDestroyBoneTransforms()
+        {
+            if (_boneTransforms != null)
+            {
+                foreach (BoneTransformMB v in _boneTransforms)
+                {
+                    v.SetBoneSelector(null);
+                }
+                DestroyBoneTransforms(_boneTransforms);
+                _boneTransforms = null;
+            }
+        }
+
+        public static void ApplySkeletonPoses(Transform[] transforms, RuntimeBone[] bones, Matrix4x4 meshToWorld)
+        {
+            for (int i = 0; i < bones.Length; i++)
+            {
+                var bone = bones[i];
+                var parent = bone.parent;
+                var tr = transforms[i];
+
+                UpdateTransform(tr, bone.bindpose.inverse * meshToWorld);
+                tr.SetParent(parent < 0 ? null : transforms[parent]);
+            }
+        }
+
+        public static void DestroyBoneTransforms(BoneTransformMB[] boneTransforms)
+        {
+            for (int i = 0; i < boneTransforms.Length; i++)
+            {
+                var bt = boneTransforms[i];
+                if (bt && bt.gameObject) UnityEngine.Object.DestroyImmediate(bt.gameObject);
             }
         }
 
@@ -77,35 +106,6 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 tr.SetParent(transforms[parent]);
             }
             return transforms;
-        }
-
-        private void TryDestroyBindposeTransforms()
-        {
-            if (_bindposeTransforms != null)
-            {
-                foreach (BindposeTransformMB v in _bindposeTransforms)
-                {
-                    v.SetBoneSelector(null);
-                }
-                DestroyBoneTransforms(_bindposeTransforms);
-                _bindposeTransforms = null;
-            }
-        }
-
-        public Matrix4x4[] GetBindposes(Matrix4x4 meshToWorld)
-        {
-            return _bindposeTransforms
-                .Select(bt => bt.GetWorldToLocalMatrix() * meshToWorld)
-                .ToArray();
-        }
-
-        public static void DestroyBoneTransforms(BindposeTransformMB[] boneTransforms)
-        {
-            for (int i = 0; i < boneTransforms.Length; i++)
-            {
-                var bt = boneTransforms[i];
-                if (bt && bt.gameObject) UnityEngine.Object.DestroyImmediate(bt.gameObject);
-            }
         }
 
         public static void DecomposeMatrix(
