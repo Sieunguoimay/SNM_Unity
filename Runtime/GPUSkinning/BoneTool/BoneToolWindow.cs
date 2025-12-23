@@ -178,10 +178,11 @@ namespace Snm.GPUSkinning.BoneWeightTool
             var boneIndex2 = boneWeight.boneIndex2;
             var boneIndex3 = boneWeight.boneIndex3;
 
-            var boneMatrix0 = tool.BoneTransformsTool.BoneTransforms[boneIndex0].transform.localToWorldMatrix;
-            var boneMatrix1 = tool.BoneTransformsTool.BoneTransforms[boneIndex1].transform.localToWorldMatrix;
-            var boneMatrix2 = tool.BoneTransformsTool.BoneTransforms[boneIndex2].transform.localToWorldMatrix;
-            var boneMatrix3 = tool.BoneTransformsTool.BoneTransforms[boneIndex3].transform.localToWorldMatrix;
+            var boneTransforms = tool.BoneTransformsTool.BoneTransforms;
+            var boneMatrix0 = boneIndex0 < boneTransforms.Length ? boneTransforms[boneIndex0].transform.localToWorldMatrix : Matrix4x4.identity;
+            var boneMatrix1 = boneIndex1 < boneTransforms.Length ? boneTransforms[boneIndex1].transform.localToWorldMatrix : Matrix4x4.identity;
+            var boneMatrix2 = boneIndex2 < boneTransforms.Length ? boneTransforms[boneIndex2].transform.localToWorldMatrix : Matrix4x4.identity;
+            var boneMatrix3 = boneIndex3 < boneTransforms.Length ? boneTransforms[boneIndex3].transform.localToWorldMatrix : Matrix4x4.identity;
 
             var bindpose0 = boneIndex0 < mesh.bindposeCount ? mesh.bindposes[boneIndex0] : Matrix4x4.identity;
             var bindpose1 = boneIndex1 < mesh.bindposeCount ? mesh.bindposes[boneIndex1] : Matrix4x4.identity;
@@ -211,27 +212,22 @@ namespace Snm.GPUSkinning.BoneWeightTool
             return clicked;
         }
 
-        private void _exportCallback_ToAsset()
+        private void Export_ToSkeletonAsset()
         {
             tool.UpdateSkeletonWithBoneTransforms(Matrix4x4.identity);
             AssetExportTool.ExportToSkeletonAsset(tool.Bones.Select(b => new Bone { parent = b.parent, bindpose = b.bindpose }).ToArray(), ref skeleton);
         }
 
-        private void _exportCallback_ToMesh(bool exportBindposes)
+        private void Export_ToMesh(bool exportBindposes)
         {
-            if (exportBindposes)
-            {
-                tool.UpdateSkeletonWithBoneTransforms(Matrix4x4.identity);
-                var bindposes = tool.Bones.Select(b => b.bindpose).ToArray();
-                AssetExportTool.ExportBindposesToMesh(bindposes, mesh, ref mesh);
-            }
-            else
-            {
-                var boneWeights = BoneWeightConverter.ExtractBoneWeights(RuntimeBoneImporter.Export(tool.Bones).Item1, mesh.vertexCount);
-                AssetExportTool.ExportBoneWeightsToMesh(boneWeights, mesh, ref mesh);
-                TryCleanupRenderer();
-                TryCreateRenderer();
-            }
+            tool.UpdateSkeletonWithBoneTransforms(Matrix4x4.identity);
+
+            var bindposes = tool.Bones.Select(b => b.bindpose).ToArray();
+            var boneWeights = BoneWeightConverter.ExtractBoneWeights(RuntimeBoneImporter.Export(tool.Bones).Item1, mesh.vertexCount);
+
+            AssetExportTool.ExportBoneWeightsToMesh(boneWeights, bindposes, mesh, ref mesh);
+            TryCleanupRenderer();
+            TryCreateRenderer();
         }
 
         private void RefreshVE()
@@ -270,13 +266,18 @@ namespace Snm.GPUSkinning.BoneWeightTool
             var layout_Config = new VisualElement();
 
             var objectField_Mesh = new ObjectField { label = "Mesh", value = mesh, objectType = typeof(Mesh) };
-            objectField_Mesh.RegisterValueChangedCallback(evt => { mesh = (Mesh)evt.newValue; LoadTool(); });
+            objectField_Mesh.RegisterValueChangedCallback(evt => { mesh = (Mesh)evt.newValue; });
 
             var objectField_Skeleton = new ObjectField { label = "Skeleton", value = skeleton, objectType = typeof(SkeletonAsset) };
-            objectField_Skeleton.RegisterValueChangedCallback(evt => { skeleton = (SkeletonAsset)evt.newValue; LoadTool(); });
+            objectField_Skeleton.RegisterValueChangedCallback(evt => { skeleton = (SkeletonAsset)evt.newValue; });
 
             var enumField_ToolMode = new EnumField(toolMode);
-            enumField_ToolMode.RegisterValueChangedCallback(evt => { toolMode = (BoneToolMode)evt.newValue; RefreshVE(); });
+            enumField_ToolMode.RegisterValueChangedCallback(evt =>
+            {
+                toolMode = (BoneToolMode)evt.newValue;
+                tool.SnapBoneTransformsToBindposes();
+                RefreshVE();
+            });
 
             var layout_Horizontal = new VisualElement() { style = { flexDirection = FlexDirection.Row } };
             var button_Load = new Button() { text = "Load Bones", clickable = new(LoadTool) };
@@ -290,15 +291,15 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
             if (toolMode == BoneToolMode.WeightPainter)
             {
-                var button_ExportBoneWeights = new Button { text = "Save BoneWeights to Mesh", clickable = new(() => _exportCallback_ToMesh(false)) };
-                var button_ExportBindposes = new Button { text = "Save Bindposes to Mesh", clickable = new(() => _exportCallback_ToMesh(true)) };
+                var button_ExportBoneWeights = new Button { text = "Save Mesh", clickable = new(() => Export_ToMesh(false)) };
+                // var button_ExportBindposes = new Button { text = "Save Bindposes to Mesh", clickable = new(() => _exportCallback_ToMesh(true)) };
 
                 layout_Horizontal.Add(button_ExportBoneWeights);
-                layout_Horizontal.Add(button_ExportBindposes);
+                // layout_Horizontal.Add(button_ExportBindposes);
             }
             else
             {
-                var button_Export = new Button { text = "Save Skeleton", clickable = new(_exportCallback_ToAsset) };
+                var button_Export = new Button { text = "Save Skeleton", clickable = new(Export_ToSkeletonAsset) };
 
                 layout_Horizontal.Add(button_Export);
             }

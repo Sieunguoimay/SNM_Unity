@@ -9,7 +9,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
 {
     public class RuntimeBoneImporter
     {
-        public static RuntimeBone[] Import(SerializeBone[] bones, Matrix4x4[] bindposes, int[] parents)
+        public static RuntimeBone[] Import(RuntimeBone[] bones, Matrix4x4[] bindposes, int[] parents)
         {
             return bones
                 .Select((bone, index) => new RuntimeBone
@@ -23,15 +23,15 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 .ToArray();
         }
 
-        public static (SerializeBone[], Bone[]) Export(IEnumerable<RuntimeBone> bones)
+        public static (RuntimeBone[], Bone[]) Export(IEnumerable<RuntimeBone> bones)
         {
             return (
                 bones
-                    .Select(bone => new SerializeBone
+                    .Select(bone => new RuntimeBone
                     {
                         vertices = bone.vertices
-                            .Select(v => new SerializeVertex { index = v.index, boneWeight = v.boneWeight })
-                            .ToArray(),
+                            .Select(v => new RuntimeVertex { index = v.index, boneWeight = v.boneWeight })
+                            .ToList(),
                     })
                     .ToArray(),
                 bones

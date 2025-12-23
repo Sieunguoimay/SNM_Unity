@@ -45,7 +45,9 @@ namespace Snm.Runtime.GPUSkinning
                 Debug.LogError("GPUSkinnedMeshRenderer: Require material with shader Custom/GpuSkin!", this);
                 return;
             }
-            var bindposes = skeleton.skeleton.bones.Select(b => b.bindpose).ToArray();
+            var bindposes = skeleton != null 
+                ? skeleton.skeleton.bones.Select(b => b.bindpose).ToArray() 
+                : mesh.bindposes;
             _renderer = new GPUSkinnedMeshRenderer(mesh, bindposes, material, boneTransforms.Where(t => t != null).ToArray(), transform);
             _renderer.SetupMesh();
         }

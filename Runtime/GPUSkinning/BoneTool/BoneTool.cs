@@ -34,6 +34,12 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 onUnselect: bone => HideVerticesSelector());
 
             boneTransformsTool.SetBoneSelectors(boneSelectionTool.BoneSelectors);
+
+            SnapBoneTransformsToBindposes();
+        }
+
+        public void SnapBoneTransformsToBindposes()
+        {
             var transforms = boneTransformsTool.BoneTransforms.Select(bt => bt.transform).ToArray();
             BoneTransformsTool.ApplySkeletonPoses(transforms, _bones, Matrix4x4.identity);
         }

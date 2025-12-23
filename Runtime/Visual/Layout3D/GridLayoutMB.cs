@@ -76,13 +76,23 @@ namespace Snm.Visual.Layout3D
         {
             if (gameObject.activeInHierarchy)
             {
-                this.ExecuteInNextFrame(() =>
+                if (Application.IsPlaying(this))
+                {
+                    this.ExecuteInNextFrame(() =>
+                    {
+                        for (var i = 0; i < transform.childCount; i++)
+                        {
+                            transform.GetChild(i).localPosition = GetCellPositionByCellIndex(i);
+                        }
+                    });
+                }
+                else
                 {
                     for (var i = 0; i < transform.childCount; i++)
                     {
                         transform.GetChild(i).localPosition = GetCellPositionByCellIndex(i);
                     }
-                });
+                }
             }
         }
     }

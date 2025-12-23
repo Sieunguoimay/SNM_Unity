@@ -1,6 +1,5 @@
-using System;
 using System.Linq;
-using Snm.Runtime.GPUSkinning.Serialize;
+using Snm.PropertyAttributes;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -9,6 +8,7 @@ namespace Snm.Runtime.GPUSkinning
     public class GPUSkinnedMeshRendererMB_FromUnitySMR : MonoBehaviour
     {
         [SerializeField] private SkinnedMeshRenderer unitySMR;
+        [DisableField]
         [SerializeField] private Shader gpuSkinningShader;
 
         private GPUSkinnedMeshRenderer _gpuSMR;
@@ -39,6 +39,10 @@ namespace Snm.Runtime.GPUSkinning
 
         private void OnValidate()
         {
+            if (gpuSkinningShader == null)
+            {
+                gpuSkinningShader = UnityEditor.AssetDatabase.LoadAssetAtPath<Shader>("Assets/SNM_Unity/Runtime/GPUSkinning/GPUSkin.shader");
+            }
             if (!isActiveAndEnabled) return;
             TryDestroyGPUSMR();
             TryCreateGPUSMR();

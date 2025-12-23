@@ -12,6 +12,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
     {
         private IReadOnlyList<BoneSelector> _boneSelectors;
         private BoneTransformMB[] _boneTransforms;
+        private BoneVisualizerMB _visualizer;
 
         public BoneTransformMB[] BoneTransforms => _boneTransforms;
 
@@ -49,6 +50,9 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 _boneTransforms[i] = transforms[i].gameObject.AddComponent<BoneTransformMB>();
                 _boneTransforms[i].SetBoneSelector(_boneSelectors[i]);
             }
+
+            _visualizer = new GameObject("[BoneVisualizerMB]").AddComponent<BoneVisualizerMB>();
+            _visualizer.SetTransforms(transforms);
         }
 
         private void TryDestroyBoneTransforms()
@@ -61,6 +65,11 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 }
                 DestroyBoneTransforms(_boneTransforms);
                 _boneTransforms = null;
+            }
+
+            if (_visualizer != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_visualizer.gameObject);
             }
         }
 

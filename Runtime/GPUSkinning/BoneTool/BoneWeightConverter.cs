@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Snm.Runtime.GPUSkinning.Serialize;
+using System.Linq;
+using Snm.Runtime.GPUSkinning;
 using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
@@ -8,17 +9,17 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
     public static class BoneWeightConverter
     {
-        public static SerializeBone[] ConvertToBoneDatas(
+        public static RuntimeBone[] ConvertToBoneDatas(
             BoneWeight[] boneWeights,
             int boneCount)
         {
-            var bones = new SerializeBone[boneCount];
+            var bones = new RuntimeBone[boneCount];
 
             for (int i = 0; i < bones.Length; i++)
             {
-                bones[i] = new SerializeBone
+                bones[i] = new RuntimeBone
                 {
-                    vertices = Array.Empty<SerializeVertex>(),
+                    vertices = new()
                 };
             }
 
@@ -28,15 +29,11 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
                 void AddWeight(int boneIndex, float weight)
                 {
-                    if (weight > 1e-6f)
+                    if (weight > 1e-6f && boneIndex < bones.Length)
                     {
                         var bone = bones[boneIndex];
-
-                        var vertexList = new List<SerializeVertex>(bone.vertices ?? Array.Empty<SerializeVertex>())
-                        {
-                            new() { index = v, boneWeight = weight }
-                        };
-                        bone.vertices = vertexList.ToArray();
+                        bone.vertices ??= new();
+                        bone.vertices.Add(new() { index = v, boneWeight = weight });
                     }
                 }
 
@@ -49,7 +46,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
             return bones;
         }
 
-        public static BoneWeight[] ExtractBoneWeights(SerializeBone[] bones, int vertexCount)
+        public static BoneWeight[] ExtractBoneWeights(RuntimeBone[] bones, int vertexCount)
         {
             var weights = new List<(int bone, float weight)>[vertexCount];
             for (int i = 0; i < vertexCount; i++)

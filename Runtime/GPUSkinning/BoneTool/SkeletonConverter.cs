@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
@@ -6,14 +7,9 @@ using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning.Serialize
 {
-    public class SkeletonAsset : ScriptableObject
-    {
-        public Skeleton skeleton;
-    }
-
     public static class SkeletonConverterTool
     {
-        [UnityEditor.MenuItem("Assets/Prefab/ToSkeletonAsset")]
+        [MenuItem("Assets/Prefab/ToSkeletonAsset")]
         private static void PrefabToSkeletonAsset()
         {
             if (Selection.activeObject is GameObject go)
@@ -34,16 +30,32 @@ namespace Snm.Runtime.GPUSkinning.Serialize
         }
     }
 
-    [Serializable]
-    public class Skeleton
+    public class SkeletonConverter
     {
-        public Bone[] bones;
-    }
+        public static Skeleton TransformHierarchyToSkeleton(int[] parents, Matrix4x4[] bindposes)
+        {
+            return new Skeleton
+            {
+                bones = bindposes
+                    .Select((tr, index) => new Bone
+                    {
+                        bindpose = tr,
+                        parent = parents[index]
+                    })
+                    .ToArray()
+            };
+        }
 
-    [Serializable]
-    public class Bone
-    {
-        public int parent;
-        public Matrix4x4 bindpose;
+        public static IEnumerable<Transform> TraverseHierarchy(Transform curr)
+        {
+            yield return curr;
+            foreach (Transform c in curr)
+            {
+                foreach (var t in TraverseHierarchy(c))
+                {
+                    yield return t;
+                }
+            }
+        }
     }
 }

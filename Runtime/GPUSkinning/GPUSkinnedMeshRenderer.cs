@@ -93,7 +93,7 @@ namespace Snm.Runtime.GPUSkinning
 
         public void SetupMaterial()
         {
-            FillBoneMatrices(boneTransforms);
+            FillSkinningMatrices(boneTransforms);
 
             core.UploadBoneMatricesViaMaterial(boneTransforms.Length);
         }
@@ -103,12 +103,12 @@ namespace Snm.Runtime.GPUSkinning
             core.Render(meshTransform.localToWorldMatrix);
         }
 
-        private void FillBoneMatrices(Transform[] boneTransforms)
+        private void FillSkinningMatrices(Transform[] boneTransforms)
         {
             for (int i = 0; i < boneTransforms.Length; i++)
             {
-                var boneToWorld = boneTransforms[i].localToWorldMatrix * bindposes[i];
-                core.SetSkinningMatrix(i, boneToWorld);
+                var skinningMatrix = boneTransforms[i].localToWorldMatrix * bindposes[i];
+                core.SetSkinningMatrix(i, skinningMatrix);
             }
         }
     }

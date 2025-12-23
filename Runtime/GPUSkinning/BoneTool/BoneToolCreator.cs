@@ -21,7 +21,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
             AssetDatabase.SaveAssetIfDirty(skeletonAsset);
         }
 
-        public static void ExportBoneWeightsToMesh(BoneWeight[] boneWeights, Mesh mesh, ref Mesh outputMesh)
+        public static void ExportBoneWeightsToMesh(BoneWeight[] boneWeights, Matrix4x4[] bindposes, Mesh mesh, ref Mesh outputMesh)
         {
             if (outputMesh == null || !AssetDatabase.GetAssetPath(outputMesh).StartsWith("Assets/"))
             {
@@ -31,6 +31,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 CreateAsset(outputMesh);
             }
             outputMesh.boneWeights = boneWeights;
+            outputMesh.bindposes = bindposes;
             EditorUtility.SetDirty(outputMesh);
             AssetDatabase.SaveAssetIfDirty(outputMesh);
         }
