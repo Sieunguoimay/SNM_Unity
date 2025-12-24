@@ -13,6 +13,7 @@ namespace Snm.Runtime.GrassSystem
     public class InteractorTraceSystemInstaller
     {
         public IDisposable Install(
+            float brushSize,
             out Action openWindowAction,
             out RenderTexture outRenderTexture,
             out Transform painterTransform,
@@ -28,10 +29,12 @@ namespace Snm.Runtime.GrassSystem
                 worldMax = new Vector2(10, 10)
             };
 
+            var canvasSize = worldMax - worldMin;
+
             var painter = new InteractorTracePainter(
                 renderTexture,
                 new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/SNM_Unity/Runtime/GrassSystem/WorldTraceBrush.shader")),
-                .01f, 1f,
+                brushSize / canvasSize.x, 1f,
                 worldCanvas,
                 paintCallback: () => { });
             var renderTextureVE = CreateTexturePreviewVE(renderTexture, painter, out var disposeCanvasVE);

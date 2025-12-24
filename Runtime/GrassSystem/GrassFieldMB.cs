@@ -67,9 +67,11 @@ namespace Snm.Runtime.GrassSystem
         private System.IDisposable _traceSystemDisposable;
         private System.Action _openRTPreviewWindowAction;
         private Transform _painterTransform;
+        private float _interactorRadius;
 
         private void OnEnable()
         {
+            _interactorRadius = interactor.localScale.x;
             TryDeleteRenderer();
             TryCreateRenderer();
         }
@@ -107,15 +109,21 @@ namespace Snm.Runtime.GrassSystem
 
         private void CreateTraceSystem(out RenderTexture trampleRT, out WorldCanvas worldCanvas)
         {
-            _traceSystemDisposable = new InteractorTraceSystemInstaller().Install(out _openRTPreviewWindowAction, out trampleRT, out _painterTransform, out worldCanvas);
-            // _painterTransform.SetParent(interactor);
+            _traceSystemDisposable = new InteractorTraceSystemInstaller().Install(
+                _interactorRadius, 
+                out _openRTPreviewWindowAction, 
+                out trampleRT, 
+                out _painterTransform, 
+                out worldCanvas);
+            _painterTransform.SetParent(interactor);
+            _painterTransform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
         }
 
         private void DeleteTraceSystem()
         {
             if (_painterTransform != null)
             {
-                // _painterTransform.SetParent(null);
+                _painterTransform.SetParent(null);
                 _painterTransform = null;
             }
 
@@ -127,7 +135,7 @@ namespace Snm.Runtime.GrassSystem
         {
             if (interactor != null)
             {
-                _grassFieldRenderer?.SetInteractor(interactor.position, interactor.localScale.x);
+                _grassFieldRenderer?.SetInteractor(interactor.position, _interactorRadius);
             }
             _grassFieldRenderer?.Render();
         }
