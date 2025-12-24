@@ -139,6 +139,11 @@ namespace Snm.Runtime.GrassSystem
             material.SetVector("_InteractorPosAndRadius", new Vector4(position.x, position.y, position.z, radius));
         }
 
+        public void SetTrampleRT(RenderTexture trampleRT)
+        {
+            material.SetTexture("_TrampleRT", trampleRT);
+        }
+
         public void SetupSway(int count)
         {
             var randoms = new Vector4[count];
