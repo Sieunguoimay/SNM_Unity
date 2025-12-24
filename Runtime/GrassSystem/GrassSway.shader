@@ -27,6 +27,11 @@ Shader "Instanced/GrassSway"
             sampler2D _MainTex;
             float4 _MainTex_ST;
 
+            //Trample
+            sampler2D _TrampleRT;
+            float4 _TrampleRT_ST;
+            float4 _TrampleRect;
+
             float3 _WindDir;
             float _WindStrength;
             float _WindFrequency;
@@ -86,6 +91,11 @@ Shader "Instanced/GrassSway"
                 float3 pushDir = normalize(worldOrigin - interactorPos);
                 float3 interactionOffset = pushDir * influence * _InteractorStrength * ease_OutSin(heightFactor);
                 interactionOffset.y *= .2;
+
+                //Trample
+                float2 worldUV = (worldOrigin.xz - _TrampleRect.xy) / _TrampleRect.zw;// * .5 + .5;
+                float4 trample = tex2Dlod(_TrampleRT, float4(worldUV,0,0));
+
                 // Combine
                 float3 localPos = v.vertex.xyz + windOffset + interactionOffset;
                 float3 worldPos = mul(unity_ObjectToWorld, float4(localPos,1)).xyz;
@@ -94,7 +104,7 @@ Shader "Instanced/GrassSway"
                 o.pos = UnityWorldToClipPos(worldPos.xyz);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 o.normal = UnityObjectToWorldNormal(v.normal);
-                o.color = heightFactor;
+                o.color = float4(trample.xyz,1);
                 return o;
             }
 
@@ -104,7 +114,7 @@ Shader "Instanced/GrassSway"
 
                 float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
                 float ndl = max(0, dot(i.normal, lightDir));
-                return col * (0.2 + ndl * 0.8);
+                return i.color;//col * (0.2 + ndl * 0.8);
             }
             ENDCG
         }
