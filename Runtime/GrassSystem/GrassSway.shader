@@ -63,7 +63,7 @@ Shader "Instanced/GrassSway"
             float ease_OutQuad(float x) { return 1 - (1 - x) * (1 - x); }
             float ease_OutSin(float x) { return sin((x * 3.1415) / 2.0); }
 
-            v2f vert (appdata v)
+            v2f vert(appdata v)
             {
                 UNITY_SETUP_INSTANCE_ID(v);
 
@@ -90,21 +90,31 @@ Shader "Instanced/GrassSway"
 
                 float3 pushDir = normalize(worldOrigin - interactorPos);
                 float3 interactionOffset = pushDir * influence * _InteractorStrength * ease_OutSin(heightFactor);
-                interactionOffset.y *= .2;
+                interactionOffset.y *= .15;
 
                 //Trample
                 float2 worldUV = (worldOrigin.xz - _TrampleRect.xy) / _TrampleRect.zw;// * .5 + .5;
-                float4 trample = tex2Dlod(_TrampleRT, float4(worldUV,0,0));
+                float4 tramplePos = tex2Dlod(_TrampleRT, float4(saturate(worldUV), 0, 0));
+                float3 tramplePos3 = tramplePos.xyz;
+
+                float dist_ = distance(worldOrigin, tramplePos3);
+                float influence_ = tramplePos.w;// * saturate(1.0 - dist_ / interactorRadius);
+                float3 pushDir_ = normalize(worldOrigin - tramplePos3);
+                float3 interactionOffset_ = pushDir_ * influence_ * _InteractorStrength * ease_OutSin(heightFactor);
+                interactionOffset_.y *= .15;
+
+                float useTrample = step(influence, influence_); 
+                float3 offset = lerp(interactionOffset, interactionOffset_, useTrample);
 
                 // Combine
-                float3 localPos = v.vertex.xyz + windOffset + interactionOffset;
+                float3 localPos = v.vertex.xyz + windOffset + offset;
                 float3 worldPos = mul(unity_ObjectToWorld, float4(localPos,1)).xyz;
 
                 v2f o;
                 o.pos = UnityWorldToClipPos(worldPos.xyz);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 o.normal = UnityObjectToWorldNormal(v.normal);
-                o.color = float4(trample.xyz,1);
+                o.color = tramplePos.w;
                 return o;
             }
 
@@ -114,7 +124,7 @@ Shader "Instanced/GrassSway"
 
                 float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
                 float ndl = max(0, dot(i.normal, lightDir));
-                return i.color;//col * (0.2 + ndl * 0.8);
+                return col * (0.2 + ndl * 0.8);
             }
             ENDCG
         }

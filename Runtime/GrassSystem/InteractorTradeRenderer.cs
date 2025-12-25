@@ -1,23 +1,24 @@
 #if UNITY_EDITOR
 #endif
 using System;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace Snm.Runtime.GrassSystem
 {
     public class InteractorTracePainter
     {
         private readonly RenderTexture renderTexture;
+        private readonly RenderTexture renderTexture2;
         private readonly Material material;
         private readonly float brushRadius;
         private readonly float brushStrength;
         private readonly WorldCanvas worldCanvas;
         private readonly Action paintCallback;
+        private bool useAasSource;
 
         public InteractorTracePainter(
             RenderTexture renderTexture,
+            RenderTexture renderTexture2,
             Material material,
             float brushRadius,
             float brushStrength,
@@ -25,11 +26,17 @@ namespace Snm.Runtime.GrassSystem
             Action paintCallback)
         {
             this.renderTexture = renderTexture;
+            this.renderTexture2 = renderTexture2;
             this.material = material;
             this.brushRadius = brushRadius;
             this.brushStrength = brushStrength;
             this.worldCanvas = worldCanvas;
             this.paintCallback = paintCallback;
+        }
+
+        public void SetTexture()
+        {
+            material.SetTexture("_MainTex", renderTexture);
         }
 
         public void Paint(Vector3 worldPos)
@@ -38,24 +45,26 @@ namespace Snm.Runtime.GrassSystem
 
             var uv = WorldToUV(worldPos);
             material.SetVector("_BrushParams", new Vector4(uv.x, uv.y, brushRadius, brushStrength));
+            material.SetVector("_BrushColor", new Vector4(worldPos.x, worldPos.y, worldPos.z, 1));
 
-            var old = RenderTexture.active;
-            RenderTexture.active = renderTexture;
+            var rtA = renderTexture;
+            var rtB = renderTexture2;
 
-            //Rendering goes here..
+            var src = useAasSource ? rtA : rtB;
+            var dst = useAasSource ? rtB : rtA;
 
-            GL.PushMatrix();
-            GL.LoadOrtho();
-            material.SetPass(0);
-            Graphics.DrawProceduralNow(MeshTopology.Triangles, 6);
-            GL.PopMatrix();
+            Graphics.Blit(src, dst, material);
 
-            RenderTexture.active = old;
-
-            paintCallback();
+            useAasSource = !useAasSource;
         }
 
-        public void ClearOutRenderTexture()
+        public void ClearOutRenderTextures()
+        {
+            ClearOutRenderTexture(renderTexture);
+            ClearOutRenderTexture(renderTexture2);
+        }
+
+        public static void ClearOutRenderTexture(RenderTexture renderTexture)
         {
             if (renderTexture == null)
             {
@@ -79,9 +88,11 @@ namespace Snm.Runtime.GrassSystem
 
         private Vector2 WorldToUV(Vector3 worldPos)
         {
-            float u = Mathf.InverseLerp(worldCanvas.worldMin.x, worldCanvas.worldMax.x, worldPos.x);
-            float v = Mathf.InverseLerp(worldCanvas.worldMin.y, worldCanvas.worldMax.y, worldPos.z);
-            return new Vector2(u, 1f - v);
+            // float u = Mathf.InverseLerp(worldCanvas.worldMin.x, worldCanvas.worldMax.x, worldPos.x);
+            // float v = Mathf.InverseLerp(worldCanvas.worldMin.y, worldCanvas.worldMax.y, worldPos.z);
+            // return new Vector2(u, 1f - v);
+            var uv = (new Vector2(worldPos.x, worldPos.z) - worldCanvas.worldMin) / (worldCanvas.worldMax - worldCanvas.worldMin);
+            return new Vector2(uv.x, 1f - uv.y);
         }
     }
 }
