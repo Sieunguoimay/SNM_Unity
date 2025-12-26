@@ -39,13 +39,13 @@ namespace Snm.Runtime.GrassSystem
             material.SetTexture("_MainTex", renderTexture);
         }
 
-        public void Paint(Vector3 worldPos)
+        public void Paint(Vector3 worldPos, Vector3 brushColor)
         {
             if (renderTexture == null) return;
 
             var uv = WorldToUV(worldPos);
             material.SetVector("_BrushParams", new Vector4(uv.x, uv.y, brushRadius, brushStrength));
-            material.SetVector("_BrushColor", new Vector4(worldPos.x, worldPos.y, worldPos.z, 1));
+            material.SetVector("_BrushColor", brushColor);//new Vector4(worldPos.x, worldPos.y, worldPos.z, 1));
 
             var rtA = renderTexture;
             var rtB = renderTexture2;

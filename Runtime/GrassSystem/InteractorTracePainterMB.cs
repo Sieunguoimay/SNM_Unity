@@ -6,7 +6,7 @@ namespace Snm.Runtime.GrassSystem
     [ExecuteInEditMode]
     public class InteractorTracePainterMB : MonoBehaviour
     {
-        public float minDistance = 0.05f; // world units
+        public float minDistance = 0.01f; // world units
 
         private Vector3 _lastPaintPos;
         private bool _hasPainted;
@@ -26,8 +26,8 @@ namespace Snm.Runtime.GrassSystem
         [ContextMenu("Paint")]
         private void PaintHere()
         {
-            _painter?.Paint(transform.position);
-            _paintCallback?.Invoke();
+            // _painter?.Paint(transform.position);
+            // _paintCallback?.Invoke();
         }
 
         private void Update()
@@ -52,7 +52,7 @@ namespace Snm.Runtime.GrassSystem
 
         void Paint(Vector3 pos)
         {
-            _painter.Paint(pos);
+            _painter.Paint(pos, Vector3.Normalize(pos - _lastPaintPos));
             _lastPaintPos = pos;
             _hasPainted = true;
             _paintCallback?.Invoke();

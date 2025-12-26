@@ -22,10 +22,10 @@ namespace Snm.Runtime.GrassSystem
             _matrices = matrices;
         }
 
-        public void SetInteractor(Vector3 position, float radius)
-        {
-            material.SetVector("_InteractorPosAndRadius", new Vector4(position.x, position.y, position.z, radius));
-        }
+        // public void SetInteractor(Vector3 position, float radius)
+        // {
+        //     material.SetVector("_InteractorPosAndRadius", new Vector4(position.x, position.y, position.z, radius));
+        // }
 
         public void SetTrampleRT(RenderTexture trampleRT, WorldCanvas worldCanvas)
         {

@@ -54,6 +54,8 @@ Shader "Hidden/WorldTraceBrush"
             //     o.uv2 = TRANSFORM_TEX(v.uv, _MainTex);
             //     return o;
             // }
+            float ease_InCircle(float x) { return 1.0 - sqrt(1.0 - pow(x, 2.0)); }
+            float ease_InSine(float x) { return 1.0 - cos(x * 3.1415 * .5); }
 
             v2f vert(uint id : SV_VertexID)
             {
@@ -75,8 +77,8 @@ Shader "Hidden/WorldTraceBrush"
                 float d = distance(uv, _BrushParams.xy);
 
                 // clip(_BrushParams.z - d);
-
-                float mask = saturate(1 - d / _BrushParams.z);
+                float brushRadius = _BrushParams.z;
+                float mask = saturate(1 - d / brushRadius);
                 // return mask * _BrushParams.w;
                 // return float4(_BrushColor.xyz, mask);
 
@@ -87,9 +89,10 @@ Shader "Hidden/WorldTraceBrush"
 
                 float4 outColor = lerp(dst, src, useSrc);
 
-                if(_BrushParams.z < d)
+                if(brushRadius < d)
                 {
-                    return float4(dst.xyz, dst.w * .98);
+                    // discard;
+                    return float4(dst.xyz, dst.w * .995);
                 }
 
                 return outColor;

@@ -35,6 +35,7 @@ namespace Snm.Runtime.GrassSystem
 
         private void OnValidate()
         {
+            if (!isActiveAndEnabled) return;
             TryDeleteRenderer();
             TryCreateRenderer();
         }
@@ -85,10 +86,10 @@ namespace Snm.Runtime.GrassSystem
 
         private void LateUpdate()
         {
-            if (interactor != null)
-            {
-                _grassFieldRenderer?.SetInteractor(interactor.position, _interactorRadius);
-            }
+            // if (interactor != null)
+            // {
+            //     _grassFieldRenderer?.SetInteractor(interactor.position, _interactorRadius);
+            // }
             _grassFieldRenderer?.Render();
         }
 

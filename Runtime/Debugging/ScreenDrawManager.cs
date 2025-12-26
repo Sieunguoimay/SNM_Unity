@@ -6,8 +6,7 @@ namespace Snm.Runtime.Debugging
     public class ScreenDrawManager : MonoBehaviour
     {
         private readonly List<ScreenLine> lines = new();
-        private static Texture2D _tex;
-
+        private static Material _lineMat;
         private static ScreenDrawManager _instance;
 
         public static ScreenDrawManager Instance
@@ -15,7 +14,6 @@ namespace Snm.Runtime.Debugging
             get
             {
                 if (_instance != null) return _instance;
-
                 var go = new GameObject("[ScreenDraw]");
                 DontDestroyOnLoad(go);
                 _instance = go.AddComponent<ScreenDrawManager>();
@@ -35,8 +33,18 @@ namespace Snm.Runtime.Debugging
             });
         }
 
-        void OnGUI()
+        void OnPostRender()
         {
+            if (lines.Count == 0) return;
+
+            CreateMaterial();
+            _lineMat.SetPass(0);
+
+            GL.PushMatrix();
+            GL.LoadPixelMatrix(0, Screen.width, Screen.height, 0);
+
+            GL.Begin(GL.LINES);
+
             float now = Time.time;
 
             for (int i = lines.Count - 1; i >= 0; i--)
@@ -47,35 +55,28 @@ namespace Snm.Runtime.Debugging
                     continue;
                 }
 
-                DrawLineGUI(lines[i].a, lines[i].b, lines[i].color, lines[i].width);
+                GL.Color(lines[i].color);
+                GL.Vertex(lines[i].a);
+                GL.Vertex(lines[i].b);
             }
+
+            GL.End();
+            GL.PopMatrix();
         }
 
-        // Simple GUI-based line drawing
-
-        private void DrawLineGUI(Vector2 a, Vector2 b, Color color, float width)
+        private static void CreateMaterial()
         {
-            if (_tex == null)
+            if (_lineMat != null) return;
+
+            _lineMat = new Material(Shader.Find("Hidden/Internal-Colored"))
             {
-                _tex = new Texture2D(1, 1);
-                _tex.SetPixel(0, 0, Color.white);
-                _tex.Apply();
-            }
+                hideFlags = HideFlags.HideAndDontSave
+            };
 
-            Matrix4x4 matrixBackup = GUI.matrix;
-
-            Color savedColor = GUI.color;
-            GUI.color = color;
-
-            Vector2 delta = b - a;
-            float angle = Mathf.Rad2Deg * Mathf.Atan2(delta.y, delta.x);
-            float length = delta.magnitude;
-
-            GUIUtility.RotateAroundPivot(angle, a);
-            GUI.DrawTexture(new Rect(a.x, a.y - width * 0.5f, length, width), _tex);
-
-            GUI.color = savedColor;
-            GUI.matrix = matrixBackup;
+            _lineMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            _lineMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            _lineMat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            _lineMat.SetInt("_ZWrite", 0);
         }
 
         struct ScreenLine
