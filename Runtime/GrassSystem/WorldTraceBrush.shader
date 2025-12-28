@@ -6,12 +6,6 @@ Shader "Hidden/WorldTraceBrush"
         ZWrite Off
         ZTest Always
         Blend Off
-        // Blend One One   // Additive
-        // BlendOp Add, Max
-        // Blend OneMinusDstAlpha One, SrcAlpha DstAlpha
-        // Blend SrcAlpha OneMinusSrcAlpha
-        // Blend OneMinusDstAlpha One
-        // Blend SrcAlpha DstAlpha
         
         Pass
         {
@@ -22,40 +16,31 @@ Shader "Hidden/WorldTraceBrush"
             #include "UnityCG.cginc"
 
             float4 _BrushParams; // x,y = UV center, z = radius, w = strength
-            float4 _BrushColor;
+            float4 _WorldCanvas;
+            float4 _BrushDir;
 
             sampler2D _MainTex;
-            // float4 _MainTex_ST;
-            
-            // struct appdata
-            // {
-            //     uint vertexID : SV_VertexID;
-            //     float2 uv : TEXCOORD0;
-            // };
-
+  
             struct v2f {
                 float4 pos : SV_POSITION;
                 float2 uv  : TEXCOORD0;
-                // float2 uv2  : TEXCOORD1;
             };
 
-            // v2f vert(appdata v)
-            // {
-            //     float2 quad[6] = {
-            //         float2(-1,-1), float2(1,-1), float2(-1, 1), 
-            //         float2(-1, 1), float2(1,-1), float2(1, 1)
-            //     };
-
-            //     uint id = v.vertexID;
-                
-            //     v2f o;
-            //     o.pos = float4(quad[id], 0, 1);
-            //     o.uv = quad[id] * 0.5 + 0.5;
-            //     o.uv2 = TRANSFORM_TEX(v.uv, _MainTex);
-            //     return o;
-            // }
             float ease_InCircle(float x) { return 1.0 - sqrt(1.0 - pow(x, 2.0)); }
             float ease_InSine(float x) { return 1.0 - cos(x * 3.1415 * .5); }
+
+            float2 WorldToUV(float2 worldPos)
+            {
+                float2 uv = (worldPos.xy - _WorldCanvas.xy) / _WorldCanvas.zw;
+                return float2(uv.x, 1.0 - uv.y);
+            }
+
+            float2 UVToWorld(float2 uv){
+                uv.y = 1.0 - uv.y;
+
+                float2 worldPos = uv * _WorldCanvas.zw + _WorldCanvas.xy;
+                return worldPos;
+            }
 
             v2f vert(uint id : SV_VertexID)
             {
@@ -73,29 +58,41 @@ Shader "Hidden/WorldTraceBrush"
 
             float4 frag(v2f i) : SV_Target
             {
+                float brushRadius = _BrushParams.w;
+                float2 worldBrushPos = _BrushParams.xz;
                 float2 uv = i.uv;
-                float d = distance(uv, _BrushParams.xy);
+                float2 worldFrag = UVToWorld(uv);
 
-                // clip(_BrushParams.z - d);
-                float brushRadius = _BrushParams.z;
-                float mask = saturate(1 - d / brushRadius);
-                // return mask * _BrushParams.w;
-                // return float4(_BrushColor.xyz, mask);
-
+                float d = distance(worldFrag, worldBrushPos);
                 float4 dst = tex2D(_MainTex, float2(uv.x, 1.0 - uv.y));
-                float4 src = float4(_BrushColor.xyz, mask);
-                float useSrc = step(dst.a, src.a); 
-                // float w = saturate(src.a - dst.a);
 
-                float4 outColor = lerp(dst, src, useSrc);
-
-                if(brushRadius < d)
+                if(d > brushRadius)
                 {
                     // discard;
-                    return float4(dst.xyz, dst.w * .995);
-                }
+                    float deltaTime = _BrushDir.w;
+                    
+                    dst.w = max(0, dst.w - deltaTime * .1);
 
-                return outColor;
+                    return float4(dst.xyz, dst.w);
+                }
+                else
+                {
+                    float2 brushDir = normalize(_BrushDir.xz);
+                    float2 fragDir = normalize(worldFrag - worldBrushPos);
+                    
+                    float mask = saturate(1 - d / brushRadius);
+                    float2 pushDir = normalize(fragDir + brushDir  * 10.0);
+                    float4 src = float4(pushDir.x, pushDir.y, 0, mask);
+
+                    float useDst = step(src.a, dst.a * 1.25);
+                    float3 outDir = lerp(src.xyz, dst.xyz, useDst); 
+
+                    float outFactor = max(dst.a, src.a);
+
+                    float4 outColor = float4(outDir, outFactor);
+
+                    return outColor;
+                }
             }
             ENDHLSL
         }

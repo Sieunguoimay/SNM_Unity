@@ -38,7 +38,8 @@ Shader "Instanced/GrassSway"
             float _WindFrequency;
 
             float _InteractorStrength;
-            // float4 _InteractorPosAndRadius;
+            float4 _InteractorPosAndRadius;
+            float4 _InteractorDir;
             
             float3 _TestDirection;
 
@@ -66,10 +67,16 @@ Shader "Instanced/GrassSway"
             float ease_OutQuad(float x) { return 1 - (1 - x) * (1 - x); }
             float ease_OutQuart(float x) { return 1 - pow(1 - x, 3.0); }
             float ease_OutCircle(float x) { return sqrt(1 - pow(1 - x, 2.0)); }
+            float ease_OutBack(float x) { 
+                const float c1 = 1.70158;
+                const float c3 = c1 + 1;
 
-            float ease_InCircle(float x) { return 1.0 - sqrt(1.0 - pow(x, 2.0)); }
+                return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2);
+            }
+
             float ease_InSine(float x) { return 1.0 - cos(x * 3.1415 * .5); }
             float ease_InCubic(float x) { return x * x * x; }
+            float ease_InCircle(float x) { return 1.0 - sqrt(1.0 - pow(x, 2.0)); }
             
             float3 RotateFromTo(float3 v, float3 from, float3 to)
             {
@@ -108,28 +115,20 @@ Shader "Instanced/GrassSway"
                 return RotateFromTo(vertexPos, float3(0,1,0), dir);
             }
 
-            // float3 Push(float3 vertexPos, float3 pushDir)
-            // {
-            //     float heightFactor = saturate(vertexPos.y);
-            //     float3 outPos = vertexPos + float3(pushDir.x, 0, pushDir.z) * ease_OutSine(heightFactor);
-            //     outPos.y *= (1.0 - pushDir.y);
-            //     return outPos;
-            // }
-
             v2f vert(appdata v)
             {
                 UNITY_SETUP_INSTANCE_ID(v);
 
                 float4 rand = UNITY_ACCESS_INSTANCED_PROP(Grass, _Random);
 
-                // float heightFactor = saturate(v.vertex.y);
+                float heightFactor = saturate(v.vertex.y);
 
                 // Wind
                 float tx = _Time.y * _WindFrequency + rand.x * 10.0;
-                float swayx = sin(tx) * _WindStrength;// * heightFactor * heightFactor;
-                float ty = _Time.y * _WindFrequency + rand.y * 10.0;
-                float swayy = sin(ty) * _WindStrength;// * heightFactor * heightFactor;
-                float3 windOffset = float3(swayx, 0, swayy);
+                float swayx = sin(tx);
+                // float ty = _Time.y * _WindFrequency + rand.y * 10.0;
+                // float swayy = sin(ty);
+                float3 windDir = float3(swayx, 0, 0);
 
                 float3 localOrigin = float3(0,0,0);
                 float3 worldOrigin = 
@@ -138,15 +137,26 @@ Shader "Instanced/GrassSway"
                 //Trample
                 float2 worldUV = (worldOrigin.xz - _TrampleRect.xy) / _TrampleRect.zw;
                 float4 trample = tex2Dlod(_TrampleRT, float4(saturate(worldUV), 0, 0));
-                float3 tramplePos = mul(unity_WorldToObject, float4(trample.xyz, 1)).xyz;
+                float2 trampleDir = trample.xy;
+                // float3 tramplePos = mul(unity_WorldToObject, float4(trample.xyz, 1)).xyz;
 
-                float trampleImpact = trample.w;
-                float dist_ = distance(localOrigin, tramplePos);
-                float3 pushDir_ = normalize(localOrigin - tramplePos);
-                float3 originTrampleOffset = pushDir_ * trampleImpact;// * _InteractorStrength;
-                float3 trampleOffset = float3(originTrampleOffset.x, 0, originTrampleOffset.z);
+                float trampleImpact = ease_OutSine(trample.w) * ease_OutCircle(heightFactor);
+                float3 grassDirByTrample = float3(trampleDir.x, 0, trampleDir.y) * trampleImpact + float3(0, 1.0 - trampleImpact, 0);
+                // float dist_ = distance(localOrigin, tramplePos);
+                // float3 pushDir_ = normalize(localOrigin - tramplePos);
+                // float3 originTrampleOffset = pushDir_ * trampleImpact;// * _InteractorStrength;
+                // float3 trampleOffset = float3(originTrampleOffset.x, 0, originTrampleOffset.z);
 
-                float3 grassDir = normalize(windOffset + trample.xyz * trampleImpact + float3(0, 1.0 - trampleImpact,0));
+                // float3 pusherWorldPos = _InteractorPosAndRadius.xyz;
+                // float3 pusherLocalPos = mul(unity_WorldToObject, float4(pusherWorldPos,1)).xyz;
+                // float pusherRadius = _InteractorPosAndRadius.w;
+                // float distToPusher = distance(localOrigin, pusherLocalPos);
+                // float pusherImpact = clamp(saturate(1.0 - distToPusher / pusherRadius), 0, 1);
+                // float3 pushDir = normalize(localOrigin - pusherLocalPos);
+                // float3 grassDirByPusher = normalize(float3(pushDir.x, 0, pushDir.z) * pusherImpact  + float3(0, 1.0 - pusherImpact ,0));
+                // float usePusher = step(0.01, pusherImpact);
+                float windImpact = ease_InSine(heightFactor)*(1.0 - trampleImpact);
+                float3 grassDir = normalize(windDir * windImpact * _WindStrength + grassDirByTrample);//lerp(grassDirByTrample, grassDirByPusher, usePusher));
 
                 // Combine
                 float3 localPos = FaceDirection(v.vertex.xyz, grassDir);

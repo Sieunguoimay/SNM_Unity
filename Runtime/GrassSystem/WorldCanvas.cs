@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
-#endif
 using UnityEditor;
+#endif
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -29,6 +29,7 @@ namespace Snm.Runtime.GrassSystem
         }
     }
 
+#if UNITY_EDITOR
     public class WorldCanvasVisualizer
     {
         private readonly WorldCanvas worldCanvas;
@@ -54,4 +55,5 @@ namespace Snm.Runtime.GrassSystem
             Handles.color = old;
         }
     }
+#endif
 }

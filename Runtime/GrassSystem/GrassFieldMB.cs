@@ -20,6 +20,7 @@ namespace Snm.Runtime.GrassSystem
         private System.Action _openRTPreviewWindowAction;
         private Transform _painterTransform;
         private float _interactorRadius;
+        private Vector3 _lastPos;
 
         private void OnEnable()
         {
@@ -86,10 +87,13 @@ namespace Snm.Runtime.GrassSystem
 
         private void LateUpdate()
         {
-            // if (interactor != null)
-            // {
-            //     _grassFieldRenderer?.SetInteractor(interactor.position, _interactorRadius);
-            // }
+            if (interactor != null)
+            {
+                var currPos = interactor.position;
+                var dir = Vector3.Normalize(currPos - _lastPos);
+                _grassFieldRenderer?.SetInteractor(interactor.position, _interactorRadius, dir);
+                _lastPos = interactor.position;
+            }
             _grassFieldRenderer?.Render();
         }
 

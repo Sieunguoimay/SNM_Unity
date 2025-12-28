@@ -36,7 +36,7 @@ namespace Snm.Runtime.GrassSystem
                 renderTexture,
                 renderTexture2,
                 new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/SNM_Unity/Runtime/GrassSystem/WorldTraceBrush.shader")),
-                brushSize / canvasSize.x, 1f,
+                brushSize, 1f,
                 worldCanvas,
                 paintCallback: () => { });
 

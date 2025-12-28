@@ -9,11 +9,13 @@ namespace Snm.Runtime.GrassSystem
         public float minDistance = 0.01f; // world units
 
         private Vector3 _lastPaintPos;
-        private bool _hasPainted;
 
         private InteractorTracePainter _painter;
         private Action _paintCallback;
         private WorldCanvasChecker _worldCanvas;
+        private Vector3 _dir;
+        private bool _paintRequired;
+        private float _delay = 1f;
 
         public void SetPainter(InteractorTracePainter painter, Action paintCallback)
         {
@@ -26,8 +28,8 @@ namespace Snm.Runtime.GrassSystem
         [ContextMenu("Paint")]
         private void PaintHere()
         {
-            // _painter?.Paint(transform.position);
-            // _paintCallback?.Invoke();
+            SetPaintPos(transform.position);
+            _paintCallback?.Invoke();
         }
 
         private void Update()
@@ -36,26 +38,38 @@ namespace Snm.Runtime.GrassSystem
 
             var pos = transform.position;
 
-            if (!_worldCanvas.IsInWorldCanvas(pos)) return;
-
-            if (!_hasPainted)
+            if (_worldCanvas.IsInWorldCanvas(pos))
             {
-                Paint(pos);
-                return;
+                if ((pos - _lastPaintPos).sqrMagnitude >= minDistance * minDistance)
+                {
+                    SetPaintPos(pos);
+
+                    _paintRequired = true;
+                    _delay = 1f;
+                }
             }
 
-            if ((pos - _lastPaintPos).sqrMagnitude >= minDistance * minDistance)
+            if (_paintRequired)
             {
-                Paint(pos);
+                _painter.Paint(_lastPaintPos, _dir, Time.deltaTime);
+                _paintCallback?.Invoke();
+
+                if (_delay > 0)
+                {
+                    _delay -= Time.deltaTime * .1f;
+                }
+                else
+                {
+                    _delay = 0f;
+                    _paintRequired = false;
+                }
             }
         }
 
-        void Paint(Vector3 pos)
+        void SetPaintPos(Vector3 pos)
         {
-            _painter.Paint(pos, Vector3.Normalize(pos - _lastPaintPos));
+            _dir = pos - _lastPaintPos;
             _lastPaintPos = pos;
-            _hasPainted = true;
-            _paintCallback?.Invoke();
         }
     }
 }

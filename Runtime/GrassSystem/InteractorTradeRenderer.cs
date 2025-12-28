@@ -36,16 +36,18 @@ namespace Snm.Runtime.GrassSystem
 
         public void SetTexture()
         {
+            var origin = worldCanvas.worldMin;
+            var size = worldCanvas.worldMax-worldCanvas.worldMin;
             material.SetTexture("_MainTex", renderTexture);
+            material.SetVector("_WorldCanvas", new Vector4(origin.x, origin.y, size.x, size.y));
         }
 
-        public void Paint(Vector3 worldPos, Vector3 brushColor)
+        public void Paint(Vector3 worldPos, Vector3 brushDir, float deltaTime)
         {
             if (renderTexture == null) return;
 
-            var uv = WorldToUV(worldPos);
-            material.SetVector("_BrushParams", new Vector4(uv.x, uv.y, brushRadius, brushStrength));
-            material.SetVector("_BrushColor", brushColor);//new Vector4(worldPos.x, worldPos.y, worldPos.z, 1));
+            material.SetVector("_BrushParams", new Vector4(worldPos.x, worldPos.y, worldPos.z, brushRadius));
+            material.SetVector("_BrushDir", new Vector4(brushDir.x, brushDir.y,brushDir.z, deltaTime));
 
             var rtA = renderTexture;
             var rtB = renderTexture2;
@@ -84,15 +86,6 @@ namespace Snm.Runtime.GrassSystem
 
             // Restore the previous active RenderTexture
             RenderTexture.active = currentRT;
-        }
-
-        private Vector2 WorldToUV(Vector3 worldPos)
-        {
-            // float u = Mathf.InverseLerp(worldCanvas.worldMin.x, worldCanvas.worldMax.x, worldPos.x);
-            // float v = Mathf.InverseLerp(worldCanvas.worldMin.y, worldCanvas.worldMax.y, worldPos.z);
-            // return new Vector2(u, 1f - v);
-            var uv = (new Vector2(worldPos.x, worldPos.z) - worldCanvas.worldMin) / (worldCanvas.worldMax - worldCanvas.worldMin);
-            return new Vector2(uv.x, 1f - uv.y);
         }
     }
 }
