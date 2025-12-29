@@ -28,6 +28,11 @@ namespace Snm.Runtime.GrassSystem
             material.SetVector("_InteractorDir", dir);
         }
 
+        public void SetWindTex(Texture2D windTex)
+        {
+            // material.SetTexture("_WindMap", windTex);
+        }
+
         public void SetTrampleRT(RenderTexture trampleRT, WorldCanvas worldCanvas)
         {
             var worldPos = worldCanvas.worldMin;
