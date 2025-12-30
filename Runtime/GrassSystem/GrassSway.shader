@@ -3,12 +3,10 @@ Shader "Instanced/GrassSway"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _WindMap ("WindMap", 2D) = "white" {}
-        _WindDir ("Wind Direction", Vector) = (1,0,0,0)
-        _WindStrength ("Wind Strength", Float) = 0.3
-        _WindFrequency ("Wind Frequency", Float) = 1.5
+        // _WindDir ("Wind Direction", Vector) = (1,0,0,0)
+        _WindStrength ("Wind Strength", Float) = 1.5
+        // _WindFrequency ("Wind Frequency", Float) = 1.5
         _InteractorStrength ("Interactor Strength", Float) = 1
-        _TestDirection ("Test Direction", Vector) = (0,0,1,0)
     }
 
     SubShader
@@ -34,18 +32,17 @@ Shader "Instanced/GrassSway"
             float4 _TrampleRT_ST;
             float4 _TrampleRect;
 
-            sampler2D _WindMap;
-            float4 _WindMap_ST;
+            sampler2D _NormalMap;
+            float4 _NormalMap_ST;
+            
             // float3 _WindDir;
             float _WindStrength;
-            float _WindFrequency;
+            // float _WindFrequency;
 
             float _InteractorStrength;
             float4 _InteractorPosAndRadius;
             float4 _InteractorDir;
             
-            float3 _TestDirection;
-
             UNITY_INSTANCING_BUFFER_START(Grass)
                 UNITY_DEFINE_INSTANCED_PROP(float4, _Random)
             UNITY_INSTANCING_BUFFER_END(Grass)
@@ -55,6 +52,7 @@ Shader "Instanced/GrassSway"
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
                 float3 normal : NORMAL;
+                float4 tangent : TANGENT;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -118,20 +116,16 @@ Shader "Instanced/GrassSway"
                 return RotateFromTo(vertexPos, float3(0,1,0), dir);
             }
 
-            float3 SampleWind(float3 worldPos, float height01, out float4 color){
-                float2 uv = worldPos.xz * _WindMap_ST.xy + _WindMap_ST.zw;
-                uv += _Time.y * _WindFrequency;
-                
-                color = tex2Dlod(_WindMap, float4(uv,0,0));
-                
-                float2 windDir = tex2Dlod(_WindMap, float4(uv,0,0)).rg * 2 - 1;
+            float3 SampleDirectionTS(float2 uv)
+            {
+                float4 n = tex2Dlod(_NormalMap, float4(uv, 0, 0));
+                return n.xyz * 2.0 - 1.0;   // [-1,1] direction
+            }
 
-                float windPhase = sin(_Time.y + dot(worldPos.xz, windDir));
-
-                return float3(windDir.x, 0, windDir.y)
-                    * windPhase
-                    * _WindStrength
-                    * height01;
+            float3 MakeGrassDirStable(float3 dirOS)
+            {
+                dirOS.y = max(dirOS.y, 0.001);
+                return normalize(dirOS);
             }
 
             v2f vert(appdata v)
@@ -147,20 +141,20 @@ Shader "Instanced/GrassSway"
                 float2 worldUV = saturate((worldOrigin.xz - _TrampleRect.xy) / _TrampleRect.zw);
 
                 // Wind
-                float tx = _Time.y * _WindFrequency + rand.x * 10.0;
-                float swayx = sin(tx);
+                // float tx = _Time.y * _WindFrequency + rand.x * 10.0;
+                // float swayx = sin(tx);
                 // float ty = _Time.y * _WindFrequency + rand.y * 10.0;
                 // float swayy = sin(ty);
-                float3 windDir = float3(swayx, 0, 0);
+                // float3 windDir = float3(swayx, 0, 0);
 
                 
                 //Trample
-                float4 trample = tex2Dlod(_TrampleRT, float4(worldUV*_Time.y, 0, 0));
+                float4 trample = tex2Dlod(_TrampleRT, float4(worldUV, 0, 0));
                 float2 trampleDir = trample.xy;
                 // float3 tramplePos = mul(unity_WorldToObject, float4(trample.xyz, 1)).xyz;
 
-                float trampleImpact = ease_OutSine(trample.w) * ease_OutCircle(heightFactor);
-                float3 grassDirByTrample = float3(trampleDir.x, 0, trampleDir.y) * trampleImpact + float3(0, 1.0 - trampleImpact, 0);
+                float trampleImpact = ease_OutSine(trample.w);// * ease_OutCircle(heightFactor);
+                float3 grassDirByTrample = normalize(float3(trampleDir.x, 0, trampleDir.y) * trampleImpact + float3(0, 1.0 - trampleImpact, 0));
                 // float dist_ = distance(localOrigin, tramplePos);
                 // float3 pushDir_ = normalize(localOrigin - tramplePos);
                 // float3 originTrampleOffset = pushDir_ * trampleImpact;// * _InteractorStrength;
@@ -174,21 +168,30 @@ Shader "Instanced/GrassSway"
                 // float3 pushDir = normalize(localOrigin - pusherLocalPos);
                 // float3 grassDirByPusher = normalize(float3(pushDir.x, 0, pushDir.z) * pusherImpact  + float3(0, 1.0 - pusherImpact ,0));
                 // float usePusher = step(0.01, pusherImpact);
-                float windImpact = ease_InSine(heightFactor)*(1.0 - trampleImpact);
-                float3 grassDir = normalize(grassDirByTrample);//lerp(grassDirByTrample, grassDirByPusher, usePusher));
+                // float windImpact = ease_InSine(heightFactor)*(1.0 - trampleImpact);
+                // float3 grassDir = normalize(grassDirByTrample);//lerp(grassDirByTrample, grassDirByPusher, usePusher));
+
+                float4 packedNormal = tex2Dlod(_NormalMap, float4(worldUV * .25 + _Time.y *.05, 0, 0));
+                float3 normal = UnpackNormal(packedNormal);
+
+
+
+                float3 grassDirByWind = normalize((float3(normal.x, normal.z, normal.y) + float3(.5, 1, .5)) * float3(_WindStrength, 1, _WindStrength));
+                float3 combined = grassDirByWind + grassDirByTrample;
+                combined.y = max(0, min(grassDirByWind.y, grassDirByTrample.y));
+
+                float3 grassDir = normalize(lerp(float3(0,1,0), normalize(combined), ease_OutSine(heightFactor)));
 
                 // Combine
-                float3 localPos = FaceDirection(v.vertex.xyz, grassDir);
+                float3 localPos = FaceDirection(v.vertex.xyz,grassDir);
                 float3 worldPos = mul(unity_ObjectToWorld, float4(localPos,1)).xyz;
-                float4 windColor;
-                worldPos += SampleWind(worldOrigin, ease_InSine(heightFactor), windColor);
 
                 v2f o;
                 o.pos = UnityWorldToClipPos(worldPos.xyz);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 o.normal = UnityObjectToWorldNormal(v.normal);
                 // o.color = float4(Push(float3(0,0,1),_TestDirection),1);
-                o.color = windColor;//float4(mul(LookRotation(_TestDirection),float3(0,0,1)),1);
+                o.color = packedNormal;//float4(packedNormal,1);//float4(grassDir.x, grassDir.y, grassDir.z, 1);//float4(mul(LookRotation(_TestDirection),float3(0,0,1)),1);
 
                 return o;
             }
@@ -199,7 +202,7 @@ Shader "Instanced/GrassSway"
 
                 float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
                 float ndl = max(0, dot(i.normal, lightDir));
-                return i.color;//col * (0.2 + ndl * 0.8);
+                return col * (0.2 + ndl * 0.8);
             }
             ENDCG
         }

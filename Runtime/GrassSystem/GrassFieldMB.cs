@@ -14,7 +14,7 @@ namespace Snm.Runtime.GrassSystem
         [SerializeField] private Material material;
         [SerializeField] private Transform interactor;
         [SerializeField] private Mesh ground;
-        [SerializeField] private Texture2D windTex;
+        [SerializeField] private Texture2D normalMap;
 
         private GrassFieldRenderer _grassFieldRenderer;
         private System.IDisposable _traceSystemDisposable;
@@ -60,7 +60,7 @@ namespace Snm.Runtime.GrassSystem
             _grassFieldRenderer.SetMatrices(grassMatrices);
             _grassFieldRenderer.SetupSway(grassMatrices.Length);
             _grassFieldRenderer.SetTrampleRT(trampleRT, worldCanvas);
-            _grassFieldRenderer.SetWindTex(windTex);
+            _grassFieldRenderer.SetNormalMap(normalMap);
         }
 
         private void CreateTraceSystem(out RenderTexture trampleRT, out WorldCanvas worldCanvas)

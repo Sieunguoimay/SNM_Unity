@@ -71,7 +71,7 @@ Shader "Hidden/WorldTraceBrush"
                     // discard;
                     float deltaTime = _BrushDir.w;
                     
-                    dst.w = max(0, dst.w - deltaTime * .1);
+                    dst.w = max(0, dst.w - deltaTime * .5);
 
                     return float4(dst.xyz, dst.w);
                 }

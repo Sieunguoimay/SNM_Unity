@@ -28,9 +28,9 @@ namespace Snm.Runtime.GrassSystem
             material.SetVector("_InteractorDir", dir);
         }
 
-        public void SetWindTex(Texture2D windTex)
+        public void SetNormalMap(Texture2D normalMap)
         {
-            // material.SetTexture("_WindMap", windTex);
+            material.SetTexture("_NormalMap", normalMap);
         }
 
         public void SetTrampleRT(RenderTexture trampleRT, WorldCanvas worldCanvas)
