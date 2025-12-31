@@ -60,7 +60,7 @@ namespace Snm.Runtime.GrassSystem
             _grassFieldRenderer.SetMatrices(grassMatrices);
             _grassFieldRenderer.SetupSway(grassMatrices.Length);
             _grassFieldRenderer.SetTrampleRT(trampleRT, worldCanvas);
-            _grassFieldRenderer.SetNormalMap(normalMap);
+            _grassFieldRenderer.SetDuDvMap(normalMap);
         }
 
         private void CreateTraceSystem(out RenderTexture trampleRT, out WorldCanvas worldCanvas)

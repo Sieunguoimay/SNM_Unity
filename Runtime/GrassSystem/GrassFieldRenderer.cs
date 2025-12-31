@@ -28,9 +28,9 @@ namespace Snm.Runtime.GrassSystem
             material.SetVector("_InteractorDir", dir);
         }
 
-        public void SetNormalMap(Texture2D normalMap)
+        public void SetDuDvMap(Texture2D dudvMap)
         {
-            material.SetTexture("_NormalMap", normalMap);
+            material.SetTexture("_DuDvMap", dudvMap);
         }
 
         public void SetTrampleRT(RenderTexture trampleRT, WorldCanvas worldCanvas)
@@ -49,10 +49,10 @@ namespace Snm.Runtime.GrassSystem
             for (int i = 0; i < count; i++)
             {
                 randoms[i] = new Vector4(
-                    Random.value,   // phase
                     Random.value,
                     Random.value,
-                    Random.Range(0.5f, 1.2f) // stiffness
+                    Random.value,
+                    Random.Range(0.5f, 1.2f)
                 );
             }
 

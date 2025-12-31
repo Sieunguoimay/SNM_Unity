@@ -117,9 +117,7 @@ Shader "Snm/InteractiveGrass"
                 float2 trampleDir = trample.xy;
 
                 float trampleImpact = ease_OutSine(trample.w);
-                float3 grassDirByTrample = normalize(
-                    float3(trampleDir.x, 0, trampleDir.y) * trampleImpact 
-                    + float3(0, 1.0 - trampleImpact, 0));
+                float3 grassDirByTrample = normalize(float3(trampleDir.x, 0, trampleDir.y) * trampleImpact + float3(0, 1.0 - trampleImpact, 0));
 
                 float4 dudvRaw = tex2Dlod(_DuDvMap, float4(worldUV * .1 + _Time.y *.01, 0, 0));
                 float2 dudv = (dudvRaw.xy * 2 - 1.0) + 0.5;
@@ -130,14 +128,13 @@ Shader "Snm/InteractiveGrass"
 
                 float3 grassDir = normalize(lerp(float3(0, 1, 0), normalize(combined), ease_OutExpo(height01)));
 
-                float3 localPos = RotateFromTo(v.vertex.xyz, float3(0,1,0), grassDir);
+                float3 localPos = RotateFromTo(v.vertex.xyz, float3(0, 1, 0), grassDir);
                 float3 worldPos = mul(unity_ObjectToWorld, float4(localPos, 1)).xyz;
 
                 v2f o;
                 o.pos = UnityWorldToClipPos(worldPos.xyz);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 o.normal = UnityObjectToWorldNormal(v.normal);
-
                 return o;
             }
 
