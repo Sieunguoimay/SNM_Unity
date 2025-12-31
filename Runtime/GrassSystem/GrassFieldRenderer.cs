@@ -1,5 +1,3 @@
-#if UNITY_EDITOR
-#endif
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -22,41 +20,19 @@ namespace Snm.Runtime.GrassSystem
             _matrices = matrices;
         }
 
-        public void SetInteractor(Vector3 position, float radius, Vector3 dir)
+        public void SetWindConfig(Texture2D windMap, float strength, float speed, Vector2 mapSize)
         {
-            material.SetVector("_InteractorPosAndRadius", new Vector4(position.x, position.y, position.z, radius));
-            material.SetVector("_InteractorDir", dir);
+            material.SetTexture("_WindMap", windMap);
+            material.SetVector("_WindParams", new Vector4(strength, speed, mapSize.x, mapSize.y));
         }
 
-        public void SetDuDvMap(Texture2D dudvMap)
-        {
-            material.SetTexture("_DuDvMap", dudvMap);
-        }
-
-        public void SetTrampleRT(RenderTexture trampleRT, WorldCanvas worldCanvas)
+        public void SetTrampleConfig(RenderTexture trampleRT, WorldCanvas worldCanvas)
         {
             var worldPos = worldCanvas.worldMin;
             var size = worldCanvas.worldMax - worldCanvas.worldMin;
 
-            material.SetTexture("_TrampleRT", trampleRT);
-            material.SetVector("_TrampleRect", new Vector4(worldPos.x, worldPos.y, size.x, size.y));
-        }
-
-        public void SetupSway(int count)
-        {
-            var randoms = new Vector4[count];
-
-            for (int i = 0; i < count; i++)
-            {
-                randoms[i] = new Vector4(
-                    Random.value,
-                    Random.value,
-                    Random.value,
-                    Random.Range(0.5f, 1.2f)
-                );
-            }
-
-            mpb.SetVectorArray("_Random", randoms);
+            material.SetTexture("_TrampleMap", trampleRT);
+            material.SetVector("_TrampleMap_ST", new Vector4(worldPos.x, worldPos.y, size.x, size.y));
         }
 
         public void Render()

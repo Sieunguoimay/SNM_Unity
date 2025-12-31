@@ -24,7 +24,7 @@ namespace Snm.Runtime.GPUSkinning
             ConvertToRaw(mesh.vertexCount, mesh.boneWeights, out var boneWeights4, out var boneIndices4);
             mesh.SetUVs(1, boneWeights4);
             mesh.SetUVs(2, boneIndices4);
-            mesh.UploadMeshData(true);
+            mesh.UploadMeshData(false);
         }
 
         public void SetSkinningMatrix(int boneIndex, Matrix4x4 matrix)

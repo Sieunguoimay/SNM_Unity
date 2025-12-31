@@ -21,7 +21,7 @@ namespace Snm.Runtime.GrassSystem
         private System.Action _openRTPreviewWindowAction;
         private Transform _painterTransform;
         private float _interactorRadius;
-        private Vector3 _lastPos;
+        // private Vector3 _lastPos;
 
         private void OnEnable()
         {
@@ -58,9 +58,8 @@ namespace Snm.Runtime.GrassSystem
 
             _grassFieldRenderer = new GrassFieldRenderer(mesh, material);
             _grassFieldRenderer.SetMatrices(grassMatrices);
-            _grassFieldRenderer.SetupSway(grassMatrices.Length);
-            _grassFieldRenderer.SetTrampleRT(trampleRT, worldCanvas);
-            _grassFieldRenderer.SetDuDvMap(normalMap);
+            _grassFieldRenderer.SetTrampleConfig(trampleRT, worldCanvas);
+            _grassFieldRenderer.SetWindConfig(normalMap, 1, .01f, new Vector2(10, 10));
         }
 
         private void CreateTraceSystem(out RenderTexture trampleRT, out WorldCanvas worldCanvas)
@@ -89,13 +88,6 @@ namespace Snm.Runtime.GrassSystem
 
         private void LateUpdate()
         {
-            if (interactor != null)
-            {
-                var currPos = interactor.position;
-                var dir = Vector3.Normalize(currPos - _lastPos);
-                _grassFieldRenderer?.SetInteractor(interactor.position, _interactorRadius, dir);
-                _lastPos = interactor.position;
-            }
             _grassFieldRenderer?.Render();
         }
 

@@ -3,8 +3,6 @@ Shader "Snm/InteractiveGrass"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _WindStrength ("Wind Strength", Float) = 1.5
-        _InteractorStrength ("Interactor Strength", Float) = 1
     }
 
     SubShader
@@ -26,13 +24,11 @@ Shader "Snm/InteractiveGrass"
             float4 _MainTex_ST;
 
             //Trample
-            sampler2D _TrampleRT;
-            float4 _TrampleRT_ST;
-            float4 _TrampleRect;
+            sampler2D _TrampleMap;
+            float4 _TrampleMap_ST;
 
-            sampler2D _DuDvMap;
-            float4 _DuDvMap_ST;
-            float _WindStrength;
+            sampler2D _WindMap;//Dudv map
+            float4 _WindParams;//x - Strength, y - speed, zw - world size
 
             // UNITY_INSTANCING_BUFFER_START(Grass)
             //     UNITY_DEFINE_INSTANCED_PROP(float4, _Random)
@@ -72,34 +68,29 @@ Shader "Snm/InteractiveGrass"
             
             float3 RotateFromTo(float3 v, float3 from, float3 to)
             {
-                from = normalize(from);
-                to   = normalize(to);
+                float3 f = normalize(from);
+                float3 t = normalize(to);
 
-                float3 axis = cross(from, to);
-                float  cosA = dot(from, to);
+                float3 axis = cross(f, t);
+                float  cosA = dot(f, t);
 
-                // Handle parallel vectors
-                if (cosA > 0.9999)
-                    return v;
+                // v' = v + 2 * cross(q.xyz, cross(q.xyz, v) + q.w * v)
+                // where q = [axis, 1 + cosA]
+                float3 q = axis;
+                float  qw = 1.0 + cosA;
 
-                // Handle opposite vectors
-                if (cosA < -0.9999)
+                // Handle opposite direction safely
+                if (qw < 1e-4)
                 {
-                    float3 ortho = abs(from.y) < 0.999
-                        ? float3(0,1,0)
-                        : float3(1,0,0);
-
-                    axis = normalize(cross(from, ortho));
-                    return v * -1;
+                    // Pick any perpendicular axis
+                    q = abs(f.y) < 0.999 ? cross(f, float3(0,1,0)) : cross(f, float3(1,0,0));
+                    qw = 0.0;
                 }
 
-                float angle = acos(cosA);
-                axis = normalize(axis);
+                float3 t1 = cross(q, v);
+                float3 t2 = cross(q, t1 + qw * v);
 
-                // Rodrigues
-                return v * cos(angle)
-                    + cross(axis, v) * sin(angle)
-                    + axis * dot(axis, v) * (1 - cos(angle));
+                return v + 2.0 * t2 / dot(float4(q, qw), float4(q, qw));
             }
 
             v2f vert(appdata v)
@@ -109,24 +100,26 @@ Shader "Snm/InteractiveGrass"
                 // float4 rand = UNITY_ACCESS_INSTANCED_PROP(Grass, _Random);
 
                 float3 worldOrigin = mul(unity_ObjectToWorld, float4(0, 0, 0, 1)).xyz;
-                float height01 = saturate(v.vertex.y);
-                float2 worldUV = saturate((worldOrigin.xz - _TrampleRect.xy) / _TrampleRect.zw);
+                float height01 = ease_OutExpo(saturate(v.vertex.y));
+                float2 worldUV = saturate((worldOrigin.xz - _TrampleMap_ST.xy) / _TrampleMap_ST.zw);
                 
                 //Trample
-                float4 trample = tex2Dlod(_TrampleRT, float4(worldUV, 0, 0));
-                float2 trampleDir = trample.xy;
+                float4 trample = tex2Dlod(_TrampleMap, float4(worldUV, 0, 0));
+                float trampleFactor = ease_OutSine(trample.w);
+                float3 trampleDir = normalize(float3(trample.x * trampleFactor, 1.0 - trampleFactor, trample.y * trampleFactor));
 
-                float trampleImpact = ease_OutSine(trample.w);
-                float3 grassDirByTrample = normalize(float3(trampleDir.x, 0, trampleDir.y) * trampleImpact + float3(0, 1.0 - trampleImpact, 0));
+                float windStrength = _WindParams.x;
+                float windSpeed = _WindParams.y;
+                float2 windUV = worldUV / _WindParams.zw + _Time.y * windSpeed;
+                float4 windRaw = tex2Dlod(_WindMap, float4(windUV, 0, 0));
+                float2 wind = (windRaw.xy * 2 - 1.0) + 0.5;
+                float3 windDir = float3(wind.x * windStrength, 1, wind.y * windStrength);
 
-                float4 dudvRaw = tex2Dlod(_DuDvMap, float4(worldUV * .1 + _Time.y *.01, 0, 0));
-                float2 dudv = (dudvRaw.xy * 2 - 1.0) + 0.5;
-                float3 grassDirByWind = float3(dudv.x * _WindStrength, 1, dudv.y * _WindStrength);
+                float3 combinedDir = windDir + trampleDir;
+                combinedDir.y = max(0, min(windDir.y, trampleDir.y));
+                combinedDir = normalize(combinedDir);
 
-                float3 combined = grassDirByWind + grassDirByTrample;
-                combined.y = max(0, min(grassDirByWind.y, grassDirByTrample.y));
-
-                float3 grassDir = normalize(lerp(float3(0, 1, 0), normalize(combined), ease_OutExpo(height01)));
+                float3 grassDir = normalize(lerp(float3(0, 1, 0), combinedDir, height01));
 
                 float3 localPos = RotateFromTo(v.vertex.xyz, float3(0, 1, 0), grassDir);
                 float3 worldPos = mul(unity_ObjectToWorld, float4(localPos, 1)).xyz;
