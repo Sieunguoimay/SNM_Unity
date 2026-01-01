@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
 {
+
     public class GrassFieldRenderer
     {
         private readonly Mesh mesh;
@@ -20,10 +21,10 @@ namespace Snm.Runtime.GrassSystem
             _matrices = matrices;
         }
 
-        public void SetWindConfig(Texture2D windMap, float strength, float speed, Vector2 mapSize)
+        public void SetWindConfig(WindData windData)
         {
-            material.SetTexture("_WindMap", windMap);
-            material.SetVector("_WindParams", new Vector4(strength, speed, mapSize.x, mapSize.y));
+            material.SetTexture("_WindMap", windData.dudvMap);
+            material.SetVector("_WindParams", new Vector4(windData.strength, windData.scrollSpeed, windData.mapSize.x, windData.mapSize.y));
         }
 
         public void SetTrampleConfig(RenderTexture trampleRT, WorldCanvas worldCanvas)

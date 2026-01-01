@@ -16,10 +16,10 @@ Shader "Hidden/WorldTraceBrush"
             #include "UnityCG.cginc"
 
             float4 _BrushParams; // x,y = UV center, z = radius, w = strength
-            float4 _WorldCanvas;
             float4 _BrushDir;
-
+            
             sampler2D _MainTex;
+            float4 _WorldCanvas;
   
             struct v2f {
                 float4 pos : SV_POSITION;

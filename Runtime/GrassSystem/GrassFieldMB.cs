@@ -1,7 +1,3 @@
-using System.Linq;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -14,14 +10,13 @@ namespace Snm.Runtime.GrassSystem
         [SerializeField] private Material material;
         [SerializeField] private Transform interactor;
         [SerializeField] private Mesh ground;
-        [SerializeField] private Texture2D normalMap;
+        [SerializeField] private WindData windData;
 
         private GrassFieldRenderer _grassFieldRenderer;
         private System.IDisposable _traceSystemDisposable;
         private System.Action _openRTPreviewWindowAction;
         private Transform _painterTransform;
         private float _interactorRadius;
-        // private Vector3 _lastPos;
 
         private void OnEnable()
         {
@@ -59,7 +54,7 @@ namespace Snm.Runtime.GrassSystem
             _grassFieldRenderer = new GrassFieldRenderer(mesh, material);
             _grassFieldRenderer.SetMatrices(grassMatrices);
             _grassFieldRenderer.SetTrampleConfig(trampleRT, worldCanvas);
-            _grassFieldRenderer.SetWindConfig(normalMap, 1, .01f, new Vector2(10, 10));
+            _grassFieldRenderer.SetWindConfig(windData);
         }
 
         private void CreateTraceSystem(out RenderTexture trampleRT, out WorldCanvas worldCanvas)
