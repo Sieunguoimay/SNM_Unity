@@ -10,7 +10,7 @@ namespace Snm.Runtime.GrassSystem
         [SerializeField] private Material material;
         [SerializeField] private Transform interactor;
         [SerializeField] private Mesh ground;
-        [SerializeField] private WindData windData;
+        [SerializeField] private WindConfig windData;
 
         private GrassFieldRenderer _grassFieldRenderer;
         private System.IDisposable _traceSystemDisposable;
@@ -40,6 +40,7 @@ namespace Snm.Runtime.GrassSystem
         private void TryDeleteRenderer()
         {
             DeleteTraceSystem();
+            _grassFieldRenderer?.Cleanup();
             _grassFieldRenderer = null;
         }
 
@@ -53,7 +54,8 @@ namespace Snm.Runtime.GrassSystem
 
             _grassFieldRenderer = new GrassFieldRenderer(mesh, material);
             _grassFieldRenderer.SetMatrices(grassMatrices);
-            _grassFieldRenderer.SetTrampleConfig(trampleRT, worldCanvas);
+            _grassFieldRenderer.SetWorldCanvas(worldCanvas);
+            _grassFieldRenderer.SetTrampleConfig(trampleRT);
             _grassFieldRenderer.SetWindConfig(windData);
         }
 

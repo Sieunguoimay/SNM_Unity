@@ -26,20 +26,19 @@ Shader "Snm/InteractiveGrass"
             //Trample
             sampler2D _TrampleMap;
             float4 _TrampleMap_ST;
+            float4 _WorldCanvas;
 
             sampler2D _WindMap;//Dudv map
             float4 _WindParams;//x - Strength, y - speed, zw - world size
 
-            // UNITY_INSTANCING_BUFFER_START(Grass)
-            //     UNITY_DEFINE_INSTANCED_PROP(float4, _Random)
-            // UNITY_INSTANCING_BUFFER_END(Grass)
-
+            StructuredBuffer<float4x4> _LocalToWorldMatrices;
+            
             struct appdata
             {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
                 float3 normal : NORMAL;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
+                uint instanceID : SV_InstanceID;
             };
 
             struct v2f
@@ -95,13 +94,14 @@ Shader "Snm/InteractiveGrass"
 
             v2f vert(appdata v)
             {
-                UNITY_SETUP_INSTANCE_ID(v);
+                // UNITY_SETUP_INSTANCE_ID(v);
 
                 // float4 rand = UNITY_ACCESS_INSTANCED_PROP(Grass, _Random);
+                float4x4 localToWorld = _LocalToWorldMatrices[v.instanceID];
 
-                float3 worldOrigin = mul(unity_ObjectToWorld, float4(0, 0, 0, 1)).xyz;
+                float3 worldOrigin = mul(localToWorld, float4(0, 0, 0, 1)).xyz;
                 float height01 = ease_OutExpo(saturate(v.vertex.y));
-                float2 worldUV = saturate((worldOrigin.xz - _TrampleMap_ST.xy) / _TrampleMap_ST.zw);
+                float2 worldUV = saturate((worldOrigin.xz - _WorldCanvas.xy) / _WorldCanvas.zw);
                 
                 //Trample
                 float4 trample = tex2Dlod(_TrampleMap, float4(worldUV, 0, 0));
@@ -122,7 +122,7 @@ Shader "Snm/InteractiveGrass"
                 float3 grassDir = normalize(lerp(float3(0, 1, 0), combinedDir, height01));
 
                 float3 localPos = RotateFromTo(v.vertex.xyz, float3(0, 1, 0), grassDir);
-                float3 worldPos = mul(unity_ObjectToWorld, float4(localPos, 1)).xyz;
+                float3 worldPos = mul(localToWorld, float4(localPos, 1)).xyz;
 
                 v2f o;
                 o.pos = UnityWorldToClipPos(worldPos.xyz);

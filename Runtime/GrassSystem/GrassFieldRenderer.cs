@@ -7,8 +7,8 @@ namespace Snm.Runtime.GrassSystem
     {
         private readonly Mesh mesh;
         private readonly Material material;
-        private readonly MaterialPropertyBlock mpb = new();
-        private Matrix4x4[] _matrices;
+        private GraphicsBuffer _instanceBuffer;
+        private GraphicsBuffer _argsBuffer;
 
         public GrassFieldRenderer(Mesh mesh, Material material)
         {
@@ -16,31 +16,77 @@ namespace Snm.Runtime.GrassSystem
             this.material = material;
         }
 
-        public void SetMatrices(Matrix4x4[] matrices)
+        public void Cleanup()
         {
-            _matrices = matrices;
+            _argsBuffer?.Dispose();
+            _instanceBuffer?.Dispose();
+
+            _instanceBuffer = null;
+            _argsBuffer = null;
         }
 
-        public void SetWindConfig(WindData windData)
+        public void SetMatrices(Matrix4x4[] matrices)
+        {
+            var instanceCount = matrices.Length;
+
+            _instanceBuffer = new GraphicsBuffer(
+                GraphicsBuffer.Target.Raw,
+                instanceCount,
+                sizeof(float) * 16);
+            _instanceBuffer.SetData(matrices);
+
+            material.SetBuffer("_LocalToWorldMatrices", _instanceBuffer);
+
+            _argsBuffer = CreateArgsBuffer(instanceCount);
+        }
+
+        private GraphicsBuffer CreateArgsBuffer(int instanceCount)
+        {
+            var args = new GraphicsBuffer.IndirectDrawIndexedArgs
+            {
+                indexCountPerInstance = mesh.GetIndexCount(0),
+                instanceCount = (uint)instanceCount,
+                startIndex = mesh.GetIndexStart(0),
+                baseVertexIndex = mesh.GetBaseVertex(0),
+                startInstance = 0
+            };
+
+            var argsBuffer = new GraphicsBuffer(
+                GraphicsBuffer.Target.IndirectArguments, 
+                1, 
+                GraphicsBuffer.IndirectDrawIndexedArgs.size);
+            argsBuffer.SetData(new[] { args });
+
+            return argsBuffer;
+        }
+
+        public void SetWindConfig(WindConfig windData)
         {
             material.SetTexture("_WindMap", windData.dudvMap);
             material.SetVector("_WindParams", new Vector4(windData.strength, windData.scrollSpeed, windData.mapSize.x, windData.mapSize.y));
         }
 
-        public void SetTrampleConfig(RenderTexture trampleRT, WorldCanvas worldCanvas)
+        public void SetWorldCanvas(WorldCanvas worldCanvas)
         {
             var worldPos = worldCanvas.worldMin;
             var size = worldCanvas.worldMax - worldCanvas.worldMin;
+            material.SetVector("_WorldCanvas", new Vector4(worldPos.x, worldPos.y, size.x, size.y));
+        }
+
+        public void SetTrampleConfig(RenderTexture trampleRT)
+        {
+            // var worldPos = worldCanvas.worldMin;
+            // var size = worldCanvas.worldMax - worldCanvas.worldMin;
 
             material.SetTexture("_TrampleMap", trampleRT);
-            material.SetVector("_TrampleMap_ST", new Vector4(worldPos.x, worldPos.y, size.x, size.y));
+            // material.SetVector("_TrampleMap_ST", new Vector4(worldPos.x, worldPos.y, size.x, size.y));
         }
 
         public void Render()
         {
-            if (_matrices == null) return;
+            if (_instanceBuffer == null) return;
 
-            Graphics.DrawMeshInstanced(mesh, 0, material, _matrices, _matrices.Length, mpb);
+            Graphics.RenderMeshIndirect(new(material), mesh, _argsBuffer);
         }
     }
 }
