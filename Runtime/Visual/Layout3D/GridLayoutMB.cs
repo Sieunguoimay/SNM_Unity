@@ -48,7 +48,7 @@ namespace Snm.Visual.Layout3D
             }
         }
 
-        private Vector3 GetPivotOffset()
+        public Vector3 GetPivotOffset()
         {
             if (pivot == PivotType.FirstCell)
             {

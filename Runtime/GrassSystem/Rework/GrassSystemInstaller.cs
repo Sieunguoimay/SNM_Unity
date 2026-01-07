@@ -32,7 +32,7 @@ namespace Snm.Runtime.GrassSystem
 
             grassRenderer.SetMatrices(grassField.GetGrassWorldMatrices());
             grassRenderer.SetWindConfig(systemConfig.windConfig);
-            // grassRenderer.SetWorldCanvas(new WorldCanvas{worldMin = });
+            grassRenderer.SetWorldCanvas(grassField.GetWorldCanvas());
 
             grassField.SetRenderer(grassRenderer);
 
