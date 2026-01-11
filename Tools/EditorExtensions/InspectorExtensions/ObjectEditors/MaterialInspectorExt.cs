@@ -30,9 +30,12 @@ namespace Snm.Tools.InspectorExtra
             var ve = new VisualElement();
             if (ext.Target is Material material)
             {
-                var foldout = new Foldout { text = "Material keywords", value = false };
-                foldout.style.unityFontStyleAndWeight = FontStyle.Bold;
-                ve.Add(foldout);
+                var foldout_Keywords = new Foldout { text = "Material keywords", value = false };
+                var foldout_Properties = new Foldout { text = "Shader Properties", value = false };
+                foldout_Keywords.style.unityFontStyleAndWeight = FontStyle.Bold;
+                foldout_Properties.style.unityFontStyleAndWeight = FontStyle.Bold;
+                ve.Add(foldout_Keywords);
+                ve.Add(foldout_Properties);
                 ve.Add(new ThreeDots());
 
                 var shader = material.shader;
@@ -43,42 +46,19 @@ namespace Snm.Tools.InspectorExtra
                     {
                         material.SetKeyword(k.Item1, evt.newValue);
                     });
-                    foldout.Add(toggle);
-
+                    foldout_Keywords.Add(toggle);
                 }
 
-                // for (var i = 0; i < shader.GetPropertyCount(); i++)
-                // {
-                //     var propType = shader.GetPropertyType(i);
-                //     var propName = shader.GetPropertyName(i);
-                //     var isGlobal = false;
+                for (var i = 0; i <  shader.GetPropertyCount(); i++)
+                {
+                    var propType = shader.GetPropertyType(i);
+                    var propName = shader.GetPropertyName(i);
 
-                //     foreach (var a in shader.GetPropertyAttributes(i))
-                //     {
-                //         if (a == GlobalProperty)
-                //         {
-                //             isGlobal = true;
-                //             break;
-                //         }
-                //     }
-                //     if (isGlobal)
-                //     {
-                //         if (propType == UnityEngine.Rendering.ShaderPropertyType.Float)
-                //         {
-                //             foldout.Add(new GlobalFloatField(propName));
-                //         }
-                //         if (propType == UnityEngine.Rendering.ShaderPropertyType.Range)
-                //         {
-                //             foldout.Add(new GlobalRangeField(propName, shader.GetPropertyRangeLimits(i)));
-                //         }
-                //         if (propType == UnityEngine.Rendering.ShaderPropertyType.Color)
-                //         {
-                //             foldout.Add(new GlobalColorField(propName));
-                //         }
-                //     }
-                // }
+                    var field = new TextField { label = propName, value = propType.ToString() };
+
+                    foldout_Properties.Add(field);
+                }
             }
-            // ve.style.marginLeft = 30;
             return ve;
         }
 

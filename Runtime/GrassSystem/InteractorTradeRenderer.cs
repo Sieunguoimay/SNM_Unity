@@ -11,9 +11,7 @@ namespace Snm.Runtime.GrassSystem
         private readonly RenderTexture renderTexture2;
         private readonly Material material;
         private readonly float brushRadius;
-        private readonly float brushStrength;
         private readonly WorldCanvas worldCanvas;
-        private readonly Action paintCallback;
         private bool useAasSource;
 
         public InteractorTracePainter(
@@ -21,23 +19,19 @@ namespace Snm.Runtime.GrassSystem
             RenderTexture renderTexture2,
             Material material,
             float brushRadius,
-            float brushStrength,
-            WorldCanvas worldCanvas,
-            Action paintCallback)
+            WorldCanvas worldCanvas)
         {
             this.renderTexture = renderTexture;
             this.renderTexture2 = renderTexture2;
             this.material = material;
             this.brushRadius = brushRadius;
-            this.brushStrength = brushStrength;
             this.worldCanvas = worldCanvas;
-            this.paintCallback = paintCallback;
         }
 
         public void SetTexture()
         {
             var origin = worldCanvas.worldMin;
-            var size = worldCanvas.worldMax-worldCanvas.worldMin;
+            var size = worldCanvas.worldMax - worldCanvas.worldMin;
             material.SetTexture("_MainTex", renderTexture);
             material.SetVector("_WorldCanvas", new Vector4(origin.x, origin.y, size.x, size.y));
         }
@@ -47,7 +41,8 @@ namespace Snm.Runtime.GrassSystem
             if (renderTexture == null) return;
 
             material.SetVector("_BrushParams", new Vector4(worldPos.x, worldPos.y, worldPos.z, brushRadius));
-            material.SetVector("_BrushDir", new Vector4(brushDir.x, brushDir.y,brushDir.z, deltaTime));
+            material.SetVector("_BrushDir", new Vector4(brushDir.x, brushDir.y, brushDir.z, deltaTime));
+            material.SetFloat("_DeltaTime", deltaTime);
 
             var rtA = renderTexture;
             var rtB = renderTexture2;

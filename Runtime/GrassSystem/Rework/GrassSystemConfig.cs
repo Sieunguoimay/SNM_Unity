@@ -5,10 +5,17 @@ using UnityEngine;
 namespace Snm.Runtime.GrassSystem
 {
     [Serializable]
+    public class TrampleConfig
+    {
+        
+    }
+
+    [Serializable]
     public class GrassSystemConfig
     {
-        public WindConfig windConfig;
         public Mesh grassMesh;
+        public WindConfig windConfig;
+        public TrampleConfig trampleConfig;
 
         [RequireShader(GrassSystemInstaller.RequiredShader_InteractiveGrass)]
         public Material grassMaterial;

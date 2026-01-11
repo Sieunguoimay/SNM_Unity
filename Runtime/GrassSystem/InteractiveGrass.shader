@@ -1,3 +1,5 @@
+// Upgrade NOTE: upgraded instancing buffer 'Grass' to new syntax.
+
 Shader "Snm/InteractiveGrass"
 {
     Properties
@@ -32,6 +34,7 @@ Shader "Snm/InteractiveGrass"
             float4 _WindParams;//x - Strength, y - speed, zw - world size
 
             StructuredBuffer<float4x4> _LocalToWorldMatrices;
+            float4x4 _LocalToWorldMatricesX[400];
             
             struct appdata
             {
@@ -94,9 +97,8 @@ Shader "Snm/InteractiveGrass"
 
             v2f vert(appdata v)
             {
-                // UNITY_SETUP_INSTANCE_ID(v);
-
-                // float4 rand = UNITY_ACCESS_INSTANCED_PROP(Grass, _Random);
+                UNITY_SETUP_INSTANCE_ID(v)
+                
                 float4x4 localToWorld = _LocalToWorldMatrices[v.instanceID];
 
                 float3 worldOrigin = mul(localToWorld, float4(0, 0, 0, 1)).xyz;
@@ -110,7 +112,9 @@ Shader "Snm/InteractiveGrass"
 
                 float windStrength = _WindParams.x;
                 float windSpeed = _WindParams.y;
-                float2 windUV = worldUV / _WindParams.zw + _Time.y * windSpeed;
+                float2 windMapScale = _WindParams.zw;
+
+                float2 windUV = worldUV / windMapScale + _Time.y * windSpeed;
                 float4 windRaw = tex2Dlod(_WindMap, float4(windUV, 0, 0));
                 float2 wind = (windRaw.xy * 2 - 1.0) + 0.5;
                 float3 windDir = float3(wind.x * windStrength, 1, wind.y * windStrength);

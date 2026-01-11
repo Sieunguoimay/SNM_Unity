@@ -32,6 +32,7 @@ namespace Snm.Visual.Layout3D
             return offset + Vector3.Scale(cellSize, new Vector3(x, y, z));
         }
 
+#if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             var offset = GetPivotOffset();
@@ -47,6 +48,7 @@ namespace Snm.Visual.Layout3D
                 }
             }
         }
+#endif
 
         public Vector3 GetPivotOffset()
         {

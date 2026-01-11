@@ -1,24 +1,8 @@
-using System;
 using Snm.PropertyAttributes;
+using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
 {
-
-    public class GrassSystemManager
-    {
-        private readonly Action destroyCallback;
-
-        public GrassSystemManager(Action destroyCallback)
-        {
-            this.destroyCallback = destroyCallback;
-        }
-
-        public void DestroySystem()
-        {
-            destroyCallback?.Invoke();
-        }
-    }
-
     public class GrassSystemInstaller
     {
         public const string RequiredShader_InteractiveGrass = "Snm/InteractiveGrass";
@@ -27,20 +11,33 @@ namespace Snm.Runtime.GrassSystem
         {
             RequireShaderAttribute.CheckValid(systemConfig.grassMaterial, RequiredShader_InteractiveGrass);
 
-            var grassField = UnityEngine.Object.Instantiate(systemConfig.grassFieldPrefab);
+            var grassField = Object.Instantiate(systemConfig.grassFieldPrefab);
             var grassRenderer = new GrassFieldRenderer(systemConfig.grassMesh, systemConfig.grassMaterial);
+            var worldCanvas = grassField.GetWorldCanvas();
+            var grassTrampleSystemHandle = new GrassTrampleSystemInstaller().Install();
 
-            grassRenderer.SetMatrices(grassField.GetGrassWorldMatrices());
-            grassRenderer.SetWindConfig(systemConfig.windConfig);
+            var debugManager = new GrassDebugWindowInstaller()
+                .Install(() => new GrassDebugTool(worldCanvas, systemConfig));
+
+            grassRenderer.SetMatrices(grassField.GetGrassMatrices());
             grassRenderer.SetWorldCanvas(grassField.GetWorldCanvas());
+            grassRenderer.SetWorldBounds(grassField.GetWorldBounds(1, 1));
 
-            grassField.SetRenderer(grassRenderer);
+            grassRenderer.SetWindConfig(systemConfig.windConfig);
+            grassRenderer.SetTrampleConfig(grassTrampleSystemHandle.GetTrampleTexture(), systemConfig.trampleConfig);
+
+            var rendererMB = new GameObject("[GrassFieldRendenderMB]").AddComponent<GrassFieldRendererMB>();
+            rendererMB.SetRenderer(grassRenderer);
 
             var manager = new GrassSystemManager(destroyCallback: () =>
             {
+                grassTrampleSystemHandle.Cleanup();
                 grassRenderer.Cleanup();
-                UnityEngine.Object.DestroyImmediate(grassField.gameObject);
-            });
+                Object.DestroyImmediate(grassField.gameObject);
+                Object.DestroyImmediate(rendererMB.gameObject);
+                debugManager.Cleanup();
+            },
+            openDebugToolCallback: debugManager.OpenWindow);
 
             return manager;
         }

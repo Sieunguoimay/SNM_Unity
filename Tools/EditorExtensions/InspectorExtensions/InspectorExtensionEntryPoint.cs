@@ -11,7 +11,7 @@ namespace Snm.Tools.InspectorExtra
             // InspectorExtensionInstaller.Instance.Teardown();
 
             InspectorExtensionInstaller.Instance.InjectExtensions(
-                // new MaterialInspectorExt(),
+                new MaterialInspectorExt(),
                 new RevealNonSerializedExt(),
                 new IMGUIMethodExt(),
                 new ContextMenuInspectorExt(),

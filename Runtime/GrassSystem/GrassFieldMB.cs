@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -53,9 +54,9 @@ namespace Snm.Runtime.GrassSystem
             var grassMatrices = new GrassWorldMatricesProvider_FromMesh(ground).GetWorldMatrices(meshScale, transform.localToWorldMatrix);
 
             _grassFieldRenderer = new GrassFieldRenderer(mesh, material);
-            _grassFieldRenderer.SetMatrices(grassMatrices);
+            _grassFieldRenderer.SetMatrices(grassMatrices.Append(interactor.localToWorldMatrix).ToArray());
             _grassFieldRenderer.SetWorldCanvas(worldCanvas);
-            _grassFieldRenderer.SetTrampleConfig(trampleRT);
+            // _grassFieldRenderer.SetTrampleConfig(trampleRT);
             _grassFieldRenderer.SetWindConfig(windData);
         }
 

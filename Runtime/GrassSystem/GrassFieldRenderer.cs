@@ -2,18 +2,19 @@ using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
 {
-
     public class GrassFieldRenderer
     {
         private readonly Mesh mesh;
         private readonly Material material;
         private GraphicsBuffer _instanceBuffer;
         private GraphicsBuffer _argsBuffer;
+        private Bounds _worldBounds;
 
         public GrassFieldRenderer(Mesh mesh, Material material)
         {
             this.mesh = mesh;
             this.material = material;
+            this.material.enableInstancing = true;
         }
 
         public void Cleanup()
@@ -30,17 +31,17 @@ namespace Snm.Runtime.GrassSystem
             var instanceCount = matrices.Length;
 
             _instanceBuffer = new GraphicsBuffer(
-                GraphicsBuffer.Target.Raw,
+                GraphicsBuffer.Target.Structured,
                 instanceCount,
                 sizeof(float) * 16);
             _instanceBuffer.SetData(matrices);
 
             material.SetBuffer("_LocalToWorldMatrices", _instanceBuffer);
 
-            _argsBuffer = CreateArgsBuffer(instanceCount);
+            _argsBuffer = CreateArgsBuffer(mesh, instanceCount);
         }
 
-        private GraphicsBuffer CreateArgsBuffer(int instanceCount)
+        private static GraphicsBuffer CreateArgsBuffer(Mesh mesh, int instanceCount)
         {
             var args = new GraphicsBuffer.IndirectDrawIndexedArgs
             {
@@ -52,8 +53,8 @@ namespace Snm.Runtime.GrassSystem
             };
 
             var argsBuffer = new GraphicsBuffer(
-                GraphicsBuffer.Target.IndirectArguments, 
-                1, 
+                GraphicsBuffer.Target.IndirectArguments,
+                1,
                 GraphicsBuffer.IndirectDrawIndexedArgs.size);
             argsBuffer.SetData(new[] { args });
 
@@ -63,7 +64,7 @@ namespace Snm.Runtime.GrassSystem
         public void SetWindConfig(WindConfig windData)
         {
             material.SetTexture("_WindMap", windData.dudvMap);
-            material.SetVector("_WindParams", new Vector4(windData.strength, windData.scrollSpeed, windData.mapSize.x, windData.mapSize.y));
+            material.SetVector("_WindParams", new Vector4(windData.strength, windData.scrollSpeed, windData.mapScale.x, windData.mapScale.y));
         }
 
         public void SetWorldCanvas(WorldCanvas worldCanvas)
@@ -73,20 +74,23 @@ namespace Snm.Runtime.GrassSystem
             material.SetVector("_WorldCanvas", new Vector4(worldPos.x, worldPos.y, size.x, size.y));
         }
 
-        public void SetTrampleConfig(RenderTexture trampleRT)
+        public void SetTrampleConfig(Texture trampleMap, TrampleConfig config)
         {
-            // var worldPos = worldCanvas.worldMin;
-            // var size = worldCanvas.worldMax - worldCanvas.worldMin;
+            material.SetTexture("_TrampleMap", trampleMap);
+        }
 
-            material.SetTexture("_TrampleMap", trampleRT);
-            // material.SetVector("_TrampleMap_ST", new Vector4(worldPos.x, worldPos.y, size.x, size.y));
+        public void SetWorldBounds(Bounds worldBounds)
+        {
+            _worldBounds = worldBounds;
         }
 
         public void Render()
         {
             if (_instanceBuffer == null) return;
 
-            Graphics.RenderMeshIndirect(new(material), mesh, _argsBuffer);
+            var rparams = new RenderParams(material) { worldBounds = _worldBounds };
+
+            Graphics.RenderMeshIndirect(rparams, mesh, _argsBuffer);
         }
     }
 }

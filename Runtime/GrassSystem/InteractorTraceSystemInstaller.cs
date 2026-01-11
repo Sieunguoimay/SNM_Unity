@@ -36,15 +36,14 @@ namespace Snm.Runtime.GrassSystem
                 renderTexture,
                 renderTexture2,
                 new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/SNM_Unity/Runtime/GrassSystem/WorldTraceBrush.shader")),
-                brushSize, 1f,
-                worldCanvas,
-                paintCallback: () => { });
+                brushSize, 
+                worldCanvas);
 
             painter.SetTexture();
 
             var renderTextureVE = CreateTexturePreviewVE(
-                renderTexture, 
-                clearClickCallback: painter.ClearOutRenderTextures, 
+                renderTexture,
+                clearClickCallback: painter.ClearOutRenderTextures,
                 out var disposeCanvasVE);
 
             var painterMB = new GameObject($"[{nameof(InteractorTracePainterMB)}]").AddComponent<InteractorTracePainterMB>();
@@ -55,7 +54,13 @@ namespace Snm.Runtime.GrassSystem
             var tracingAreaVisualizer = new WorldCanvasVisualizer(worldCanvas);
 
             AnyVEWindow window = null;
-            openWindowAction = () => window = AnyVEWindow.Open(renderTextureVE);
+
+            openWindowAction = () =>
+            {
+                window = EditorWindow.GetWindow<AnyVEWindow>();
+                window.SetVE(renderTextureVE);
+            };
+ 
             painterTransform = painterMB.transform;
 
             return new DisposeCallback(() =>

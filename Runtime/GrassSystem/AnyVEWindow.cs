@@ -9,14 +9,22 @@ namespace Snm.Runtime.GrassSystem
     public class AnyVEWindow : EditorWindow
     {
         private VisualElement _ve;
+        private Action _disableCallback;
 
-        public static AnyVEWindow Open(VisualElement ve)
+        public void OnDisable()
         {
-            var window = GetWindow<AnyVEWindow>();
-            window._ve = ve;
-            window.Show();
-            window.CreateGUI();
-            return window;
+            _disableCallback?.Invoke();
+        }
+
+        public void SetDisableCallback(Action disableCallback)
+        {
+            _disableCallback = disableCallback;
+        }
+
+        public void SetVE(VisualElement ve)
+        {
+            _ve = ve;
+            CreateGUI();
         }
 
         private void CreateGUI()

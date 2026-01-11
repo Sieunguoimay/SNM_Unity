@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -6,7 +7,19 @@ namespace Snm.Runtime.GrassSystem
     {
         [SerializeField] private GrassSystemConfig systemConfig;
 
+        [NonSerialized]
         private GrassSystemManager _manager;
+
+        private void OnEnable()
+        {
+            Debug.Log("OnEnable");
+        }
+
+        private void OnDisable()
+        {
+            Debug.Log("OnDisable");
+            Uninstall();
+        }
 
         [ContextMenu("Install")]
         private void Install()
@@ -17,8 +30,19 @@ namespace Snm.Runtime.GrassSystem
         [ContextMenu("Uninstall")]
         private void Uninstall()
         {
-            _manager?.DestroySystem();
+            try
+            {
+                _manager?.DestroySystem();
+            }
+            catch { }
+
             _manager = null;
+        }
+
+        [ContextMenu("Open Debug Tool")]
+        private void OpenDebugTool()
+        {
+            _manager?.Editor_OpenDebugWindow();
         }
     }
 }

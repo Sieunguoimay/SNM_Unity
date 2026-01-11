@@ -17,6 +17,7 @@ Shader "Hidden/WorldTraceBrush"
 
             float4 _BrushParams; // x,y = UV center, z = radius, w = strength
             float4 _BrushDir;
+            float _DeltaTime;
             
             sampler2D _MainTex;
             float4 _WorldCanvas;
@@ -69,9 +70,8 @@ Shader "Hidden/WorldTraceBrush"
                 if(d > brushRadius)
                 {
                     // discard;
-                    float deltaTime = _BrushDir.w;
-                    
-                    dst.w = max(0, dst.w - deltaTime * .5);
+
+                    dst.w = max(0, dst.w - _DeltaTime * .5);
 
                     return float4(dst.xyz, dst.w);
                 }
