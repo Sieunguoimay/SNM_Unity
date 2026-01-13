@@ -8,11 +8,19 @@ namespace Snm.Runtime.GrassSystem
         private readonly Texture trampleTex;
         private readonly Action cleanupCallback;
 
-        public GrassTrampleSystemHandle(Texture trampleTex, Action cleanupCallback)
+        public GrassTrampleBrushRegistry BrushRegistry { get; }
+
+        public GrassTrampleSystemHandle(
+            Texture trampleTex, 
+            Action cleanupCallback,
+            GrassTrampleBrushRegistry brushRegistry)
         {
             this.trampleTex = trampleTex;
             this.cleanupCallback = cleanupCallback;
+
+            BrushRegistry = brushRegistry;
         }
+
 
         public void Cleanup()
         {

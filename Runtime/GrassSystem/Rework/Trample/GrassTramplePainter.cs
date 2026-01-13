@@ -16,7 +16,7 @@ namespace Snm.Runtime.GrassSystem
             float radius,
             Vector4 color)
         {
-            material.SetVector("_BrushParams", new Vector4(worldPos.x, worldPos.y, worldPos.z, radius));
+            material.SetVector("_BrushParams", new Vector4(worldPos.x, worldPos.z, radius, 0f));
             material.SetVector("_BrushDir", color);
         }
     }

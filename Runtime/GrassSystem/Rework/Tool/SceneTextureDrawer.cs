@@ -13,7 +13,7 @@ namespace Snm.Runtime.GrassSystem
             _quad = CreateUnitQuad();
             _quad.hideFlags = HideFlags.HideAndDontSave;
 
-            _material = new Material(Shader.Find("Unlit/Texture"))
+            _material = new Material(Shader.Find("Unlit/Transparent"))
             {
                 hideFlags = HideFlags.HideAndDontSave
             };

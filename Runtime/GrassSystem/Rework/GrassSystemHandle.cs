@@ -2,12 +2,12 @@ using System;
 
 namespace Snm.Runtime.GrassSystem
 {
-    public class GrassSystemManager
+    public class GrassSystemHandle
     {
         private readonly Action destroyCallback;
         private readonly Action openDebugToolCallback;
 
-        public GrassSystemManager(
+        public GrassSystemHandle(
             Action destroyCallback,
             Action openDebugToolCallback)
         {

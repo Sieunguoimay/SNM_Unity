@@ -15,9 +15,9 @@ Shader "Hidden/WorldTraceBrush"
 
             #include "UnityCG.cginc"
 
-            float4 _BrushParams; // x,y = UV center, z = radius, w = strength
+            float4 _BrushParams; // x,y = UV center, z = radius, w = fade speed
             float4 _BrushDir;
-            float _DeltaTime;
+            float _Fade;
             
             sampler2D _MainTex;
             float4 _WorldCanvas;
@@ -59,19 +59,20 @@ Shader "Hidden/WorldTraceBrush"
 
             float4 frag(v2f i) : SV_Target
             {
-                float brushRadius = _BrushParams.w;
-                float2 worldBrushPos = _BrushParams.xz;
+                float brushRadius = _BrushParams.z;
+                float2 worldBrushPos = _BrushParams.xy;
                 float2 uv = i.uv;
                 float2 worldFrag = UVToWorld(uv);
-
+                
                 float d = distance(worldFrag, worldBrushPos);
                 float4 dst = tex2D(_MainTex, float2(uv.x, 1.0 - uv.y));
-
+                
                 if(d > brushRadius)
                 {
                     // discard;
-
-                    dst.w = max(0, dst.w - _DeltaTime * .5);
+                    float fadeSpeed = _BrushParams.w;
+                    
+                    dst.w = max(0, dst.w - _Fade);
 
                     return float4(dst.xyz, dst.w);
                 }

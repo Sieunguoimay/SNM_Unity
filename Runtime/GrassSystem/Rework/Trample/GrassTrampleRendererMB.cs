@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
 {
+    [ExecuteInEditMode]
     public class GrassTrampleRendererMB : MonoBehaviour
     {
         private GrassTrampleRenderer _renderer;

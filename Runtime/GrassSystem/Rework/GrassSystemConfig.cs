@@ -7,7 +7,6 @@ namespace Snm.Runtime.GrassSystem
     [Serializable]
     public class TrampleConfig
     {
-        
     }
 
     [Serializable]
@@ -16,6 +15,7 @@ namespace Snm.Runtime.GrassSystem
         public Mesh grassMesh;
         public WindConfig windConfig;
         public TrampleConfig trampleConfig;
+        public GrassTrampleSystemConfig trampleSystemConfig;
 
         [RequireShader(GrassSystemInstaller.RequiredShader_InteractiveGrass)]
         public Material grassMaterial;

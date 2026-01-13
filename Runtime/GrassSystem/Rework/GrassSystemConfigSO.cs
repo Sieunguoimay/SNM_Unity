@@ -8,7 +8,7 @@ namespace Snm.Runtime.GrassSystem
         [SerializeField] private GrassSystemConfig systemConfig;
 
         [NonSerialized]
-        private GrassSystemManager _manager;
+        private GrassSystemHandle _manager;
 
         private void OnEnable()
         {
