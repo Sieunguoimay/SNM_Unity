@@ -17,7 +17,7 @@ Shader "Hidden/WorldTraceBrush"
 
             float4 _BrushParams; // x,y = UV center, z = radius, w = fade speed
             float4 _BrushDir;
-            float _Fade;
+            float _FadeAmount;
             
             sampler2D _MainTex;
             float4 _WorldCanvas;
@@ -71,8 +71,9 @@ Shader "Hidden/WorldTraceBrush"
                 {
                     // discard;
                     float fadeSpeed = _BrushParams.w;
-                    
-                    dst.w = max(0, dst.w - _Fade);
+                    float t = 1.0 - dst.w;
+                    float amount = _FadeAmount * (.1 + t);
+                    dst.w = max(0, dst.w - amount);
 
                     return float4(dst.xyz, dst.w);
                 }

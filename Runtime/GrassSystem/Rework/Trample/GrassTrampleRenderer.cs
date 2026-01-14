@@ -44,7 +44,7 @@ namespace Snm.Runtime.GrassSystem
         {
             if (renderTexture == null) return;
 
-            material.SetFloat("_Fade", deltaTime * fadeSpeed);
+            material.SetFloat("_FadeAmount", deltaTime * fadeSpeed);
 
             var rtA = renderTexture;
             var rtB = renderTexture2;
