@@ -12,19 +12,23 @@ namespace Snm.Runtime.GrassSystem
             RequireShaderAttribute.CheckValid(systemConfig.grassMaterial, RequiredShader_InteractiveGrass);
 
             var grassField = Object.Instantiate(systemConfig.grassFieldPrefab);
-            var grassRenderer = new GrassFieldRenderer(systemConfig.grassMesh, systemConfig.grassMaterial);
             var worldCanvas = grassField.GetWorldCanvas();
-            var trampleSystemHandle = new GrassTrampleSystemInstaller().Install(systemConfig.trampleSystemConfig, grassField.Dimension.x, worldCanvas);
+
+            var trampleSystemHandle = new GrassTrampleSystemInstaller().Install(
+                systemConfig.trampleSystemConfig, 
+                grassField.Dimension.x, 
+                worldCanvas);
+            var trampleMap = trampleSystemHandle.GetTrampleTexture();
 
             var debugManager = new GrassDebugWindowInstaller()
-                .Install(() => new GrassDebugTool(worldCanvas, systemConfig, trampleSystemHandle.GetTrampleTexture()));
+                .Install(() => new GrassDebugTool(worldCanvas, systemConfig, trampleMap));
 
+            var grassRenderer = new GrassFieldRenderer(systemConfig.grassMesh, systemConfig.grassMaterial);
             grassRenderer.SetMatrices(grassField.GetGrassMatrices());
             grassRenderer.SetWorldCanvas(grassField.GetWorldCanvas());
             grassRenderer.SetWorldBounds(grassField.GetWorldBounds(1, 1));
-
             grassRenderer.SetWindConfig(systemConfig.windConfig);
-            grassRenderer.SetTrampleConfig(trampleSystemHandle.GetTrampleTexture(), systemConfig.trampleConfig);
+            grassRenderer.SetTrampleConfig(trampleMap, systemConfig.trampleConfig);
 
             var rendererMB = new GameObject("[GrassFieldRendenderMB]").AddComponent<GrassFieldRendererMB>();
             rendererMB.SetRenderer(grassRenderer);

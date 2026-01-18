@@ -3,44 +3,50 @@ using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
 {
-    public class GrassTrampleBrushDriver
+    public class GrassTrampleBrushDirUpdater
     {
         private readonly GrassTrampleBrushRegistry brushRegistry;
-        private readonly GrassTramplePainter painter;
         private readonly float minOffset;
-        private readonly WorldCanvas canvas;
         private readonly WorldCanvasChecker canvasChecker;
         private readonly Dictionary<GrassTrampleBrush, Vector3> previousPositions = new();
 
-        public GrassTrampleBrushDriver(
+        public GrassTrampleBrushDirUpdater(
             GrassTrampleBrushRegistry brushRegistry,
-            GrassTramplePainter painter,
             float minOffset,
-            WorldCanvas canvas)
+            WorldCanvasChecker canvasChecker)
         {
             this.brushRegistry = brushRegistry;
-            this.painter = painter;
             this.minOffset = minOffset;
-            this.canvas = canvas;
-            this.canvasChecker = new WorldCanvasChecker(canvas);
+            this.canvasChecker = canvasChecker;
         }
 
         public void Update()
         {
             var brushes = brushRegistry.GetBrushes();
 
-            foreach (var brush in brushes)
+            for (int i = 0; i < brushes.Count; i++)
             {
+                var brush = brushes[i];
+
                 UpdateBrush(brush);
             }
         }
 
         public void UpdateBrush(GrassTrampleBrush brush)
         {
-            // Update individual brush logic here
-            var currPos = brush.position;
+            brush.dir = TryCalculateBrushDir(brush);
+            brush.isActive = IsValidBrush(brush);
+        }
 
-            if (!canvasChecker.IsInWorldCanvas(currPos)) return;
+        private bool IsValidBrush(GrassTrampleBrush brush)
+        {
+            return canvasChecker.IsInWorldCanvas(brush.position)
+            || (previousPositions.TryGetValue(brush, out var prevPos) && canvasChecker.IsInWorldCanvas(prevPos));
+        }
+
+        public Vector3 TryCalculateBrushDir(GrassTrampleBrush brush)
+        {
+            var currPos = brush.position;
 
             if (previousPositions.TryGetValue(brush, out var prevPos))
             {
@@ -48,15 +54,15 @@ namespace Snm.Runtime.GrassSystem
                 var sqrMagnitude = movement.sqrMagnitude;
                 if (sqrMagnitude > minOffset * minOffset)
                 {
-                    var dir = movement.normalized;
-                    painter.SetBrush(currPos, brush.radius, new Vector4(dir.x, dir.y, dir.z, brush.strength));
                     previousPositions[brush] = currPos;
+                    return movement.normalized;
                 }
             }
             else
             {
                 previousPositions[brush] = currPos;
             }
+            return brush.dir;
         }
     }
 }
