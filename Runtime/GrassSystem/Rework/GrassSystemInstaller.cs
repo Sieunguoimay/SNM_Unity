@@ -39,17 +39,19 @@ namespace Snm.Runtime.GrassSystem
             var brushMBs = grassField.GetComponentsInChildren<GrassTrampleBrushMB>(true);
             foreach (var brushMB in brushMBs) trampleSystemHandle.BrushRegistry.Register(brushMB.Brush);
 
-            var manager = new GrassSystemHandle(destroyCallback: () =>
-            {
-                foreach (var brushMB in brushMBs) trampleSystemHandle.BrushRegistry.Unregister(brushMB.Brush);
+            var manager = new GrassSystemHandle(
+                trampleSystemHandle.BrushRegistry,
+                destroyCallback: () =>
+                {
+                    foreach (var brushMB in brushMBs) trampleSystemHandle.BrushRegistry.Unregister(brushMB.Brush);
 
-                trampleSystemHandle.Cleanup();
-                grassRenderer.Cleanup();
-                if (shouldDestroyGrassField) Object.DestroyImmediate(grassField.gameObject);
-                Object.DestroyImmediate(rendererMB.gameObject);
-                debugManager.Cleanup();
-            },
-            openDebugToolCallback: debugManager.OpenWindow);
+                    trampleSystemHandle.Cleanup();
+                    grassRenderer.Cleanup();
+                    if (shouldDestroyGrassField) Object.DestroyImmediate(grassField.gameObject);
+                    Object.DestroyImmediate(rendererMB.gameObject);
+                    debugManager.Cleanup();
+                },
+                openDebugToolCallback: debugManager.OpenWindow);
 
             return manager;
         }

@@ -9,6 +9,8 @@ namespace Snm.Runtime.GrassSystem
 
         private GrassSystemHandle _manager;
 
+        public GrassSystemHandle SystemHandle => _manager;
+
         private void OnEnable()
         {
             TryInstall();
@@ -25,7 +27,7 @@ namespace Snm.Runtime.GrassSystem
             _manager = null;
         }
 
-        private void TryInstall()
+        public void TryInstall()
         {
             if (!Application.IsPlaying(this)) return;
             if (!isActiveAndEnabled) return;
