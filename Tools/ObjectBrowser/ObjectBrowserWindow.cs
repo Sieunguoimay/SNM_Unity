@@ -172,7 +172,7 @@ namespace Snm.Tools.ObjectBrowser
             SearchWindow.Show(dic.Keys, t => Browse(dic[t], ""));
         }
 
-        public void Browse(UnityEngine.Object ro, string path)
+        public void Browse(Object ro, string path = "")
         {
             rootObject = ro;
             this.path = path;

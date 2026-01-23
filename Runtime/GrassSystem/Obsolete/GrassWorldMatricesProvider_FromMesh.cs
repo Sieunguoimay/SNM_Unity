@@ -2,7 +2,7 @@
 #endif
 using UnityEngine;
 
-namespace Snm.Runtime.GrassSystem
+namespace Snm.Runtime.GrassSystem.Obsolete
 {
     public class GrassWorldMatricesProvider_FromMesh
     {

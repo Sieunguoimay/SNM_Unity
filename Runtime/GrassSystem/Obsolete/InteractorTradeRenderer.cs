@@ -3,7 +3,7 @@
 using System;
 using UnityEngine;
 
-namespace Snm.Runtime.GrassSystem
+namespace Snm.Runtime.GrassSystem.Obsolete
 {
     public class InteractorTracePainter
     {

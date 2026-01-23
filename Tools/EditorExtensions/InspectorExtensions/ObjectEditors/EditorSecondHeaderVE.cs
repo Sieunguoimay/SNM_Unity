@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Snm.Tools.ObjectBrowser;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -189,8 +190,8 @@ namespace Snm.Tools.InspectorExtra
         private readonly EditorWindow inspectorWindow;
         private readonly IInspectorModeHelper inspectorModeHelper;
 
-        private MenuItemButton _copyComponentMenuItem;
-        private MenuItemButton _pasteComponentValuesMenuItem;
+        // private MenuItemButton _copyComponentMenuItem;
+        // private MenuItemButton _pasteComponentValuesMenuItem;
 
         public EditorSecondHeaderVE(
             Object target,
@@ -210,12 +211,15 @@ namespace Snm.Tools.InspectorExtra
             style.backgroundColor = new Color(0f, 0f, 0f, .2f);
             style.height = EditorGUIUtility.singleLineHeight + 2;
 
+            var button_Browse = new Button { text = "Browse", clickable = new(OpenObjectBrowser) };
+
             if (target is MonoBehaviour || target is ScriptableObject)
             {
                 layout_Buttons.Add(CreateEditScriptButton());
             }
 
             layout_Buttons.Add(new Button() { text = "Ping", clickable = new(() => EditorGUIUtility.PingObject(target)) });
+            layout_Buttons.Add(button_Browse);
             layout_Buttons.Add(CreateOpenInWindowButton());
 
             if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(target)) && (target is GameObject || target is Component))
@@ -233,31 +237,36 @@ namespace Snm.Tools.InspectorExtra
                 layout_Buttons.Add(CreateDebugButton());
             }
 
-            IMenuItemObject copy = null;
-            IMenuItemObject paste = null;
+            // IMenuItemObject copy = null;
+            // IMenuItemObject paste = null;
 
-            if (target is ScriptableObject so)
-            {
-                copy = new FakeMenuItemObject_ScriptableObject_Copy(so, refreshHandler);
-                paste = new FakeMenuItemObject_ScriptableObject_Paste(so);
-            }
-            else if (target is Component && target is not Transform)
-            {
-                copy = new MenuItemObject("CONTEXT/Component/Copy Component", target, refreshHandler);
-                paste = new MenuItemObject("CONTEXT/Component/Paste Component Values", target, refreshHandler);
-            }
+            // if (target is ScriptableObject so)
+            // {
+            //     copy = new FakeMenuItemObject_ScriptableObject_Copy(so, refreshHandler);
+            //     paste = new FakeMenuItemObject_ScriptableObject_Paste(so);
+            // }
+            // else if (target is Component && target is not Transform)
+            // {
+            //     copy = new MenuItemObject("CONTEXT/Component/Copy Component", target, refreshHandler);
+            //     paste = new MenuItemObject("CONTEXT/Component/Paste Component Values", target, refreshHandler);
+            // }
 
-            if (copy != null && paste != null)
-            {
-                _copyComponentMenuItem = new MenuItemButton(copy, "Copy");
-                _pasteComponentValuesMenuItem = new MenuItemButton(paste, "Paste");
-                layout_Buttons.Add(_copyComponentMenuItem);
-                layout_Buttons.Add(_pasteComponentValuesMenuItem);
-            }
+            // if (copy != null && paste != null)
+            // {
+            //     _copyComponentMenuItem = new MenuItemButton(copy, "Copy");
+            //     _pasteComponentValuesMenuItem = new MenuItemButton(paste, "Paste");
+            //     layout_Buttons.Add(_copyComponentMenuItem);
+            //     layout_Buttons.Add(_pasteComponentValuesMenuItem);
+            // }
 
             inspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
 
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
+        }
+
+        private void OpenObjectBrowser()
+        {
+            EditorWindow.GetWindow<ObjectBrowserWindow>().Browse(target);
         }
 
         public void TriggerOnAttachToPanel(VisualElement parent)
@@ -287,8 +296,8 @@ namespace Snm.Tools.InspectorExtra
 
         public void Refresh()
         {
-            _copyComponentMenuItem?.Refresh();
-            _pasteComponentValuesMenuItem?.Refresh();
+            // _copyComponentMenuItem?.Refresh();
+            // _pasteComponentValuesMenuItem?.Refresh();
         }
 
         private VisualElement CreateDebugButton()

@@ -3,9 +3,10 @@ using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
 {
+
     public class GrassSystemConfigSO : ScriptableObject
     {
-        [SerializeField] private GrassSystemConfig systemConfig;
+        public GrassSystemConfig systemConfig;
 
         [NonSerialized]
         private GrassSystemHandle _manager;
@@ -24,7 +25,7 @@ namespace Snm.Runtime.GrassSystem
         [ContextMenu("Install")]
         private void Install()
         {
-            _manager ??= new GrassSystemInstaller().Install(systemConfig);
+            _manager ??= new GrassSystemInstaller().Install(systemConfig, null);
         }
 
         [ContextMenu("Uninstall")]

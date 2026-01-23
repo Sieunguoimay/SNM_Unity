@@ -10,16 +10,11 @@ namespace Snm.Runtime.GrassSystem
 
         private GrassTrampleBrush _brush;
 
-        public GrassTrampleBrush Brush => _brush;
+        public GrassTrampleBrush Brush => _brush ??= CreateBrush();
 
         private void OnEnable()
         {
-            _brush = new GrassTrampleBrush
-            {
-                radius = radius,
-                strength = strength,
-                position = transform.position
-            };
+            _brush ??= CreateBrush();
         }
 
         private void OnDisable()
@@ -33,6 +28,16 @@ namespace Snm.Runtime.GrassSystem
             {
                 _brush.position = transform.position;
             }
+        }
+
+        private GrassTrampleBrush CreateBrush()
+        {
+            return new GrassTrampleBrush
+            {
+                radius = radius,
+                strength = strength,
+                position = transform.position
+            };
         }
 
         private void OnDrawGizmosSelected()

@@ -17,7 +17,8 @@ namespace Snm.Runtime.GrassSystem
             var brushBatchMaker = new BrushRenderBatchesMaker(renderer, brushRegistry, brushesPerBatch: 64);
             var brushDirUpdater = new GrassTrampleBrushDirUpdater(brushRegistry, minOffset: config.brushMinOffset, new(worldCanvas));
 
-            var systemMB = new GameObject("[GrassTrampleSystemMB]").AddComponent<GrassTrampleSystemUpdaterMB>();
+            var systemMB = new GameObject { name = "[GrassTrampleSystemMB]", hideFlags = HideFlags.DontSave }
+                .AddComponent<GrassTrampleSystemUpdaterMB>();
 
             systemMB.SetBrushDirUpdater(brushDirUpdater);
             systemMB.SetBrushBatchMaker(brushBatchMaker);

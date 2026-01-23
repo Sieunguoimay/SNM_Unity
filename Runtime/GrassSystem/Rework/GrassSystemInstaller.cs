@@ -7,16 +7,18 @@ namespace Snm.Runtime.GrassSystem
     {
         public const string RequiredShader_InteractiveGrass = "Snm/InteractiveGrass";
 
-        public GrassSystemHandle Install(GrassSystemConfig systemConfig)
+        public GrassSystemHandle Install(GrassSystemConfig systemConfig, GrassField grassField)
         {
             RequireShaderAttribute.CheckValid(systemConfig.grassMaterial, RequiredShader_InteractiveGrass);
 
-            var grassField = Object.Instantiate(systemConfig.grassFieldPrefab);
+            var shouldDestroyGrassField = grassField == null;
+            grassField ??= Object.Instantiate(systemConfig.grassFieldPrefab);
+
             var worldCanvas = grassField.GetWorldCanvas();
 
             var trampleSystemHandle = new GrassTrampleSystemInstaller().Install(
-                systemConfig.trampleSystemConfig, 
-                grassField.Dimension.x, 
+                systemConfig.trampleSystemConfig,
+                grassField.Dimension.x,
                 worldCanvas);
             var trampleMap = trampleSystemHandle.GetTrampleTexture();
 
@@ -30,10 +32,11 @@ namespace Snm.Runtime.GrassSystem
             grassRenderer.SetWindConfig(systemConfig.windConfig);
             grassRenderer.SetTrampleConfig(trampleMap, systemConfig.trampleConfig);
 
-            var rendererMB = new GameObject("[GrassFieldRendenderMB]").AddComponent<GrassFieldRendererMB>();
+            var rendererMB = new GameObject { name = "[GrassFieldRendenderMB]", hideFlags = HideFlags.DontSave }
+                .AddComponent<GrassFieldRendererMB>();
             rendererMB.SetRenderer(grassRenderer);
 
-            var brushMBs = grassField.GetComponentsInChildren<GrassTrampleBrushMB>();
+            var brushMBs = grassField.GetComponentsInChildren<GrassTrampleBrushMB>(true);
             foreach (var brushMB in brushMBs) trampleSystemHandle.BrushRegistry.Register(brushMB.Brush);
 
             var manager = new GrassSystemHandle(destroyCallback: () =>
@@ -42,7 +45,7 @@ namespace Snm.Runtime.GrassSystem
 
                 trampleSystemHandle.Cleanup();
                 grassRenderer.Cleanup();
-                Object.DestroyImmediate(grassField.gameObject);
+                if (shouldDestroyGrassField) Object.DestroyImmediate(grassField.gameObject);
                 Object.DestroyImmediate(rendererMB.gameObject);
                 debugManager.Cleanup();
             },

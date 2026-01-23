@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.UIElements;
 
-namespace Snm.Runtime.GrassSystem
+namespace Snm.Runtime.GrassSystem.Obsolete
 {
 
     public class InteractorTraceSystemInstaller

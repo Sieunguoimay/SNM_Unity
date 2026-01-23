@@ -1,7 +1,7 @@
 using System.Linq;
 using UnityEngine;
 
-namespace Snm.Runtime.GrassSystem
+namespace Snm.Runtime.GrassSystem.Obsolete
 {
     [ExecuteInEditMode]
     public class GrassFieldMB : MonoBehaviour
