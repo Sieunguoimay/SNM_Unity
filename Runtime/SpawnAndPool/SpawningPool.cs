@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.Framework.NodeHierarchy
@@ -16,7 +17,7 @@ namespace Snm.Framework.NodeHierarchy
                 if (_isDestroyed) return null;
                 if (_instance == null)
                 {
-                    _instance = new GameObject("[Singleton]" + nameof(SpawningPool)).AddComponent<SpawningPool>();
+                    _instance = UnityEngineUtility.CreateGameObjectWithComponent<SpawningPool>();
                 }
                 return _instance;
             }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.Visual.Interactive
@@ -15,7 +16,7 @@ namespace Snm.Visual.Interactive
 
                 if (_instance == null)
                 {
-                    _instance = new GameObject($"[Singleton]{nameof(ClickBoxService)}").AddComponent<ClickBoxService>();
+                    _instance = UnityEngineUtility.CreateGameObjectWithComponent<ClickBoxService>();
                     DontDestroyOnLoad(_instance.gameObject);
                 }
                 return _instance;

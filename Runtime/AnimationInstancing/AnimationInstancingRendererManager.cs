@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Snm.Runtime.Unity;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -14,8 +15,7 @@ namespace Snm.AnimationInstancing
                 if (_destroyed) return null;
                 if (_instance == null)
                 {
-                    _instance = new GameObject("[Singleton]AnimationInstancingRendererManager")
-                        .AddComponent<AnimationInstancingRendererManager>();
+                    _instance = UnityEngineUtility.CreateGameObjectWithComponent<AnimationInstancingRendererManager>();
                 }
                 return _instance;
             }

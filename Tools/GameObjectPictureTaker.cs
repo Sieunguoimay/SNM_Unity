@@ -66,7 +66,7 @@ namespace Snm.Tools
                 l.l.cullingMask = cullingMask;
             }
 
-            var camera = new GameObject("Camera").AddComponent<UnityEngine.Camera>();
+            var camera = new GameObject("Camera").AddComponent<Camera>();
             camera.transform.SetPositionAndRotation(srcCamera.transform.position, srcCamera.transform.rotation);
             camera.fieldOfView = srcCamera.fieldOfView;
             camera.projectionMatrix = srcCamera.projectionMatrix;

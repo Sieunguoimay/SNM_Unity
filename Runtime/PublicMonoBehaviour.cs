@@ -1,3 +1,4 @@
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.Components
@@ -13,8 +14,7 @@ namespace Snm.Components
                 {
                     if (_isDestroyed) return null;
 
-                    _instance = new GameObject("[Singleton]" + nameof(PublicMonoBehaviour))
-                        .AddComponent<PublicMonoBehaviour>();
+                    _instance = UnityEngineUtility.CreateGameObjectWithComponent<PublicMonoBehaviour>();
 
                     DontDestroyOnLoad(_instance.gameObject);
                 }

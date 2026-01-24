@@ -1,3 +1,4 @@
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -17,8 +18,7 @@ namespace Snm.Runtime.GrassSystem
             var brushBatchMaker = new BrushRenderBatchesMaker(renderer, brushRegistry, brushesPerBatch: 64);
             var brushDirUpdater = new GrassTrampleBrushDirUpdater(brushRegistry, minOffset: config.brushMinOffset, new(worldCanvas));
 
-            var systemMB = new GameObject { name = "[GrassTrampleSystemMB]", hideFlags = HideFlags.DontSave }
-                .AddComponent<GrassTrampleSystemUpdaterMB>();
+            var systemMB = UnityEngineUtility.CreateGameObjectWithComponent<GrassTrampleSystemUpdaterMB>();
 
             systemMB.SetBrushDirUpdater(brushDirUpdater);
             systemMB.SetBrushBatchMaker(brushBatchMaker);

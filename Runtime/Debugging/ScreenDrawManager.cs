@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.Runtime.Debugging
@@ -13,10 +14,12 @@ namespace Snm.Runtime.Debugging
         {
             get
             {
-                if (_instance != null) return _instance;
-                var go = new GameObject("[ScreenDraw]");
-                DontDestroyOnLoad(go);
-                _instance = go.AddComponent<ScreenDrawManager>();
+                if (_instance == null)
+                {
+                    _instance = UnityEngineUtility.CreateGameObjectWithComponent<ScreenDrawManager>();
+                    DontDestroyOnLoad(_instance.gameObject);
+                }
+
                 return _instance;
             }
         }

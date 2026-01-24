@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Snm.Runtime.GPUSkinning;
 using Snm.Runtime.GPUSkinning.Serialize;
+using Snm.Runtime.Unity;
 using UnityEditor;
 using UnityEngine;
 
@@ -51,7 +52,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
                 _boneTransforms[i].SetBoneSelector(_boneSelectors[i]);
             }
 
-            _visualizer = new GameObject("[BoneVisualizerMB]").AddComponent<BoneVisualizerMB>();
+            _visualizer = UnityEngineUtility.CreateGameObjectWithComponent<BoneVisualizerMB>();
             _visualizer.SetTransforms(transforms);
         }
 

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Snm.Runtime.Unity;
 
 namespace Snm.Runtime.Debugging
 {
@@ -17,10 +18,12 @@ namespace Snm.Runtime.Debugging
             {
                 if (_instance == null)
                 {
-                    var go = new GameObject("[WorldDrawManager]");
-                    DontDestroyOnLoad(go);
-                    _instance = go.AddComponent<WorldDrawManager>();
+                    _instance = UnityEngineUtility.CreateGameObjectWithComponent<WorldDrawManager>();
                     _instance.Init(new Material(Shader.Find("Sprites/Default")));
+                    if (Application.isPlaying)
+                    {
+                        DontDestroyOnLoad(_instance.gameObject);
+                    }
                 }
                 return _instance;
             }
@@ -40,17 +43,15 @@ namespace Snm.Runtime.Debugging
         {
             if (_container != null) return;
 
-            _container = new GameObject("[DebugLineContainer]");
+            _container = UnityEngineUtility.CreateGameObjectWithComponent<Transform>().gameObject;
             _container.transform.SetParent(transform);
         }
 
 
         private LineRenderer CreateNewRenderer()
         {
-            var obj = new GameObject("DebugLine");
-            obj.transform.SetParent(_container.transform);
-
-            LineRenderer lr = obj.AddComponent<LineRenderer>();
+            var lr = UnityEngineUtility.CreateGameObjectWithComponent<LineRenderer>();
+            lr.transform.SetParent(_container.transform);
             lr.enabled = false;
             lr.material = _lineMaterial;
             lr.useWorldSpace = true;

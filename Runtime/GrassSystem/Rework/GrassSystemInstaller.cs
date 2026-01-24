@@ -1,4 +1,5 @@
 using Snm.PropertyAttributes;
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -32,8 +33,7 @@ namespace Snm.Runtime.GrassSystem
             grassRenderer.SetWindConfig(systemConfig.windConfig);
             grassRenderer.SetTrampleConfig(trampleMap, systemConfig.trampleConfig);
 
-            var rendererMB = new GameObject { name = "[GrassFieldRendenderMB]", hideFlags = HideFlags.DontSave }
-                .AddComponent<GrassFieldRendererMB>();
+            var rendererMB = UnityEngineUtility.CreateGameObjectWithComponent<GrassFieldRendererMB>();
             rendererMB.SetRenderer(grassRenderer);
 
             var brushMBs = grassField.GetComponentsInChildren<GrassTrampleBrushMB>(true);
