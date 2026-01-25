@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.IO;
 using Snm.Runtime.GPUSkinning.Serialize;
 using UnityEditor;
@@ -79,3 +80,4 @@ namespace Snm.GPUSkinning.BoneWeightTool
     //     }
     // }
 }
+#endif

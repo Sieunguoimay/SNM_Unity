@@ -37,6 +37,7 @@ namespace Snm.Runtime.GPUSkinning
             unitySMR.enabled = true;
         }
 
+#if UNITY_EDITOR
         private void OnValidate()
         {
             if (gpuSkinningShader == null)
@@ -47,6 +48,7 @@ namespace Snm.Runtime.GPUSkinning
             TryDestroyGPUSMR();
             TryCreateGPUSMR();
         }
+#endif
 
         private void TryCreateGPUSMR()
         {

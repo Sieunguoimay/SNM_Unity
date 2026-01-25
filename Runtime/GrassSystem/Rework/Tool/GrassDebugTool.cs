@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 using System;
 using UnityEditor;
 using UnityEngine;
@@ -15,8 +17,8 @@ namespace Snm.Runtime.GrassSystem
         public RenderTexture TrampleTexture => trampleTexture;
 
         public GrassDebugTool(
-            WorldCanvas worldCanvas, 
-            GrassSystemConfig systemConfig, 
+            WorldCanvas worldCanvas,
+            GrassSystemConfig systemConfig,
             Texture trampleTexture)
         {
             this.worldCanvas = worldCanvas;
@@ -115,3 +117,4 @@ namespace Snm.Runtime.GrassSystem
         }
     }
 }
+#endif

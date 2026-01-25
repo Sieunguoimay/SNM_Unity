@@ -23,9 +23,10 @@ namespace Snm.Runtime.GrassSystem
                 worldCanvas);
             var trampleMap = trampleSystemHandle.GetTrampleTexture();
 
+#if UNITY_EDITOR
             var debugManager = new GrassDebugWindowInstaller()
                 .Install(() => new GrassDebugTool(worldCanvas, systemConfig, trampleMap));
-
+#endif
             var grassRenderer = new GrassFieldRenderer(systemConfig.grassMesh, systemConfig.grassMaterial);
             grassRenderer.SetMatrices(grassField.GetGrassMatrices());
             grassRenderer.SetWorldCanvas(grassField.GetWorldCanvas());
@@ -49,9 +50,16 @@ namespace Snm.Runtime.GrassSystem
                     grassRenderer.Cleanup();
                     if (shouldDestroyGrassField) Object.DestroyImmediate(grassField.gameObject);
                     Object.DestroyImmediate(rendererMB.gameObject);
+#if UNITY_EDITOR
                     debugManager.Cleanup();
+#endif
                 },
-                openDebugToolCallback: debugManager.OpenWindow);
+                openDebugToolCallback: () =>
+                {
+#if UNITY_EDITOR
+                    debugManager.OpenWindow();
+#endif
+                });
 
             return manager;
         }

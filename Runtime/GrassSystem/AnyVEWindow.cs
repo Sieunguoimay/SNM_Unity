@@ -1,7 +1,6 @@
-using System;
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
-#endif
 using UnityEngine.UIElements;
 
 namespace Snm.Runtime.GrassSystem
@@ -34,3 +33,4 @@ namespace Snm.Runtime.GrassSystem
     }
 
 }
+#endif

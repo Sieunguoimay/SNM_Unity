@@ -1,4 +1,6 @@
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 namespace Snm.GPUSkinning.BoneWeightTool
@@ -22,11 +24,13 @@ namespace Snm.GPUSkinning.BoneWeightTool
             {
                 _boneSelector.OnIsSelectedChangedCallback -= BonSelector_OnIsSelectedChangedCallback;
             }
+#if UNITY_EDITOR
             var selected = Selection.activeObject;
             if (selected != gameObject)
             {
                 Selection.activeObject = null;
             }
+#endif
         }
 
         public Matrix4x4 GetLocalToWorldMatrix()
@@ -65,11 +69,13 @@ namespace Snm.GPUSkinning.BoneWeightTool
         {
             if (_boneSelector.IsSelected)
             {
+#if UNITY_EDITOR
                 var selected = Selection.activeObject;
                 if (selected != gameObject)
                 {
                     Selection.activeObject = gameObject;
                 }
+#endif
             }
         }
 

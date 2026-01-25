@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System;
 using UnityEditor;
 using UnityEngine;
@@ -44,3 +45,4 @@ namespace Snm.GPUSkinning.BoneWeightTool
         }
     }
 }
+#endif

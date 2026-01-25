@@ -1,3 +1,4 @@
+    #if UNITY_EDITOR
 using System;
 using Snm.Runtime.Dispose;
 using UnityEngine;
@@ -53,3 +54,4 @@ namespace Snm.Runtime.GrassSystem
         }
     }
 }
+#endif

@@ -1,8 +1,7 @@
-using System;
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using System.Linq;
 using Snm.Runtime.GPUSkinning;
-using Snm.Runtime.GPUSkinning.Serialize;
 using Snm.Runtime.Unity;
 using UnityEditor;
 using UnityEngine;
@@ -174,3 +173,4 @@ namespace Snm.GPUSkinning.BoneWeightTool
         }
     }
 }
+#endif

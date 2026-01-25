@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning.Serialize
 {
+#if UNITY_EDITOR
     public static class SkeletonConverterTool
     {
         [MenuItem("Assets/Prefab/ToSkeletonAsset")]
@@ -29,6 +32,7 @@ namespace Snm.Runtime.GPUSkinning.Serialize
             }
         }
     }
+#endif
 
     public class SkeletonConverter
     {
