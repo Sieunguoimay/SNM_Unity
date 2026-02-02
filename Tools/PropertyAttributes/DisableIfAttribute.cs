@@ -2,6 +2,8 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Snm.Tools;
+using DG.DemiEditor;
+
 
 
 #if UNITY_EDITOR
@@ -13,9 +15,9 @@ namespace Snm.PropertyAttributes
     public class DisableIfAttribute : PropertyAttribute
     {
         public readonly string PropertyName;
-        public readonly bool Value;
+        public readonly object Value;
 
-        public DisableIfAttribute(string propertyName, bool value)
+        public DisableIfAttribute(string propertyName, object value)
         {
             PropertyName = propertyName;
             Value = value;
@@ -27,17 +29,17 @@ namespace Snm.PropertyAttributes
     public class DisableIfAttributeDrawer : PropertyDrawer
     {
         private bool _shouldDisable;
-        private readonly Dictionary<string, object> objects = new();
         private DisableIfAttribute _att;
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             _att ??= attribute as DisableIfAttribute;
-            if (!objects.ContainsKey(property.propertyPath))
+
+            if (!property.IsArrayElement())
             {
-                objects.Add(property.propertyPath, SerializeUtility.GetObjectToWhichPropertyBelong(property));
+                var obj = SerializeUtility.GetObjectToWhichPropertyBelong(property);
+                _shouldDisable = obj != null && ReflectionUtility.GetDataFromMember(obj, _att.PropertyName, false).Equals(_att.Value);
             }
-            _shouldDisable = (bool)ReflectionUtility.GetDataFromMember(objects[property.propertyPath], _att.PropertyName, false) == _att.Value;
 
             EditorGUI.BeginProperty(position, label, property);
             var ge = GUI.enabled;

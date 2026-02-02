@@ -18,6 +18,7 @@ namespace Snm.Tools
         private string _searchString = "";
         private string[] _searchResult;
         private bool _firstTime = true;
+        private int _pageIndex;
 
         public static void Show(IEnumerable<string> options, Action<string> onResult)
         {
@@ -40,20 +41,31 @@ namespace Snm.Tools
                 _searchString = str;
                 UpdateSearchResult();
             }
+
             if (_searchResult != null)
             {
-                var count = 0;
-                foreach (var r in _searchResult)
+                for (int i = 0; i < displayCount; i++)
                 {
-                    if (count > displayCount) break;
+                    var index = i + displayCount * _pageIndex;
+                    if (index >= _searchResult.Length) break;
+
+                    var r = _searchResult[index];
+
                     if (GUILayout.Button($"{r}"))
                     {
                         _onResult?.Invoke(r);
                         Close();
                     }
-                    count++;
                 }
             }
+
+            var pageCount = Mathf.CeilToInt(_searchResult.Length / (float)displayCount);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("<")) { _pageIndex = Mathf.Max(0, _pageIndex - 1); }
+            GUILayout.Label($"{_pageIndex}/{pageCount}", GUILayout.ExpandWidth(false));
+            if (GUILayout.Button(">")) { _pageIndex = Mathf.Min(pageCount - 1, _pageIndex + 1); }
+            GUILayout.EndHorizontal();
         }
 
         private void UpdateSearchResult()

@@ -61,7 +61,7 @@ namespace Snm.Tools.GraphPresentation
             var nodeVE = nodeVEBuilder.CreateNodeVE(node,
                 createPortVECallback: createPortVECallback);
 
-            nodeVE.RegisterCallbackOnce<AttachToPanelEvent>(evt =>
+            nodeVE.RegisterCallback<AttachToPanelEvent>(evt =>
             {
                 GraphVESupport.SetupDraggable(nodeVE, () =>
                 {
