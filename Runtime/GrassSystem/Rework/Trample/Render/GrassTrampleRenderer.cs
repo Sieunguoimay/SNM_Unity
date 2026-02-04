@@ -1,3 +1,4 @@
+using Snm.Runtime.Unity;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 
@@ -34,7 +35,7 @@ namespace Snm.Runtime.GrassSystem
 
         public void Cleanup()
         {
-            Object.DestroyImmediate(material);
+            UnityEngineUtility.DestroyObject(material);
             renderTexture2.Release();
         }
 

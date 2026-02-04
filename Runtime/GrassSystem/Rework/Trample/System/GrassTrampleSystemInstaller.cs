@@ -1,5 +1,4 @@
 using Snm.Runtime.Unity;
-using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
 {
@@ -28,7 +27,7 @@ namespace Snm.Runtime.GrassSystem
                 renderTexture,
                 cleanupCallback: () =>
                 {
-                    UnityEngine.Object.DestroyImmediate(systemMB.gameObject);
+                    UnityEngineUtility.DestroyObject(systemMB.gameObject);
                     renderer.Cleanup();
                     GrassTrampleRenderer.DestroyRenderTexture(renderTexture);
                 }, brushRegistry);

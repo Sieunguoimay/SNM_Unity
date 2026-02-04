@@ -9,7 +9,7 @@ namespace Snm.Runtime.Unity
         {
             var go = new GameObject
             {
-                name = string.IsNullOrEmpty(name) ? $"[{nameof(TComponent)}]" : name,
+                name = string.IsNullOrEmpty(name) ? $"[{typeof(TComponent).Name}]" : name,
                 hideFlags = HideFlags.DontSave
             };
 
@@ -18,15 +18,15 @@ namespace Snm.Runtime.Unity
             return go.AddComponent<TComponent>();
         }
 
-        public static void DestroyGameObject(GameObject gameObject)
+        public static void DestroyObject(Object obj)
         {
-            if (Application.IsPlaying(gameObject))
+            if (Application.IsPlaying(obj))
             {
-                Object.Destroy(gameObject);
+                Object.Destroy(obj);
             }
             else
             {
-                Object.DestroyImmediate(gameObject);
+                Object.DestroyImmediate(obj);
             }
         }
     }

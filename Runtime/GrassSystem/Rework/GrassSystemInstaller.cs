@@ -48,8 +48,8 @@ namespace Snm.Runtime.GrassSystem
 
                     trampleSystemHandle.Cleanup();
                     grassRenderer.Cleanup();
-                    if (shouldDestroyGrassField) Object.DestroyImmediate(grassField.gameObject);
-                    Object.DestroyImmediate(rendererMB.gameObject);
+                    if (shouldDestroyGrassField) UnityEngineUtility.DestroyObject(grassField.gameObject);
+                    UnityEngineUtility.DestroyObject(rendererMB.gameObject);
 #if UNITY_EDITOR
                     debugManager.Cleanup();
 #endif

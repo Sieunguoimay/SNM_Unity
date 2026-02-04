@@ -2,9 +2,10 @@ using UnityEngine;
 
 namespace Snm.Runtime.WaterSystem
 {
+
     public class WaterSurface
     {
-        public Vector3 normal;
+        public Quaternion rotation;
         public Vector3 position;
         public Vector2 size;
 

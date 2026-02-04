@@ -1,5 +1,6 @@
 using System.Linq;
 using Snm.PropertyAttributes;
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -27,9 +28,8 @@ namespace Snm.Runtime.GPUSkinning
         private void TryDestroyGPUSMR()
         {
             if (_gpuSMR == null) return;
-
-            if (Application.IsPlaying(this)) Destroy(_material);
-            else DestroyImmediate(_material);
+            
+            UnityEngineUtility.DestroyObject(_material);
 
             _material = null;
             _gpuSMR = null;

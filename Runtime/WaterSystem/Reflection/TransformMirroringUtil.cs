@@ -2,40 +2,13 @@ using UnityEngine;
 
 namespace Snm.Runtime.WaterSystem
 {
-    public class MirrorCameraMover
+    public static class TransformMirroringUtil
     {
-        private readonly WaterSurface waterSurface;
-        private readonly MirrorCameraMoveData data;
-
-        public MirrorCameraMover(
-            WaterSurface waterSurface,
-            MirrorCameraMoveData data)
-        {
-            this.waterSurface = waterSurface;
-            this.data = data;
-        }
-
-        public void Move()
-        {
-            WaterReflectionUtil.MirrorCameraTransform(data.target, data.mirror, waterSurface);
-        }
-    }
-    public class MirrorCameraMoveData
-    {
-        public Transform target;
-        public Transform mirror;
-    }
-
-    public static class WaterReflectionUtil
-    {
-        public static void MirrorCameraTransform(
+        public static void Mirror(
             Transform sourceCamera,
             Transform reflectionCamera,
-            WaterSurface water)
+            Vector3 planePoint, Vector3 planeNormal)
         {
-            Vector3 planeNormal = water.normal.normalized;
-            Vector3 planePoint = water.position;
-
             // --- Position ---
             reflectionCamera.position = ReflectPoint(
                 sourceCamera.position,

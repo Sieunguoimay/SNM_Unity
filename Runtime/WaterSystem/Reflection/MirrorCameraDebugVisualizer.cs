@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Snm.Runtime.WaterSystem
@@ -33,7 +32,7 @@ namespace Snm.Runtime.WaterSystem
                 camTransform.position,
                 camTransform.forward,
                 _waterSurface.position,
-                _waterSurface.normal,
+                _waterSurface.rotation * Vector3.up,
                 out var hitPoint))
             {
                 var oldMatrix = Gizmos.matrix;
@@ -49,8 +48,8 @@ namespace Snm.Runtime.WaterSystem
 
             DrawCameraFrustum();
             DrawWaterSurface();
-            DrawExtrudedVolume();
-            DrawWaterFrustumIntersection();
+            // DrawExtrudedVolume();
+            // DrawWaterFrustumIntersection();
         }
 
         private void DrawExtrudedVolume()
@@ -62,6 +61,7 @@ namespace Snm.Runtime.WaterSystem
             DrawQuad(water, waterColor);
             DrawExtrudedVolume(water, far, volumeColor);
         }
+
         void DrawQuad(Vector3[] q, Color c)
         {
             Gizmos.color = c;
@@ -76,22 +76,10 @@ namespace Snm.Runtime.WaterSystem
         {
             Gizmos.color = c;
 
-            // Near face
             DrawQuad(near, c);
-
-            // Far face
             DrawQuad(far, c);
 
-            // Sides
-            for (int i = 0; i < 4; i++)
-                Gizmos.DrawLine(near[i], far[i]);
-        }
-
-        static Plane BuildDepthLimitPlane(WaterSurface water, float reflectionDepth)
-        {
-            // Plane parallel to water surface, offset along normal
-            Vector3 point = water.position + water.normal * reflectionDepth;
-            return new Plane(water.normal, point);
+            for (int i = 0; i < 4; i++) Gizmos.DrawLine(near[i], far[i]);
         }
 
         static Vector3[] ExtrudeToReflectionDepth(
@@ -101,13 +89,14 @@ namespace Snm.Runtime.WaterSystem
             float reflectionDepth)
         {
             Vector3[] farCorners = new Vector3[4];
+            Vector3 camPos = cam.transform.position;
+            var planeNormal = (water.position - camPos).normalized;
 
             Plane depthPlane = new Plane(
-                water.normal,
-                water.position + water.normal * reflectionDepth
+                planeNormal,
+                water.position + planeNormal * reflectionDepth
             );
 
-            Vector3 camPos = cam.transform.position;
 
             for (int i = 0; i < 4; i++)
             {
@@ -128,41 +117,6 @@ namespace Snm.Runtime.WaterSystem
             return farCorners;
         }
 
-        static Vector3[] ExtrudeToFarPlane(
-            Camera cam,
-            Vector3[] waterCorners)
-        {
-            Vector3[] farCorners = new Vector3[4];
-
-            Vector3 camPos = cam.transform.position;
-            Vector3 camForward = cam.transform.forward;
-            float far = cam.farClipPlane;
-
-            // Far plane in world space
-            Plane farPlane = new Plane(
-                -camForward,
-                camPos + camForward * far
-            );
-
-            for (int i = 0; i < 4; i++)
-            {
-                Vector3 dir = (waterCorners[i] - camPos).normalized;
-                Ray ray = new Ray(camPos, dir);
-
-                if (farPlane.Raycast(ray, out float t))
-                {
-                    farCorners[i] = ray.origin + ray.direction * t;
-                }
-                else
-                {
-                    // Fallback (should rarely happen)
-                    farCorners[i] = camPos + dir * far;
-                }
-            }
-
-            return farCorners;
-        }
-
         static Vector3[] GetWaterCorners(WaterSurface s)
         {
             Vector3 right = Vector3.right * (s.size.x * 0.5f);
@@ -170,128 +124,140 @@ namespace Snm.Runtime.WaterSystem
 
             return new Vector3[]
             {
-        s.position - right - forward, // BL
-        s.position - right + forward, // TL
-        s.position + right + forward, // TR
-        s.position + right - forward, // BR
+                s.position - right - forward, // BL
+                s.position - right + forward, // TL
+                s.position + right + forward, // TR
+                s.position + right - forward, // BR
             };
-        }
-
-        private static void DrawFrustum(Camera cam)
-        {
-            var t = cam.transform;
-
-            float near = cam.nearClipPlane;
-            float far = cam.farClipPlane;
-            float fov = cam.fieldOfView;
-            float aspect = cam.aspect;
-
-            float halfFovRad = Mathf.Deg2Rad * fov * 0.5f;
-
-            float nearHeight = Mathf.Tan(halfFovRad) * near;
-            float nearWidth = nearHeight * aspect;
-
-            float farHeight = Mathf.Tan(halfFovRad) * far;
-            float farWidth = farHeight * aspect;
-
-            Vector3 nc = t.position + t.forward * near;
-            Vector3 fc = t.position + t.forward * far;
-
-            // Near plane
-            Vector3 ntl = nc + t.up * nearHeight - t.right * nearWidth;
-            Vector3 ntr = nc + t.up * nearHeight + t.right * nearWidth;
-            Vector3 nbl = nc - t.up * nearHeight - t.right * nearWidth;
-            Vector3 nbr = nc - t.up * nearHeight + t.right * nearWidth;
-
-            // Far plane
-            Vector3 ftl = fc + t.up * farHeight - t.right * farWidth;
-            Vector3 ftr = fc + t.up * farHeight + t.right * farWidth;
-            Vector3 fbl = fc - t.up * farHeight - t.right * farWidth;
-            Vector3 fbr = fc - t.up * farHeight + t.right * farWidth;
-
-            // Draw lines
-            Gizmos.DrawLine(ntl, ntr);
-            Gizmos.DrawLine(ntr, nbr);
-            Gizmos.DrawLine(nbr, nbl);
-            Gizmos.DrawLine(nbl, ntl);
-
-            Gizmos.DrawLine(ftl, ftr);
-            Gizmos.DrawLine(ftr, fbr);
-            Gizmos.DrawLine(fbr, fbl);
-            Gizmos.DrawLine(fbl, ftl);
-
-            Gizmos.DrawLine(ntl, ftl);
-            Gizmos.DrawLine(ntr, ftr);
-            Gizmos.DrawLine(nbl, fbl);
-            Gizmos.DrawLine(nbr, fbr);
         }
 
         void DrawWaterSurface()
         {
-            Bounds b = BuildWaterBounds(_waterSurface);
+            // Bounds b = BuildWaterBounds(_waterSurface);
 
             Gizmos.color = waterColor;
-            Gizmos.DrawWireCube(b.center, b.size);
+            // Gizmos.DrawWireCube(b.center, b.size);
+            var c = WaterReflectionFrustumCalculator.GetWaterCorners(_waterSurface);
+            DrawQuad(c[0], c[1], c[2], c[3]);
         }
 
         void DrawCameraFrustum()
         {
-            GetCameraFrustumCorners(_reflectionCamera, out var nearC, out var farC);
-
-            Gizmos.color = frustumColor;
-
-            for (int i = 0; i < 4; i++)
-            {
-                Gizmos.DrawLine(nearC[i], nearC[(i + 1) % 4]);
-                Gizmos.DrawLine(farC[i], farC[(i + 1) % 4]);
-                Gizmos.DrawLine(nearC[i], farC[i]);
-            }
+            var waterCorners = WaterReflectionFrustumCalculator.GetWaterCorners(_waterSurface);
+            var waterPlaneCS = WaterReflectionFrustumCalculator.CameraSpacePlane(_reflectionCamera.worldToCameraMatrix, _waterSurface.position, _waterSurface.rotation * Vector3.up, 1);
+            var projection = WaterReflectionFrustumCalculator.CalculateClampedWaterReflectionFrustum(_reflectionCamera, waterCorners);
+            projection = WaterReflectionFrustumCalculator.CalculateObliqueMatrix(projection, waterPlaneCS);
+            // var projection = _reflectionCamera.projectionMatrix;
+            DrawFrustum(projection, _reflectionCamera.worldToCameraMatrix, frustumColor);
         }
 
-        void DrawWaterFrustumIntersection()
+        // void DrawWaterFrustumIntersection()
+        // {
+        //     List<Vector3> hits =
+        //         ComputeFrustumWaterIntersections(_reflectionCamera, _waterSurface);
+
+        //     Gizmos.color = hitColor;
+
+        //     for (int i = 0; i < hits.Count; i++)
+        //     {
+        //         Gizmos.DrawSphere(hits[i], 0.2f);
+        //         Gizmos.DrawLine(hits[i], hits[(i + 1) % hits.Count]);
+        //     }
+        // }
+        static void DrawFrustum(
+            Matrix4x4 proj,
+            Matrix4x4 view,
+            Color color)
         {
-            List<Vector3> hits =
-                ComputeFrustumWaterIntersections(_reflectionCamera, _waterSurface);
+            Gizmos.color = color;
 
-            Gizmos.color = hitColor;
+            Matrix4x4 invVP = (proj * view).inverse;
 
-            for (int i = 0; i < hits.Count; i++)
-            {
-                Gizmos.DrawSphere(hits[i], 0.2f);
-                Gizmos.DrawLine(hits[i], hits[(i + 1) % hits.Count]);
-            }
+            Vector3[] near = new Vector3[4];
+            Vector3[] far = new Vector3[4];
+
+            int i = 0;
+
+            for (int y = 0; y <= 1; y++)
+                for (int x = 0; x <= 1; x++)
+                {
+                    float nx = x == 0 ? -1 : 1;
+                    float ny = y == 0 ? -1 : 1;
+
+                    Vector4 n = invVP * new Vector4(nx, ny, -1, 1);
+                    Vector4 f = invVP * new Vector4(nx, ny, 1, 1);
+
+                    near[i] = n / n.w;
+                    far[i] = f / f.w;
+
+                    i++;
+                }
+
+            DrawQuad(near);
+            DrawQuad(far);
+
+            for (int k = 0; k < 4; k++)
+                Gizmos.DrawLine(near[k], far[k]);
         }
 
+        static void DrawQuad(Vector3[] v)
+        {
+            Gizmos.DrawLine(v[0], v[1]);
+            Gizmos.DrawLine(v[1], v[3]);
+            Gizmos.DrawLine(v[3], v[2]);
+            Gizmos.DrawLine(v[2], v[0]);
+        }
+
+        private void DrawPoints(Vector3[] c)
+        {
+
+            DrawQuad(c[0], c[1], c[2], c[3]);
+
+            // far
+            DrawQuad(c[4], c[5], c[6], c[7]);
+
+            // sides
+            for (int i = 0; i < 4; i++)
+                Gizmos.DrawLine(c[i], c[i + 4]);
+        }
+
+        void DrawQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+        {
+            Gizmos.DrawLine(a, b);
+            Gizmos.DrawLine(b, c);
+            Gizmos.DrawLine(c, d);
+            Gizmos.DrawLine(d, a);
+        }
         static Bounds BuildWaterBounds(WaterSurface surface)
         {
             Vector3 size = new Vector3(surface.size.x, 0.05f, surface.size.y);
             return new Bounds(surface.position, size);
         }
 
-        static List<Vector3> ComputeFrustumWaterIntersections(
-            Camera cam,
-            WaterSurface surface)
-        {
-            GetCameraFrustumCorners(cam, out var nearC, out var farC);
+        // static List<Vector3> ComputeFrustumWaterIntersections(
+        //     Camera cam,
+        //     WaterSurface surface)
+        // {
+        //     GetFrustumCornersWorld(cam);
 
-            Plane waterPlane = BuildWaterPlane(surface);
-            List<Vector3> hits = new();
+        //     Plane waterPlane = BuildWaterPlane(surface);
+        //     List<Vector3> hits = new();
 
-            Vector3 camPos = cam.transform.position;
+        //     Vector3 camPos = cam.transform.position;
 
-            // Cast rays through FAR plane corners
-            for (int i = 0; i < 4; i++)
-            {
-                Vector3 dir = (farC[i] - camPos).normalized;
+        //     // Cast rays through FAR plane corners
+        //     for (int i = 0; i < 4; i++)
+        //     {
+        //         Vector3 dir = (farC[i] - camPos).normalized;
 
-                if (IntersectPlane(waterPlane, camPos, dir, out Vector3 hit))
-                {
-                    hits.Add(hit);
-                }
-            }
+        //         if (IntersectPlane(waterPlane, camPos, dir, out Vector3 hit))
+        //         {
+        //             hits.Add(hit);
+        //         }
+        //     }
 
-            return hits;
-        }
+        //     return hits;
+        // }
 
         static bool IntersectPlane(
             Plane plane,
@@ -309,47 +275,35 @@ namespace Snm.Runtime.WaterSystem
             return false;
         }
 
-        static Plane BuildWaterPlane(WaterSurface surface)
+        static Vector3[] GetFrustumCornersWorld(Camera cam)
         {
-            return new Plane(surface.normal, surface.position);
+            Matrix4x4 vp = cam.projectionMatrix * cam.worldToCameraMatrix;
+            return GetFrustumCornersWorld(vp);
         }
-        static void GetCameraFrustumCorners(
-            Camera cam,
-            out Vector3[] nearCorners,
-            out Vector3[] farCorners)
+
+        static Vector3[] GetFrustumCornersWorld(Matrix4x4 vp)
         {
-            nearCorners = new Vector3[4];
-            farCorners = new Vector3[4];
+            Matrix4x4 invVP = vp.inverse;
 
-            Transform t = cam.transform;
+            Vector3[] corners = new Vector3[8];
 
-            float near = cam.nearClipPlane;
-            float far = cam.farClipPlane;
-            float fov = cam.fieldOfView;
-            float aspect = cam.aspect;
+            int i = 0;
+            for (int z = 0; z <= 1; z++)
+            {
+                float ndcZ = (z == 0) ? -1f : 1f;
 
-            float halfFovRad = Mathf.Deg2Rad * fov * 0.5f;
+                for (int y = -1; y <= 1; y += 2)
+                    for (int x = -1; x <= 1; x += 2)
+                    {
+                        Vector4 ndc = new Vector4(x, y, ndcZ, 1);
+                        Vector4 world = invVP * ndc;
+                        world /= world.w;
 
-            float nearHeight = Mathf.Tan(halfFovRad) * near;
-            float nearWidth = nearHeight * aspect;
+                        corners[i++] = world;
+                    }
+            }
 
-            float farHeight = Mathf.Tan(halfFovRad) * far;
-            float farWidth = farHeight * aspect;
-
-            Vector3 nc = t.position + t.forward * near;
-            Vector3 fc = t.position + t.forward * far;
-
-            // Near
-            nearCorners[0] = nc + t.up * nearHeight - t.right * nearWidth; // TL
-            nearCorners[1] = nc + t.up * nearHeight + t.right * nearWidth; // TR
-            nearCorners[2] = nc - t.up * nearHeight + t.right * nearWidth; // BR
-            nearCorners[3] = nc - t.up * nearHeight - t.right * nearWidth; // BL
-
-            // Far
-            farCorners[0] = fc + t.up * farHeight - t.right * farWidth;
-            farCorners[1] = fc + t.up * farHeight + t.right * farWidth;
-            farCorners[2] = fc - t.up * farHeight + t.right * farWidth;
-            farCorners[3] = fc - t.up * farHeight - t.right * farWidth;
+            return corners;
         }
 
     }

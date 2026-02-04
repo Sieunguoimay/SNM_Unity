@@ -8,12 +8,13 @@ namespace Snm.Runtime.WaterSystem
         public static Camera Create()
         {
             var camera = UnityEngineUtility.CreateGameObjectWithComponent<Camera>("[ReflectionCamera]");
-            camera.clearFlags = CameraClearFlags.Nothing;
+            camera.clearFlags = CameraClearFlags.SolidColor;
             camera.allowHDR = false;
             camera.allowMSAA = false;
             camera.useOcclusionCulling = false;
             camera.depthTextureMode = DepthTextureMode.None;
             camera.renderingPath = RenderingPath.Forward;
+            camera.gameObject.SetActive(false);
             return camera;
         }
 

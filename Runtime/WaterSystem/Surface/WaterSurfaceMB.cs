@@ -20,7 +20,7 @@ namespace Snm.Runtime.WaterSystem
         public void AssignWaterSurface(WaterSurface waterSurface)
         {
             waterSurface.position = transform.position;
-            waterSurface.normal = transform.up;
+            waterSurface.rotation = transform.rotation;
         }
     }
 }
