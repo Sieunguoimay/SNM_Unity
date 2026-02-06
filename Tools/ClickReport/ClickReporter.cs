@@ -66,14 +66,14 @@ namespace Snm.Tools
                 }
 
                 // Priority 3: Check for 2D sprites/colliders
-                if (enable2DRaycast && Detect2DClick(cam))
-                {
-                    IsUIObject = false;
-                    DetectionMethod = "Physics2D Raycast";
-                    if (showDebugLogs)
-                        Debug.Log($"[2D] Clicked: {LastClickedObject.name}", LastClickedObject);
-                    return;
-                }
+                // if (enable2DRaycast && Detect2DClick(cam))
+                // {
+                //     IsUIObject = false;
+                //     DetectionMethod = "Physics2D Raycast";
+                //     if (showDebugLogs)
+                //         Debug.Log($"[2D] Clicked: {LastClickedObject.name}", LastClickedObject);
+                //     return;
+                // }
 
                 // Priority 4: Check for 3D meshes without colliders
                 if (enableMeshRaycast && DetectMeshClick(cam))
@@ -132,20 +132,20 @@ namespace Snm.Tools
             return false;
         }
 
-        bool Detect2DClick(Camera cam)
-        {
-            Vector2 rayOrigin = cam.ScreenToWorldPoint(Input.mousePosition);
-            RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.zero, 0f, raycast2DLayers);
+        // bool Detect2DClick(Camera cam)
+        // {
+        //     Vector2 rayOrigin = cam.ScreenToWorldPoint(Input.mousePosition);
+        //     var hit = Physics2D.Raycast(rayOrigin, Vector2.zero, 0f, raycast2DLayers);
 
-            if (hit.collider != null)
-            {
-                LastClickedObject = hit.collider.gameObject;
-                OnClickDetected?.Invoke(this, LastClickedObject);
-                return true;
-            }
+        //     if (hit.collider != null)
+        //     {
+        //         LastClickedObject = hit.collider.gameObject;
+        //         OnClickDetected?.Invoke(this, LastClickedObject);
+        //         return true;
+        //     }
 
-            return false;
-        }
+        //     return false;
+        // }
 
         bool DetectMeshClick(Camera cam)
         {

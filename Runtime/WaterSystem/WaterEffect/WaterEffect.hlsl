@@ -4,6 +4,9 @@
 TEXTURE2D(_CameraOpaqueTexture);
 SAMPLER(sampler_CameraOpaqueTexture);
 
+float ease_OutSine(float x) { return sin((x * PI) / 2.0); }
+float ease_InSine(float x) { return 1.0 - cos(x * PI * 0.5); }
+
 float ComputeThickness(float3 bgPositionWS, float3 surfacePositionWS, float3 surfaceNormalWS){
 
     // Vector from surface to background
@@ -33,5 +36,5 @@ float ComputeStylizedFresnel(float rawDepth, float waterDepth)
 {
     float sceneDepth = LinearEyeDepth(rawDepth, _ZBufferParams);
     float depthDifference = sceneDepth - waterDepth;
-    return saturate(depthDifference / 100.0);
+    return ease_OutSine(saturate(depthDifference / 50.0));
 }

@@ -7,7 +7,7 @@ namespace Snm.Runtime.WaterSystem
 
     public static class WaterSystemInstaller
     {
-        public static WaterSystemHandle Install(Object context, WaterSystemConfig config)
+        public static WaterSystemHandle Install(GameObject context, WaterSystemConfig config)
         {
             var size = config.waterSurfaceSize;
             var waterSurface = new WaterSurface()
@@ -18,6 +18,8 @@ namespace Snm.Runtime.WaterSystem
 
             var waterSurfaceMB = UnityEngineUtility.CreateGameObjectWithComponent<WaterSurfaceMB>();
             waterSurfaceMB.SetWaterSurface(waterSurface);
+            waterSurfaceMB.transform.SetParent(context.transform);
+            waterSurfaceMB.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 
             var mirrorCameraMoveTransform = UnityEngineUtility.CreateGameObjectWithComponent<Transform>("[MirrorCamera]");
             var mirrorCamera = MirrorCameraCreator.Create();
@@ -48,7 +50,8 @@ namespace Snm.Runtime.WaterSystem
             var reflectionRenderController = new WaterReflectionRenderController(reflectionRenderer, 4);
 
             //render water surface
-            var surfacePresenter = new WaterSurfacePresenter(waterSurface, config.waterSurfaceShader);
+            Material material = null;
+            var surfacePresenter = new WaterSurfacePresenter(waterSurface, config.waterSurfaceMaterial ?? (material = new Material(config.waterSurfaceShader)));
             surfacePresenter.SetReflectionTex(reflectionRT);
 
             var reflectionMatrixDataUpdater = new ReflectionMatrixDataUpdater(
@@ -66,6 +69,7 @@ namespace Snm.Runtime.WaterSystem
             return new(new DisposeCallback(() =>
             {
                 surfacePresenter.Cleanup();
+                if (material != null) UnityEngineUtility.DestroyObject(material);
                 UnityEngineUtility.DestroyObject(reflectionRT);
                 UnityEngineUtility.DestroyObject(mirrorCameraDebugVisual.gameObject);
                 UnityEngineUtility.DestroyObject(updaterMB.gameObject);

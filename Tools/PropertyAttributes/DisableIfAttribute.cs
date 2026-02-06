@@ -2,7 +2,9 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Snm.Tools;
-using DG.DemiEditor;
+using System;
+using System.Collections;
+
 
 
 
@@ -35,9 +37,10 @@ namespace Snm.PropertyAttributes
         {
             _att ??= attribute as DisableIfAttribute;
 
-            if (!property.IsArrayElement())
+            var obj = SerializeUtility.GetObjectToWhichPropertyBelong(property);
+
+            if (obj is not Array and not IList and not IEnumerable)
             {
-                var obj = SerializeUtility.GetObjectToWhichPropertyBelong(property);
                 _shouldDisable = obj != null && ReflectionUtility.GetDataFromMember(obj, _att.PropertyName, false).Equals(_att.Value);
             }
 

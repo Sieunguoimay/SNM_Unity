@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Snm.Runtime.WaterSystem
 {
-    public class WaterSystemEntrypoint : MonoBehaviour
+    public class WaterSystemEntrypointMB : MonoBehaviour
     {
         [SerializeField] private WaterSystemConfig config;
 
@@ -27,9 +27,9 @@ namespace Snm.Runtime.WaterSystem
         private void Setup()
         {
             if (!isActiveAndEnabled) return;
-            if (config.waterSurfaceShader == null) return;
+            if (config.waterSurfaceShader == null && config.waterSurfaceMaterial == null) return;
 
-            _handle = WaterSystemInstaller.Install(this, config);
+            _handle = WaterSystemInstaller.Install(gameObject, config);
 
 #if UNITY_EDITOR
             _handle.PreviewReflectionTexture.PreviewReflectionTextureUpdated += OnPreviewRenderTextureUpdated;
@@ -68,6 +68,12 @@ namespace Snm.Runtime.WaterSystem
             {
                 _window.Repaint();
             }
+        }
+
+        private void OnDrawGizmos()
+        {
+            Gizmos.matrix = transform.localToWorldMatrix;
+            Gizmos.DrawWireCube(Vector3.zero, new Vector3(config.waterSurfaceSize.x, 0, config.waterSurfaceSize.y));
         }
 #endif
     }
