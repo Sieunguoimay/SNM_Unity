@@ -363,9 +363,7 @@ namespace Snm.Tools.InspectorExtra
 
         private void OnFindReferencesInSceneClicked()
         {
-            typeof(SearchableEditorWindow)
-                .GetMethod("SearchForReferencesToInstanceID", BindingFlags.NonPublic | BindingFlags.Static)
-                .Invoke(null, new object[] { target.GetInstanceID() });
+            EditorWindow.GetWindow<SceneReferencesFinderWindow>().Find(target);
         }
 
         private VisualElement CreateFindReferencesInProjectButton()
