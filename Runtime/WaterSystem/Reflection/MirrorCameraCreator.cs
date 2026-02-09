@@ -9,6 +9,7 @@ namespace Snm.Runtime.WaterSystem
         {
             var camera = UnityEngineUtility.CreateGameObjectWithComponent<Camera>("[ReflectionCamera]");
             camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0, 0, 0, 0);
             camera.allowHDR = false;
             camera.allowMSAA = false;
             camera.useOcclusionCulling = false;

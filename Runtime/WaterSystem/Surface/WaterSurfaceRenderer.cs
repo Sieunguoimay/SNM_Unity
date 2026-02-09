@@ -12,10 +12,11 @@ namespace Snm.Runtime.WaterSystem
 
         public WaterSurfacePresenter(
             WaterSurface waterSurface,
-            Shader waterSurfaceShader)
+            Material material)
         {
             this.waterSurface = waterSurface;
-            material = new Material(waterSurfaceShader);
+            this.material = material;
+
             view = new WaterSurfaceView(waterSurface.mesh, material);
             matBinder = new WaterSurfaceMaterialBinder(material);
         }
@@ -23,7 +24,6 @@ namespace Snm.Runtime.WaterSystem
         public void Cleanup()
         {
             view.Destroy();
-            UnityEngineUtility.DestroyObject(material);
         }
 
         public void Update()

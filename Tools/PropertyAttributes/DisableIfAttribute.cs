@@ -36,9 +36,10 @@ namespace Snm.PropertyAttributes
             _att ??= attribute as DisableIfAttribute;
 
             var obj = SerializeUtility.GetObjectToWhichPropertyBelong(property);
-            if (obj != null && obj is not Array && obj is not IList && obj is not IEnumerable)
+
+            if (obj is not Array and not IList and not IEnumerable)
             {
-                _shouldDisable = ReflectionUtility.GetDataFromMember(obj, _att.PropertyName, false).Equals(_att.Value);
+                _shouldDisable = obj != null && ReflectionUtility.GetDataFromMember(obj, _att.PropertyName, false).Equals(_att.Value);
             }
 
             EditorGUI.BeginProperty(position, label, property);

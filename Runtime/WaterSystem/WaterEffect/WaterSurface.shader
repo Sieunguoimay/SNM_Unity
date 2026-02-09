@@ -12,10 +12,10 @@ Shader "Custom/WaterSurface"
         
         _CausticsTex("CausticsTex", 2D) = "white" {}
         _CausticStrength("CausticStrength", Float) = 1
-        _CausticScale("CausticScale", Float) = 1
-        _CausticSpeed("CausticSpeed", Float) = 1
+        _CausticScale("CausticScale", Float) = .1
+        _CausticSpeed("CausticSpeed", Float) = .05
         _CausticFadeDepth("CausticFadeDepth",Float) = 1
-        _CausticSplit("CausticSplit", Float) = 1
+        _CausticSplit("CausticSplit", Float) = .003
         _CausticAbsorption("CausticAbsorption", Float) = 1
     }
 
@@ -33,8 +33,9 @@ Shader "Custom/WaterSurface"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile _ _SHADOWS_SOFT
-
+            
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Assets\SNM_Unity\Runtime\WaterSystem\Reflection\RefleclionSample.hlsl"
 
             // ----------------------
             // Water parameters
@@ -102,12 +103,16 @@ Shader "Custom/WaterSurface"
 
                 float3 backgroundColor = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, screenUV).rgb;
                 float3 caustics = ComputeCaustics(bgPositionWS);
-                float3 reflectionColor = _BaseColor;
+                float4 reflectionColor = SampleReflection(worldPos);
 
                 float3 waterColor = lerp(backgroundColor * _ShallowColor, _DeepColor, absorption);
-                float3 final = lerp(waterColor, reflectionColor, fresnel) + caustics;
+                float reflectionWeight = fresnel * reflectionColor.a;
+                // float3 final = lerp(waterColor, reflectionColor.rgb, reflectionWeight) + caustics;
+                float3 final = waterColor * (1.0 - reflectionWeight) + reflectionColor.rgb * reflectionWeight + caustics;
 
-                return float4(backgroundColor, 1.0);
+                // return fresnel;
+                // return float4(reflectionColor + caustics, 1.0);
+                return float4(final, 1.0);
             }
 
             ENDHLSL
