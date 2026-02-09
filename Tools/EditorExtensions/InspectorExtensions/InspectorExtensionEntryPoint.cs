@@ -3,7 +3,7 @@ using UnityEditor;
 
 namespace Snm.Tools.InspectorExtra
 {
-    [InitializeOnLoad]
+    // [InitializeOnLoad]
     public class InspectorExtensionEntryPoint
     {
         static InspectorExtensionEntryPoint()

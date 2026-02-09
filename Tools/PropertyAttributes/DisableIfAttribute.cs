@@ -2,8 +2,8 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Snm.Tools;
-using DG.DemiEditor;
-
+using System;
+using System.Collections;
 
 
 #if UNITY_EDITOR
@@ -35,10 +35,10 @@ namespace Snm.PropertyAttributes
         {
             _att ??= attribute as DisableIfAttribute;
 
-            if (!property.IsArrayElement())
+            var obj = SerializeUtility.GetObjectToWhichPropertyBelong(property);
+            if (obj != null && obj is not Array && obj is not IList && obj is not IEnumerable)
             {
-                var obj = SerializeUtility.GetObjectToWhichPropertyBelong(property);
-                _shouldDisable = obj != null && ReflectionUtility.GetDataFromMember(obj, _att.PropertyName, false).Equals(_att.Value);
+                _shouldDisable = ReflectionUtility.GetDataFromMember(obj, _att.PropertyName, false).Equals(_att.Value);
             }
 
             EditorGUI.BeginProperty(position, label, property);
