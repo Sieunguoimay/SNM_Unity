@@ -217,7 +217,7 @@ namespace Snm.Tools.InspectorExtra
                 inspectorModeHelper.SetDebugMode(objectStates.ContainsKey(asset) && objectStates[asset].debug ? InspectorMode.Debug : InspectorMode.Normal);
                 inspectorModeHelper.OnModeChanged += OnInspectorModeChanged;
                 EditorSecondHeaderVE headerVE;
-                body.Add(headerVE = new EditorSecondHeaderVE(asset, inspectorWindow, refreshHandler, inspectorModeHelper));
+                body.Add(headerVE = new EditorSecondHeaderVE(asset, inspectorWindow, inspectorModeHelper));
                 body.Add(ModifyEditor(imguiContainer));
                 headerVE.TriggerOnAttachToPanel(this);
 

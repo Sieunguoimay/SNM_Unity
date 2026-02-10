@@ -12,7 +12,7 @@ namespace Snm.Tools.InspectorExtra
 
     public class InspectorExtensionHeaderVE : VisualElement, IDisposable
     {
-        private readonly IExtensionElementProvider _extensionElementProvider;
+        private readonly IExtensionElementProvider extensionElementProvider;
         private readonly IRefreshHandler refreshHandler;
         private readonly ToggleButton toggleButton;
         private readonly HistoryBrowserVE historyBrowser;
@@ -21,8 +21,9 @@ namespace Snm.Tools.InspectorExtra
 
         public InspectorExtensionHeaderVE(IExtensionElementProvider extensionElementProvider, EditorWindow window, IRefreshHandler refreshHandler)
         {
-            _extensionElementProvider = extensionElementProvider;
+            this.extensionElementProvider = extensionElementProvider;
             this.refreshHandler = refreshHandler;
+
             style.flexDirection = FlexDirection.RowReverse;
             style.borderBottomWidth = 1;
             style.borderBottomColor = new Color(.1f, .1f, .1f, 1f);
@@ -94,8 +95,8 @@ namespace Snm.Tools.InspectorExtra
 
             Add(historyBrowser = new());
 
-            _extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
-            _extensionElementProvider.OnExtensionElementsChanged += OnExtensionElementsChanged;
+            this.extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
+            this.extensionElementProvider.OnExtensionElementsChanged += OnExtensionElementsChanged;
 
             UpdateExtensionElementsVisible();
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
@@ -149,7 +150,7 @@ namespace Snm.Tools.InspectorExtra
 
         public void Dispose()
         {
-            _extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
+            extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
             historyBrowser.Dispose();
         }
 
@@ -216,10 +217,10 @@ namespace Snm.Tools.InspectorExtra
 
         private void UpdateExtensionElementsVisible()
         {
-            if (_extensionElementProvider == null) return;
+            if (extensionElementProvider == null) return;
 
             var status = toggleButton.Status;
-            foreach (var e in _extensionElementProvider.GetExtensionElements().Concat(new VisualElement[] { inspectorModeToggleButton }))
+            foreach (var e in extensionElementProvider.GetExtensionElements().Concat(new VisualElement[] { inspectorModeToggleButton }))
             {
                 e.style.display = status ? DisplayStyle.Flex : DisplayStyle.None;
             }

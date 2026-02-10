@@ -8,62 +8,25 @@ using UnityEngine.UIElements;
 
 namespace Snm.Tools.InspectorExtensions
 {
-    public enum InspectorExtensionLocation
-    {
-        EditorTop,
-        EditorBottom
-    }
-
-    public sealed class InspectorExtensionContext
-    {
-        public VisualElement Root { get; }
-        public UnityEngine.Object Target { get; }
-
-        internal InspectorExtensionContext(
-            VisualElement root,
-            UnityEngine.Object target
-        )
-        {
-            Root = root;
-            Target = target;
-        }
-    }
-
-
-    public abstract class InspectorExtension
-    {
-        /// <summary>
-        /// Where this extension wants to be placed.
-        /// </summary>
-        public abstract InspectorExtensionLocation Location { get; }
-
-        public abstract bool SupportsObject(UnityEngine.Object target);
-
-        /// <summary>
-        /// Create extension UI using provided context.
-        /// </summary>
-        public abstract void Build(InspectorExtensionContext context);
-
-        /// <summary>
-        /// Optional cleanup
-        /// </summary>
-        public virtual void OnRemoved() { }
-    }
-
     public sealed class InspectorWindowController
     {
-        private readonly EditorWindow inspector;
+        private readonly EditorWindow inspectorWindow;
+        private readonly InspectorAttachmentZones windowZonesBuilder = new("snm-inspector-window-ext");
+        private readonly InspectorAttachmentZones editorZonesBuilder = new("snm-editor-ext");
+        private readonly VisualElement editorList;
+        private readonly VisualElement mainContainer;
 
         public InspectorWindowController(EditorWindow inspectorWindow)
         {
-            inspector = inspectorWindow;
+            this.inspectorWindow = inspectorWindow;
+            InspectorWindowLayout.TryGetEditorsList(inspectorWindow, out editorList);
+            InspectorWindowLayout.TryGetMainContainer(inspectorWindow, out mainContainer);
         }
 
-        public void ApplyExtensions(IEnumerable<InspectorExtension> extensions)
+        public void ApplyExtensions(IEnumerable<IInspectorExtension> extensions)
         {
-            ClearExtensions();
 
-            foreach (var editorElement in InspectorWindowScan.EnumerateEditorElements(inspector))
+            foreach (var editorElement in InspectorEditorElementAccess.EnumerateEditorElements(editorList))
             {
                 if (!InspectorEditorElementAccess.TryGetEditor(editorElement, out var editor))
                     continue;
@@ -71,50 +34,61 @@ namespace Snm.Tools.InspectorExtensions
                 var target = editor.target;
                 if (target == null)
                     continue;
+                editorZonesBuilder.RebuildZones(
+                    InspectorEditorElementAccess.FindInspectorElement(editorElement),
+                    out var left,
+                    out var right,
+                    out var top,
+                    out var bottom);
 
-                InspectorAttachmentZones.RebuildZones(editorElement, out var top, out var bottom);
-
-                foreach (var ext in extensions)
+                foreach (var extension in extensions)
                 {
-                    if (!ext.SupportsObject(target)) continue;
-                    var location = ext.Location == InspectorExtensionLocation.EditorTop ? top : bottom;
+                    var support = extension.SupportedTypes.Any(t => t.IsInstanceOfType(target));
+                    if (!support) continue;
 
-                    var ctx = new InspectorExtensionContext(new VisualElement(), target);
-                    location .Add(ctx.Root);
-                    ext.Build(ctx);
+                    var ctx = new InspectorExtensionContext(target, inspectorWindow);
+                    var root = extension.VEBuilder.BuildVE(ctx);
+                    var location = extension.Location switch
+                    {
+                        InspectorExtensionLocation.Left => left,
+                        InspectorExtensionLocation.Right => right,
+                        InspectorExtensionLocation.Top => top,
+                        InspectorExtensionLocation.Bottom => bottom,
+                        _ => throw new NotImplementedException(),
+                    };
+                    location.Add(root);
                 }
             }
         }
 
-
         public void ClearExtensions()
         {
-        }
-    }
-
-    internal static class InspectorWindowLayout
-    {
-        public const string MainContainerClass = "unity-inspector-main-container";
-        public const string EditorsListClass = "unity-inspector-editors-list";
-
-        public static bool TryGetMainContainer(
-            EditorWindow inspector,
-            out VisualElement main)
-        {
-            main = inspector.rootVisualElement
-                .Q<VisualElement>(className: MainContainerClass);
-
-            return main != null;
+            if (editorList != null)
+            {
+                windowZonesBuilder.RemoveExistingZones(mainContainer.parent);
+                editorZonesBuilder.RemoveExistingZones(editorList.parent);
+            }
         }
 
-        public static bool TryGetEditorsList(
-            EditorWindow inspector,
-            out VisualElement editorsList)
+        public void AssignWindowVEs(InspectorExtensionLocation location, IEnumerable<VisualElement> visualElements)
         {
-            editorsList = inspector.rootVisualElement
-                .Q<VisualElement>(className: EditorsListClass);
+            windowZonesBuilder.RebuildZones(
+                mainContainer,
+                out var left,
+                out var right,
+                out var top,
+                out var bottom);
 
-            return editorsList != null;
+            var locationVE = location switch
+            {
+                InspectorExtensionLocation.Left => left,
+                InspectorExtensionLocation.Right => right,
+                InspectorExtensionLocation.Top => top,
+                InspectorExtensionLocation.Bottom => bottom,
+                _ => throw new NotImplementedException(),
+            };
+
+            foreach (var ve in visualElements) locationVE.Add(ve);
         }
     }
 
@@ -153,39 +127,53 @@ namespace Snm.Tools.InspectorExtensions
                     e.GetType().FullName == InspectorElementTypeName);
         }
     }
-    internal static class InspectorAttachmentZones
+
+    internal class InspectorAttachmentZones
     {
-        public const string ZoneClass = "snm-inspector-extension-zone";
+        private readonly string ZoneClass = "snm-inspector-extension-zone";
+        private const string LeftZoneName = "snm-inspector-ext-left";
+        private const string RightZoneName = "snm-inspector-ext-right";
+        private const string TopZoneName = "snm-inspector-ext-top";
+        private const string BottomZoneName = "snm-inspector-ext-bottom";
 
-        public const string TopZoneName = "snm-inspector-ext-top";
-        public const string BottomZoneName = "snm-inspector-ext-bottom";
+        public InspectorAttachmentZones(string zoneClass)
+        {
+            ZoneClass = zoneClass;
+        }
 
-        public static void RebuildZones(
-            VisualElement editorElement,
+        public void RebuildZones(
+            VisualElement element,
+            out VisualElement left,
+            out VisualElement right,
             out VisualElement top,
             out VisualElement bottom)
         {
-            RemoveExistingZones(editorElement);
-
+            left = CreateZone(LeftZoneName);
+            right = CreateZone(RightZoneName);
             top = CreateZone(TopZoneName);
             bottom = CreateZone(BottomZoneName);
 
-            editorElement.Add(top);
-            editorElement.Add(bottom);
+            if (element == null) return;
+            var parentElement = element.parent;
+            if (parentElement == null) return;
 
-            var inspector =
-                InspectorEditorElementAccess.FindInspectorElement(editorElement);
+            RemoveExistingZones(parentElement);
 
-            if (inspector != null)
-            {
-                top.PlaceBehind(inspector);
-                bottom.PlaceInFront(inspector);
-            }
+            parentElement.Add(left);
+            parentElement.Add(right);
+            parentElement.Add(top);
+            parentElement.Add(bottom);
+
+            left.PlaceBehind(element);
+            top.PlaceBehind(element);
+            bottom.PlaceInFront(element);
+            right.PlaceInFront(element);
+            // AddRightPanel(element, right);
         }
 
-        private static void RemoveExistingZones(VisualElement editorElement)
+        public void RemoveExistingZones(VisualElement element)
         {
-            var existing = editorElement
+            var existing = element
                 .Query<VisualElement>(className: ZoneClass)
                 .Build()
                 .ToArray();
@@ -194,55 +182,62 @@ namespace Snm.Tools.InspectorExtensions
                 e.RemoveFromHierarchy();
         }
 
-        private static VisualElement CreateZone(string name)
+        private VisualElement CreateZone(string name)
         {
             var ve = new VisualElement { name = name };
             ve.AddToClassList(ZoneClass);
             return ve;
         }
+
+        private static void AddRightPanel(VisualElement editorElement, VisualElement panel)
+        {
+            var parent = editorElement.parent;
+            var index = parent.IndexOf(editorElement);
+
+            // Remove original editor
+            parent.RemoveAt(index);
+
+            // Wrapper
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.flexGrow = 1;
+
+            // Make editor take main space
+            editorElement.style.flexGrow = 1;
+
+            // Rebuild hierarchy
+            row.Add(editorElement);
+            row.Add(panel);
+
+            parent.Insert(index, row);
+        }
+
     }
 
-    internal static class InspectorWindowHeaderSlot
-    {
-        public const string RootClass = "snm-inspector-extension";
 
-        public static bool InsertOrReplace(
+    internal static class InspectorWindowLayout
+    {
+        public const string MainContainerClass = "unity-inspector-main-container";
+        public const string EditorsListClass = "unity-inspector-editors-list";
+
+        public static bool TryGetMainContainer(
             EditorWindow inspector,
-            VisualElement element)
+            out VisualElement editorsList)
         {
-            if (!InspectorWindowLayout.TryGetMainContainer(inspector, out var main))
-                return false;
+            editorsList = inspector.rootVisualElement
+                .Q<VisualElement>(className: MainContainerClass);
 
-            // Find existing extension by USS class
-            var existing = main.Q(
-                className: RootClass);
-
-            if (existing != null)
-                existing.RemoveFromHierarchy();
-
-            // Insert at top (Inspector header area)
-            element.AddToClassList(RootClass);
-            main.Insert(0, element);
-            return true;
+            return editorsList != null;
         }
 
-
-        public static void Remove(VisualElement header)
+        public static bool TryGetEditorsList(
+            EditorWindow inspector,
+            out VisualElement editorsList)
         {
-            header?.RemoveFromHierarchy();
-        }
-    }
+            editorsList = inspector.rootVisualElement
+                .Q<VisualElement>(className: EditorsListClass);
 
-    internal static class InspectorWindowScan
-    {
-        public static IEnumerable<VisualElement> EnumerateEditorElements(
-            EditorWindow inspector)
-        {
-            if (!InspectorWindowLayout.TryGetEditorsList(inspector, out var list))
-                yield break;
-
-            foreach (var e in InspectorEditorElementAccess.EnumerateEditorElements(list))
-                yield return e;
+            return editorsList != null;
         }
     }
 }

@@ -196,7 +196,6 @@ namespace Snm.Tools.InspectorExtra
         public EditorSecondHeaderVE(
             Object target,
             EditorWindow inspectorWindow,
-            IRefreshHandler refreshHandler,
             IInspectorModeHelper inspectorModeHelper = null)
         {
             this.target = target;
@@ -574,7 +573,7 @@ namespace Snm.Tools.InspectorExtra
                 rootVisualElement.Add(scrollView = new());
                 scrollView.style.flexGrow = 1;
 
-                scrollView.Add(new EditorSecondHeaderVE(target, this, this, new InspectorModeHelper(editor.serializedObject)));
+                scrollView.Add(new EditorSecondHeaderVE(target, this, new InspectorModeHelper(editor.serializedObject)));
 
                 VisualElement space;
                 horizontal.Add(space = new());

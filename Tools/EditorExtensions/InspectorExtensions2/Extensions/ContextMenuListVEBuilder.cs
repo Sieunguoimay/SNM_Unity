@@ -7,19 +7,12 @@ using System.Collections.Generic;
 
 namespace Snm.Tools.InspectorExtensions
 {
-    public sealed class ContextMenuInspectorExtension : InspectorExtension
+    public sealed class ContextMenuListVEBuilder
     {
-        public override InspectorExtensionLocation Location => InspectorExtensionLocation.EditorBottom;
-
-        public override bool SupportsObject(UnityEngine.Object target)
+        public static VisualElement BuildVE(UnityEngine.Object target)
         {
-            return true;
-        }
-
-        public override void Build(InspectorExtensionContext context)
-        {
-            Debug.Log("OK");
-            foreach (var (method, menuAttr) in GetMethodInfos(context.Target))
+            var root = new VisualElement();
+            foreach (var (method, menuAttr) in GetMethodInfos(target))
             {
                 var button = new Button
                 {
@@ -30,7 +23,7 @@ namespace Snm.Tools.InspectorExtensions
                 {
                     try
                     {
-                        method.Invoke(context.Target, null);
+                        method.Invoke(target, null);
                     }
                     catch (Exception e)
                     {
@@ -38,8 +31,9 @@ namespace Snm.Tools.InspectorExtensions
                     }
                 };
 
-                context.Root.Add(button);
+                root.Add(button);
             }
+            return root;
         }
 
         private static IEnumerable<(MethodInfo, ContextMenu)> GetMethodInfos(UnityEngine.Object target)

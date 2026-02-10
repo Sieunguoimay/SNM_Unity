@@ -48,7 +48,7 @@ namespace Snm.Tools.InspectorExtra
                     inspectorModeHelper.OnModeChanged += OnDebugModeChanged;
                 }
 
-                extensionElement.Insert(0, new EditorSecondHeaderVE(target, extensionElement.InspectorWindow, extensionElement.RefreshHandler, inspectorModeHelper));
+                extensionElement.Insert(0, new EditorSecondHeaderVE(target, extensionElement.InspectorWindow, inspectorModeHelper));
                 extensionElement.RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
             }
         }
