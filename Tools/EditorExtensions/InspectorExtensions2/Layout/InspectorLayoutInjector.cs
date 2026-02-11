@@ -6,42 +6,43 @@ using UnityEngine.UIElements;
 
 namespace Snm.Tools.InspectorExtensions
 {
-    public sealed class InspectorWindowVERegistry
+    public sealed class InspectorLayoutInjector
     {
         private readonly Dictionary<EditorWindow, EditorWindowItem> windows = new();
 
-        public InspectorWindowVE GetOrCreateWindowVE(EditorWindow inspectorWindow)
+        public InspectorWindowLayout GetOrCreateLayout(EditorWindow inspectorWindow)
         {
             if (windows.TryGetValue(inspectorWindow, out var item))
             {
                 return item.windowVE;
             }
 
-            if (InspectorWindowLayout.TryGetMainContainer(inspectorWindow, out var mainContainer))
+            if (InspectorReflectionHelper.TryGetMainContainer(inspectorWindow, out var mainContainer))
             {
-                VisualElement top = new(), bottom = new(), left = new(), right = new();
-                var zonesLifecycles = new List<AttachmentZonesLifecycle>
-                {
-                    new(mainContainer, top, bottom, left, right)
-                };
+                var top = new VisualElement() { style = { flexShrink = 0 } };
+                var bottom = new VisualElement() { style = { flexShrink = 0 } };
+                var left = new VisualElement() { style = { flexShrink = 0 } };
+                var right = new VisualElement() { style = { flexShrink = 0 } };
 
-                InspectorWindowLayout.TryGetEditorsList(inspectorWindow, out var editorsList);
-                var editorVEs = InspectorEditorElementAccess.EnumerateEditorElements(editorsList)
+                var zonesLifecycles = new List<AttachmentZonesLifecycle> { new(mainContainer, top, bottom, left, right) };
+
+                InspectorReflectionHelper.TryGetEditorsList(inspectorWindow, out var editorsList);
+                var editorVEs = InspectorReflectionHelper.EnumerateEditorElements(editorsList)
                     .Select(editorVE =>
                     {
-                        var centerVE = InspectorEditorElementAccess.FindInspectorElement(editorVE);
+                        var centerVE = InspectorReflectionHelper.FindInspectorElement(editorVE);
                         if (centerVE == null) return null;
 
                         VisualElement t = new(), b = new(), l = new(), r = new();
                         zonesLifecycles.Add(new(centerVE, t, b, l, r));
 
-                        InspectorEditorElementAccess.TryGetEditor(editorVE, out var editor);
-                        return new EditorVE(new(t, b, l, r), editor.targets);
+                        InspectorReflectionHelper.TryGetEditor(editorVE, out var editor);
+                        return new EditorLayout(new(t, b, l, r), editor.targets, editor.serializedObject);
                     })
                     .Where(e => e != null)
                     .ToArray();
 
-                var ve = new InspectorWindowVE(new(top, bottom, left, right), editorVEs, inspectorWindow);
+                var ve = new InspectorWindowLayout(new(top, bottom, left, right), editorVEs, inspectorWindow);
                 windows.Add(inspectorWindow, new(zonesLifecycles.ToArray(), ve));
 
                 return ve;
@@ -50,7 +51,7 @@ namespace Snm.Tools.InspectorExtensions
             return null;
         }
 
-        public void CleanupWindowVE(EditorWindow inspectorWindow)
+        public void CleanupInjectedLayout(EditorWindow inspectorWindow)
         {
             if (windows.TryGetValue(inspectorWindow, out var item))
             {
@@ -108,11 +109,11 @@ namespace Snm.Tools.InspectorExtensions
         private class EditorWindowItem
         {
             public AttachmentZonesLifecycle[] attachments;
-            public InspectorWindowVE windowVE;
+            public InspectorWindowLayout windowVE;
 
             public EditorWindowItem(
                 AttachmentZonesLifecycle[] attachments,
-                InspectorWindowVE windowVE)
+                InspectorWindowLayout windowVE)
             {
                 this.attachments = attachments;
                 this.windowVE = windowVE;

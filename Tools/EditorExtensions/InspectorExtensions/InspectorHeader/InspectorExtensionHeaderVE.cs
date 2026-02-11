@@ -95,8 +95,11 @@ namespace Snm.Tools.InspectorExtra
 
             Add(historyBrowser = new());
 
-            this.extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
-            this.extensionElementProvider.OnExtensionElementsChanged += OnExtensionElementsChanged;
+            if (this.extensionElementProvider != null)
+            {
+                this.extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
+                this.extensionElementProvider.OnExtensionElementsChanged += OnExtensionElementsChanged;
+            }
 
             UpdateExtensionElementsVisible();
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
@@ -150,7 +153,10 @@ namespace Snm.Tools.InspectorExtra
 
         public void Dispose()
         {
-            extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
+            if (extensionElementProvider != null)
+            {
+                extensionElementProvider.OnExtensionElementsChanged -= OnExtensionElementsChanged;
+            }
             historyBrowser.Dispose();
         }
 

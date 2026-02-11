@@ -48,17 +48,13 @@ namespace Snm.Tools.InspectorExtra
                     inspectorModeHelper.OnModeChanged += OnDebugModeChanged;
                 }
 
-                extensionElement.Insert(0, new EditorSecondHeaderVE(target, extensionElement.InspectorWindow, inspectorModeHelper));
+                extensionElement.Insert(0, EditorSecondHeaderVECreator.Create(target, extensionElement.InspectorWindow, inspectorModeHelper));
                 extensionElement.RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
             }
         }
 
         private void OnAttachToPanel(AttachToPanelEvent evt)
         {
-            if (evt.currentTarget is VisualElement ve)
-            {
-                ve.Q<EditorSecondHeaderVE>().TriggerOnAttachToPanel(ve.parent.parent);
-            }
         }
 
         private void OnDebugModeChanged(IInspectorModeHelper helper)

@@ -1,0 +1,27 @@
+#if UNITY_EDITOR
+using System;
+using UnityEditor;
+using UnityEngine.UIElements;
+
+namespace Snm.Tools.InspectorExtensions
+{
+    public class SimpleInspectorTool : IInspectorTool
+    {
+        private readonly InspectorExtensionLocation location;
+        private readonly Func<EditorWindow, VisualElement> buildVEFunc;
+
+        public SimpleInspectorTool(InspectorExtensionLocation location, Func<EditorWindow, VisualElement> buildVEFunc)
+        {
+            this.location = location;
+            this.buildVEFunc = buildVEFunc;
+        }
+
+        public InspectorExtensionLocation Location => location;
+
+        public VisualElement BuildVE(EditorWindow inspectorWindow)
+        {
+            return buildVEFunc?.Invoke(inspectorWindow);
+        }
+    }
+}
+#endif

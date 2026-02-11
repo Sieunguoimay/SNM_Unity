@@ -216,10 +216,10 @@ namespace Snm.Tools.InspectorExtra
                 IInspectorModeHelper inspectorModeHelper = new InspectorModeHelper(editor.serializedObject);
                 inspectorModeHelper.SetDebugMode(objectStates.ContainsKey(asset) && objectStates[asset].debug ? InspectorMode.Debug : InspectorMode.Normal);
                 inspectorModeHelper.OnModeChanged += OnInspectorModeChanged;
-                EditorSecondHeaderVE headerVE;
-                body.Add(headerVE = new EditorSecondHeaderVE(asset, inspectorWindow, inspectorModeHelper));
+                VisualElement headerVE;
+                body.Add(headerVE = EditorSecondHeaderVECreator.Create(asset, inspectorWindow, inspectorModeHelper));
                 body.Add(ModifyEditor(imguiContainer));
-                headerVE.TriggerOnAttachToPanel(this);
+                // headerVE.TriggerOnAttachToPanel(this);
 
                 RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
                 SetFoldout(header.Foldout.value);

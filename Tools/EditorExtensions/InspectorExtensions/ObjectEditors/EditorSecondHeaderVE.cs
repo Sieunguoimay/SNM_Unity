@@ -10,7 +10,7 @@ using UnityEngine.UIElements;
 
 namespace Snm.Tools.InspectorExtra
 {
-    public interface IInspectorModeHelper : System.IDisposable
+    public interface IInspectorModeHelper
     {
         Object Target { get; }
         event System.Action<IInspectorModeHelper> OnModeChanged;
@@ -42,12 +42,7 @@ namespace Snm.Tools.InspectorExtra
             index = extensionVE.EditorVE.IndexOf(_inspectorElement);
         }
 
-        void System.IDisposable.Dispose()
-        {
-            Cleanup();
-        }
-
-        private void Cleanup()
+        public void Cleanup()
         {
             if (_inspectorElement != null)
             {
@@ -78,7 +73,7 @@ namespace Snm.Tools.InspectorExtra
                 {
                     _editor = Editor.CreateEditor(extensionVE.Target as Object);
 
-                    using IInspectorModeHelper helper = new InspectorModeHelper(_editor.serializedObject);
+                    IInspectorModeHelper helper = new InspectorModeHelper(_editor.serializedObject);
                     helper.SetDebugMode(InspectorMode.Debug);
 
                     _editorVE = new IMGUIContainer(OnIMGUI);
@@ -178,366 +173,168 @@ namespace Snm.Tools.InspectorExtra
         {
             return ((InspectorMode)inspectorMode.GetValue(serializedObject)) == InspectorMode.Debug;
         }
-
-        void System.IDisposable.Dispose()
-        {
-        }
     }
 
-    public class EditorSecondHeaderVE : VisualElement
+    public class EditorSecondHeaderVECreator
     {
-        private readonly Object target;
-        private readonly EditorWindow inspectorWindow;
-        private readonly IInspectorModeHelper inspectorModeHelper;
-
-        // private MenuItemButton _copyComponentMenuItem;
-        // private MenuItemButton _pasteComponentValuesMenuItem;
-
-        public EditorSecondHeaderVE(
+        public static VisualElement Create(
             Object target,
             EditorWindow inspectorWindow,
-            IInspectorModeHelper inspectorModeHelper = null)
+            IInspectorModeHelper inspectorModeHelper)
         {
-            this.target = target;
-            this.inspectorWindow = inspectorWindow;
-            this.inspectorModeHelper = inspectorModeHelper;
+            var secondHeader = new EditorSecondHeader(target, inspectorWindow, inspectorModeHelper);
+            var layout_Buttons = new VisualElement()
+            {
+                style = {
+                    flexDirection = FlexDirection.RowReverse,
+                    flexGrow = 1,
+                    marginBottom = 4,
+                    backgroundColor = new Color(0f, 0f, 0f, .2f),
+                    height = EditorGUIUtility.singleLineHeight + 2,
+                }
+            };
 
-            var layout_Buttons = this;
-
-            style.flexDirection = FlexDirection.RowReverse;
-            style.flexGrow = 1;
-            style.marginBottom = 4;
-            style.backgroundColor = new Color(0f, 0f, 0f, .2f);
-            style.height = EditorGUIUtility.singleLineHeight + 2;
-
-            var button_Browse = new Button { text = "Browse", clickable = new(OpenObjectBrowser) };
+            var button_Browse = new Button { text = "Browse", clickable = new(secondHeader.OpenObjectBrowser) };
 
             if (target is MonoBehaviour || target is ScriptableObject)
             {
-                layout_Buttons.Add(CreateEditScriptButton());
+                layout_Buttons.Add(secondHeader.CreateEditScriptButton());
             }
 
             layout_Buttons.Add(new Button() { text = "Ping", clickable = new(() => EditorGUIUtility.PingObject(target)) });
             layout_Buttons.Add(button_Browse);
-            layout_Buttons.Add(CreateOpenInWindowButton());
+            layout_Buttons.Add(secondHeader.CreateOpenInWindowButton());
 
             if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(target)) && (target is GameObject || target is Component))
-            {
-                layout_Buttons.Add(CreateFindReferencesInSceneButton());
-            }
+                layout_Buttons.Add(secondHeader.CreateFindReferencesInSceneButton());
 
             if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(target)))
-            {
-                layout_Buttons.Add(CreateFindReferencesInProjectButton());
-            }
+                layout_Buttons.Add(secondHeader.CreateFindReferencesInProjectButton());
 
             if (inspectorModeHelper != null)
+                layout_Buttons.Add(secondHeader.CreateDebugButton());
+
+            return layout_Buttons;
+        }
+
+        private class EditorSecondHeader
+        {
+            private readonly Object target;
+            private readonly EditorWindow inspectorWindow;
+            private readonly IInspectorModeHelper inspectorModeHelper;
+
+            public EditorSecondHeader(
+                Object target,
+                EditorWindow inspectorWindow,
+                IInspectorModeHelper inspectorModeHelper
+            )
             {
-                layout_Buttons.Add(CreateDebugButton());
+                this.target = target;
+                this.inspectorWindow = inspectorWindow;
+                this.inspectorModeHelper = inspectorModeHelper;
             }
 
-            // IMenuItemObject copy = null;
-            // IMenuItemObject paste = null;
-
-            // if (target is ScriptableObject so)
-            // {
-            //     copy = new FakeMenuItemObject_ScriptableObject_Copy(so, refreshHandler);
-            //     paste = new FakeMenuItemObject_ScriptableObject_Paste(so);
-            // }
-            // else if (target is Component && target is not Transform)
-            // {
-            //     copy = new MenuItemObject("CONTEXT/Component/Copy Component", target, refreshHandler);
-            //     paste = new MenuItemObject("CONTEXT/Component/Paste Component Values", target, refreshHandler);
-            // }
-
-            // if (copy != null && paste != null)
-            // {
-            //     _copyComponentMenuItem = new MenuItemButton(copy, "Copy");
-            //     _pasteComponentValuesMenuItem = new MenuItemButton(paste, "Paste");
-            //     layout_Buttons.Add(_copyComponentMenuItem);
-            //     layout_Buttons.Add(_pasteComponentValuesMenuItem);
-            // }
-
-            inspectorWindow.rootVisualElement.RegisterCallback<MouseEnterEvent>(OnRepaint);
-
-            RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
-        }
-
-        private void OpenObjectBrowser()
-        {
-            EditorWindow.GetWindow<ObjectBrowserWindow>().Browse(target);
-        }
-
-        public void TriggerOnAttachToPanel(VisualElement parent)
-        {
-        }
-
-        private void OnDetachFromPanel(DetachFromPanelEvent evt)
-        {
-            inspectorWindow.rootVisualElement.UnregisterCallback<MouseEnterEvent>(OnRepaint);
-
-            if (inspectorModeHelper != null)
+            public void OpenObjectBrowser()
             {
-                inspectorModeHelper.Dispose();
+                EditorWindow.GetWindow<ObjectBrowserWindow>().Browse(target);
             }
-        }
 
-        private void OnInspectorModeToggleButtonClicked()
-        {
-            var mode = inspectorModeHelper.IsDebugMode() ? InspectorMode.Normal : InspectorMode.Debug;
-            inspectorModeHelper.SetDebugMode(mode);
-        }
-
-        private void OnRepaint(MouseEnterEvent evt)
-        {
-            Refresh();
-        }
-
-        public void Refresh()
-        {
-            // _copyComponentMenuItem?.Refresh();
-            // _pasteComponentValuesMenuItem?.Refresh();
-        }
-
-        private VisualElement CreateDebugButton()
-        {
-            return new ToggleButton2(
-                "Normal", "Debug", Color.cyan * .8f,
-                inspectorModeHelper.IsDebugMode,
-                OnInspectorModeToggleButtonClicked,
-                "InspectorExtensions_ToggleButton_InspectorMode",
-                inspectorWindow);
-        }
-
-        private VisualElement CreateEditScriptButton()
-        {
-            return new Button()
+            public void OnInspectorModeToggleButtonClicked()
             {
-                text = "Edit Script",
-                clickable = new(OnEditScriptButtonClicked),
-            };
-        }
+                var mode = inspectorModeHelper.IsDebugMode() ? InspectorMode.Normal : InspectorMode.Debug;
+                inspectorModeHelper.SetDebugMode(mode);
+            }
 
-        private VisualElement CreateOpenInWindowButton()
-        {
-            return new Button()
+            public VisualElement CreateDebugButton()
             {
-                tooltip = "Open in Window",
-                text = "Window",
-                clickable = new(() => EditorPopupWindow.Open(target)),
+                return new ToggleButton2(
+                    "Normal", "Debug", Color.cyan * .8f,
+                    inspectorModeHelper.IsDebugMode,
+                    OnInspectorModeToggleButtonClicked,
+                    "InspectorExtensions_ToggleButton_InspectorMode",
+                    inspectorWindow);
+            }
+
+            public VisualElement CreateEditScriptButton()
+            {
+                return new Button()
+                {
+                    text = "Edit Script",
+                    clickable = new(OnEditScriptButtonClicked),
+                };
+            }
+
+            public VisualElement CreateOpenInWindowButton()
+            {
+                return new Button()
+                {
+                    tooltip = "Open in Window",
+                    text = "Window",
+                    clickable = new(() => EditorPopupWindow.Open(target)),
 #if UNITY_2023_2_OR_NEWER
                 iconImage = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_ScaleTool").image)
 #endif
-            };
-        }
-
-        private void OnEditScriptButtonClicked()
-        {
-            if (target != null)
-            {
-                var serialized = new SerializedObject(target);
-                var scriptProperty = serialized.FindProperty("m_Script");
-                AssetDatabase.OpenAsset(scriptProperty.objectReferenceValue);
+                };
             }
-        }
 
-        private VisualElement CreateFindReferencesInSceneButton()
-        {
-            var button = new Button()
+            void OnEditScriptButtonClicked()
             {
-                tooltip = "Find References in Scene",
-                text = "Scene",
-                clickable = new(OnFindReferencesInSceneClicked),
+                if (target != null)
+                {
+                    var serialized = new SerializedObject(target);
+                    var scriptProperty = serialized.FindProperty("m_Script");
+                    AssetDatabase.OpenAsset(scriptProperty.objectReferenceValue);
+                }
+            }
+
+            public VisualElement CreateFindReferencesInSceneButton()
+            {
+                var button = new Button()
+                {
+                    tooltip = "Find References in Scene",
+                    text = "Scene",
+                    clickable = new(OnFindReferencesInSceneClicked),
 #if UNITY_2023_2_OR_NEWER
                 iconImage = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_Search Icon").image)
 #endif
-            };
+                };
 #if UNITY_2023_2_OR_NEWER
             var image = button.Q<Image>();
             image.style.height = 17;
             image.style.width = 17;
 #endif
-            return button;
-        }
+                return button;
+            }
 
-        private void OnFindReferencesInSceneClicked()
-        {
-            EditorWindow.GetWindow<SceneReferencesFinderWindow>().Find(target);
-        }
-
-        private VisualElement CreateFindReferencesInProjectButton()
-        {
-            Background background = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_Search Icon").image);
-            var button = new Button(OnFindReferencesInProjectClicked)
+            public void OnFindReferencesInSceneClicked()
             {
-                tooltip = "Find References in Project",
-                text = "Project",
+                EditorWindow.GetWindow<SceneReferencesFinderWindow>().Find(target);
+            }
+
+            public VisualElement CreateFindReferencesInProjectButton()
+            {
+                Background background = Background.FromTexture2D((Texture2D)EditorGUIUtility.IconContent("d_Search Icon").image);
+                var button = new Button(OnFindReferencesInProjectClicked)
+                {
+                    tooltip = "Find References in Project",
+                    text = "Project",
 #if UNITY_2023_2_OR_NEWER
                 iconImage = background
 #endif
-            };
+                };
 #if UNITY_2023_2_OR_NEWER
             var image = button.Q<Image>();
             image.style.height = 17;
             image.style.width = 17;
 #endif
-            return button;
-        }
-
-        private void OnFindReferencesInProjectClicked()
-        {
-            typeof(SearchableEditorWindow)
-                .GetMethod("SearchForReferencesInProject", BindingFlags.NonPublic | BindingFlags.Static)
-                .Invoke(null, new object[] { target });
-        }
-
-        private class MenuItemButton : Button
-        {
-            private readonly IMenuItemObject menuItemObject;
-
-            public MenuItemButton(IMenuItemObject menuItemObject, string displayText)
-            {
-                this.menuItemObject = menuItemObject;
-
-                text = displayText;
-                clicked += OnButtonClicked;
-
-                Refresh();
+                return button;
             }
 
-            private void OnButtonClicked()
+            public void OnFindReferencesInProjectClicked()
             {
-                menuItemObject.Execute();
-            }
-
-            public void Refresh()
-            {
-                var value = menuItemObject.IsEnabled();
-                style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
-            }
-        }
-
-        private class ReferencesFoldout : Foldout
-        {
-            public ReferencesFoldout(UnityEngine.Object obj)
-            {
-                var serializedObject = new SerializedObject(obj);
-                serializedObject.Update();
-                var references = Iterate(serializedObject).Select(o => new { o.propertyPath, o.objectReferenceValue }).ToArray();
-                var count = references.Length;
-
-                text = $"References ({count})";
-                value = false;
-                style.color = Color.gray;
-                style.borderTopWidth = 1;
-                style.borderTopColor = new Color(.1f, .1f, .1f, 1f);
-
-                if (InspectorExtensionInstaller.Instance.DebugEnabled)
-                {
-                    Debug.Log($"RevealReferenceEditorExt for {obj.name} ({obj.GetType().Name})");
-                }
-
-
-                foreach (var rObject in references)
-                {
-                    var foldout = new ObjectField()
-                    {
-                        label = $"{rObject.propertyPath}: ",
-                        value = rObject.objectReferenceValue,
-                        // tooltip = $"{r.propertyPath}"
-                    };
-
-                    Add(foldout);
-                }
-            }
-        }
-
-        private static IEnumerable<SerializedProperty> Iterate(SerializedObject obj)
-        {
-            var it = obj.GetIterator();
-            while (it.Next(true))
-            {
-                if (it.propertyType == SerializedPropertyType.ObjectReference && it.objectReferenceValue != null)
-                {
-                    yield return it;
-                }
-            }
-        }
-
-        public interface IMenuItemObject
-        {
-            bool IsEnabled();
-            void Execute();
-        }
-
-        public class FakeMenuItemObject_ScriptableObject_Paste : IMenuItemObject
-        {
-            private readonly ScriptableObject target;
-
-            public FakeMenuItemObject_ScriptableObject_Paste(ScriptableObject target)
-            {
-                this.target = target;
-            }
-
-            void IMenuItemObject.Execute()
-            {
-                EditorUtility.CopySerialized(ScriptableObjectInspectorExt.CopiedObject, target);
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
-            }
-
-            bool IMenuItemObject.IsEnabled()
-            {
-                return ScriptableObjectInspectorExt.CopiedObject != null
-                && target.GetType().IsAssignableFrom(ScriptableObjectInspectorExt.CopiedObject.GetType());
-            }
-        }
-
-        public class FakeMenuItemObject_ScriptableObject_Copy : IMenuItemObject
-        {
-            private readonly ScriptableObject target;
-            private readonly IRefreshHandler refreshHandler;
-
-            public FakeMenuItemObject_ScriptableObject_Copy(ScriptableObject target, IRefreshHandler refreshHandler)
-            {
-                this.target = target;
-                this.refreshHandler = refreshHandler;
-            }
-
-            void IMenuItemObject.Execute()
-            {
-                ScriptableObjectInspectorExt.CopiedObject = target;
-                refreshHandler.Refresh();
-            }
-
-            bool IMenuItemObject.IsEnabled()
-            {
-                return true;
-            }
-        }
-
-        public class MenuItemObject : IMenuItemObject
-        {
-            private readonly string menuItemPath;
-            private readonly Object context;
-            private readonly IRefreshHandler refreshHandler;
-
-            public MenuItemObject(string menuItemPath, UnityEngine.Object context, IRefreshHandler refreshHandler)
-            {
-                this.menuItemPath = menuItemPath;
-                this.context = context;
-                this.refreshHandler = refreshHandler;
-            }
-
-            bool IMenuItemObject.IsEnabled()
-            {
-                return EditorApplicationHelper.GetEnabledWithContext(menuItemPath, context);
-            }
-
-            void IMenuItemObject.Execute()
-            {
-                EditorApplicationHelper.ExecuteMenuItem(menuItemPath, context);
-                refreshHandler.Refresh();
+                typeof(SearchableEditorWindow)
+                    .GetMethod("SearchForReferencesInProject", BindingFlags.NonPublic | BindingFlags.Static)
+                    .Invoke(null, new object[] { target });
             }
         }
 
@@ -573,7 +370,7 @@ namespace Snm.Tools.InspectorExtra
                 rootVisualElement.Add(scrollView = new());
                 scrollView.style.flexGrow = 1;
 
-                scrollView.Add(new EditorSecondHeaderVE(target, this, new InspectorModeHelper(editor.serializedObject)));
+                scrollView.Add(EditorSecondHeaderVECreator.Create(target, this, new InspectorModeHelper(editor.serializedObject)));
 
                 VisualElement space;
                 horizontal.Add(space = new());
