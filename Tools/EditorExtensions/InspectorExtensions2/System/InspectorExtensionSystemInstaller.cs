@@ -26,7 +26,7 @@ namespace Snm.Tools.InspectorExtensions
         {
             yield return new SimpleInspectorTool(
                 location: InspectorExtensionLocation.Top,
-                buildVEFunc: w => new InspectorExtensionHeaderVE(null, w, new RefreshHandler(null)) { style = { height = EditorGUIUtility.singleLineHeight, flexShrink = 0 } });
+                buildVEFunc: context => new InspectorExtensionHeaderVE(null, context.InspectorWindow, new RefreshHandler(context.Coordinator.RenderToLayout)) { style = { height = EditorGUIUtility.singleLineHeight, flexShrink = 0 } });
         }
 
         public static IEnumerable<IInspectorExtension> GetDefaultExtensionsToInstall()
@@ -40,6 +40,12 @@ namespace Snm.Tools.InspectorExtensions
             yield return new SimpleInspectorExtension(
                 location: InspectorExtensionLocation.Top,
                 buildVEFunc: context => SecondHeaderVECreator.Create(context.SerializedObject),
+                supportedTypes: new[] { typeof(UnityEngine.Object) },
+                unsupportedTypes: Array.Empty<Type>());
+
+            yield return new SimpleInspectorExtension(
+                location: InspectorExtensionLocation.Top,
+                buildVEFunc: context => SerializedPropertyDecorator.BuildVE(context.SerializedObject),
                 supportedTypes: new[] { typeof(UnityEngine.Object) },
                 unsupportedTypes: Array.Empty<Type>());
         }

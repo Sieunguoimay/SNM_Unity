@@ -8,9 +8,9 @@ namespace Snm.Tools.InspectorExtensions
     public class SimpleInspectorTool : IInspectorTool
     {
         private readonly InspectorExtensionLocation location;
-        private readonly Func<EditorWindow, VisualElement> buildVEFunc;
+        private readonly Func<InspectorToolContext, VisualElement> buildVEFunc;
 
-        public SimpleInspectorTool(InspectorExtensionLocation location, Func<EditorWindow, VisualElement> buildVEFunc)
+        public SimpleInspectorTool(InspectorExtensionLocation location, Func<InspectorToolContext, VisualElement> buildVEFunc)
         {
             this.location = location;
             this.buildVEFunc = buildVEFunc;
@@ -18,9 +18,9 @@ namespace Snm.Tools.InspectorExtensions
 
         public InspectorExtensionLocation Location => location;
 
-        public VisualElement BuildVE(EditorWindow inspectorWindow)
+        public VisualElement BuildVE(InspectorToolContext context)
         {
-            return buildVEFunc?.Invoke(inspectorWindow);
+            return buildVEFunc?.Invoke(context);
         }
     }
 }

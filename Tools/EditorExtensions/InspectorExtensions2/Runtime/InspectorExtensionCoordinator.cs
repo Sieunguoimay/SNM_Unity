@@ -40,7 +40,8 @@ namespace Snm.Tools.InspectorExtensions
 
         private void Selection_OnSelectionChanged()
         {
-            RenderToLayout();
+            EditorApplication.delayCall += () => 
+                EditorApplication.delayCall += RenderToLayout;
         }
 
         private void WindowsTracker_OnInspectorWindowsChanged(InspectorWindowTracker tracker)
@@ -54,7 +55,7 @@ namespace Snm.Tools.InspectorExtensions
             _windows = windowTracker.InspectorWindows.ToArray();
         }
 
-        private void RenderToLayout()
+        public void RenderToLayout()
         {
             _extensionRenderer?.ClearVEs();
             CleanupInspectorLayouts();
@@ -63,7 +64,7 @@ namespace Snm.Tools.InspectorExtensions
             _extensionRenderer = new InspectorExtensionRenderer(layouts, new TypeBasedExtensionFilter());
 
             _extensionRenderer.ApplyExtensions(extensions);
-            _extensionRenderer.ApplyTools(inspectorTools);
+            _extensionRenderer.ApplyTools(inspectorTools, this);
         }
 
         private void CleanupInspectorLayouts()

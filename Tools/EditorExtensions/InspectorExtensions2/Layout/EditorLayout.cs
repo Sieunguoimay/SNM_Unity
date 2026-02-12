@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEngine.UIElements;
 
 namespace Snm.Tools.InspectorExtensions
 {
@@ -7,16 +8,18 @@ namespace Snm.Tools.InspectorExtensions
     {
         public AttachmentZones AttachmentZones { get; }
         public UnityEngine.Object[] TargetObjects { get; }
-        public SerializedObject SerializedObject{ get; }
-
+        public SerializedObject SerializedObject { get; }
+        public IMGUIContainer IMGUIContainer { get; }
         public EditorLayout(
             AttachmentZones attachmentZones,
             UnityEngine.Object[] targetObjects,
-            SerializedObject serializedObject)
+            SerializedObject serializedObject,
+            IMGUIContainer iMGUIContainer)
         {
             AttachmentZones = attachmentZones;
             TargetObjects = targetObjects;
             SerializedObject = serializedObject;
+            IMGUIContainer = iMGUIContainer;
         }
     }
 }

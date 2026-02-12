@@ -37,7 +37,7 @@ namespace Snm.Tools.InspectorExtensions
                         zonesLifecycles.Add(new(centerVE, t, b, l, r));
 
                         InspectorReflectionHelper.TryGetEditor(editorVE, out var editor);
-                        return new EditorLayout(new(t, b, l, r), editor.targets, editor.serializedObject);
+                        return new EditorLayout(new(t, b, l, r), editor.targets, editor.serializedObject, editorVE.Q<IMGUIContainer>());
                     })
                     .Where(e => e != null)
                     .ToArray();

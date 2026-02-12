@@ -150,6 +150,18 @@ namespace Snm.Tools
             }
             return null;
         }
+
+        public static IEnumerable<SerializedProperty> Iterate(SerializedObject serializedObject)
+        {
+            var it = serializedObject.GetIterator();
+
+            it.Next(true);
+
+            while (it.Next(true))
+            {
+                yield return it;
+            }
+        }
     }
 }
 #endif

@@ -19,7 +19,7 @@ namespace Snm.Tools.InspectorExtensions
             this.extensionFilter = extensionFilter;
         }
 
-        public void ApplyTools(IInspectorTool[] inspectorTools)
+        public void ApplyTools(IInspectorTool[] inspectorTools, InspectorExtensionCoordinator coordinator)
         {
             foreach (var wVE in windowLayouts)
             {
@@ -34,7 +34,7 @@ namespace Snm.Tools.InspectorExtensions
                         _ => throw new System.NotImplementedException(),
                     };
 
-                    var toolVE = it.BuildVE(wVE.InspectorWindow);
+                    var toolVE = it.BuildVE(new(wVE.InspectorWindow, coordinator));
                     parentVE.Add(toolVE);
                     createdVEs.Add(toolVE);
                 }
@@ -49,7 +49,11 @@ namespace Snm.Tools.InspectorExtensions
                 {
                     foreach (var extension in extensions)
                     {
-                        var context = new InspectorExtensionContext(editorLayout.TargetObjects, windowLayout.InspectorWindow, editorLayout.SerializedObject);
+                        var context = new InspectorExtensionContext(
+                            editorLayout.TargetObjects,
+                            windowLayout.InspectorWindow,
+                            editorLayout.SerializedObject,
+                            editorLayout.IMGUIContainer);
 
                         if (extensionFilter.IsMatch(extension, context))
                         {
