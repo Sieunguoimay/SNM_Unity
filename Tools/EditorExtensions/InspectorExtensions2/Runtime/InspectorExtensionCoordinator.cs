@@ -2,7 +2,6 @@
 using System;
 using System.Linq;
 using UnityEditor;
-using UnityEngine.UIElements;
 
 namespace Snm.Tools.InspectorExtensions
 {
@@ -12,6 +11,7 @@ namespace Snm.Tools.InspectorExtensions
         private readonly IInspectorTool[] inspectorTools;
         private EditorWindow[] _windows;
         private InspectorExtensionRenderer _extensionRenderer;
+        private InspectorToolRenderer _toolRenderer;
         private readonly InspectorLayoutInjector injector = new();
         private readonly InspectorWindowTracker windowTracker = new();
 
@@ -32,15 +32,17 @@ namespace Snm.Tools.InspectorExtensions
         public void Dispose()
         {
             _extensionRenderer?.ClearVEs();
+            _toolRenderer?.ClearVEs();
             CleanupInspectorLayouts();
 
             Selection.selectionChanged -= Selection_OnSelectionChanged;
             windowTracker.OnInspectorWindowsChanged -= WindowsTracker_OnInspectorWindowsChanged;
+            windowTracker.Dispose();
         }
 
         private void Selection_OnSelectionChanged()
         {
-            EditorApplication.delayCall += () => 
+            EditorApplication.delayCall += () =>
                 EditorApplication.delayCall += RenderToLayout;
         }
 
@@ -58,13 +60,18 @@ namespace Snm.Tools.InspectorExtensions
         public void RenderToLayout()
         {
             _extensionRenderer?.ClearVEs();
+            _toolRenderer?.ClearVEs();
+
             CleanupInspectorLayouts();
 
             var layouts = _windows.Select(injector.GetOrCreateLayout).ToArray();
-            _extensionRenderer = new InspectorExtensionRenderer(layouts, new TypeBasedExtensionFilter());
+            var editorLayouts = layouts.SelectMany(l => l.EditorLayouts).ToArray();
+
+            _extensionRenderer = new InspectorExtensionRenderer(editorLayouts, new TypeBasedExtensionFilter());
+            _toolRenderer = new InspectorToolRenderer(layouts);
 
             _extensionRenderer.ApplyExtensions(extensions);
-            _extensionRenderer.ApplyTools(inspectorTools, this);
+            _toolRenderer.ApplyTools(inspectorTools, this);
         }
 
         private void CleanupInspectorLayouts()

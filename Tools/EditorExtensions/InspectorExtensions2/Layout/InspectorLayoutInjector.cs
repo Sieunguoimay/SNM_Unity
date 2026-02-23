@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 namespace Snm.Tools.InspectorExtensions
@@ -30,14 +31,19 @@ namespace Snm.Tools.InspectorExtensions
                 var editorVEs = InspectorReflectionHelper.EnumerateEditorElements(editorsList)
                     .Select(editorVE =>
                     {
-                        var centerVE = InspectorReflectionHelper.FindInspectorElement(editorVE);
-                        if (centerVE == null) return null;
+                        if (!InspectorReflectionHelper.TryGetEditor(editorVE, out var editor)) return null;
+
+                        var imguiContainer = editorVE.Query<IMGUIContainer>().AtIndex(1);
+                        if (imguiContainer == null) return null;
+                        imguiContainer.style.flexGrow = 1;
 
                         VisualElement t = new(), b = new(), l = new(), r = new();
-                        zonesLifecycles.Add(new(centerVE, t, b, l, r));
+                        zonesLifecycles.Add(new(imguiContainer, t, b, l, r));
 
-                        InspectorReflectionHelper.TryGetEditor(editorVE, out var editor);
-                        return new EditorLayout(new(t, b, l, r), editor.targets, editor.serializedObject, editorVE.Q<IMGUIContainer>());
+                        var inspectorElement = editorVE.Q<InspectorElement>();
+                        return new EditorLayout(
+                            attachmentZones: new(t, b, l, r),
+                            targetObjects: editor.targets, editor.serializedObject, inspectorElement);
                     })
                     .Where(e => e != null)
                     .ToArray();
@@ -64,7 +70,7 @@ namespace Snm.Tools.InspectorExtensions
             }
         }
 
-        private class AttachmentZonesLifecycle
+        public class AttachmentZonesLifecycle
         {
             private readonly VisualElement center;
             private readonly VisualElement parent;

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 namespace Snm.Tools.InspectorExtensions
@@ -37,12 +38,10 @@ namespace Snm.Tools.InspectorExtensions
             return editor != null;
         }
 
-        public static VisualElement FindInspectorElement(
+        public static InspectorElement FindInspectorElement(
             VisualElement editorElement)
         {
-            return editorElement.Children()
-                .FirstOrDefault(e =>
-                    e.GetType().FullName == InspectorElementTypeName);
+            return editorElement.Q<InspectorElement>();
         }
 
         public static bool TryGetMainContainer(

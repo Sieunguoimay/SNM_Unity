@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
-using System.Reflection;
+using System;
+using System.IO;
 using Snm.Tools.InspectorExtra;
 using Snm.Tools.ObjectBrowser;
 using UnityEditor;
@@ -9,12 +10,12 @@ namespace Snm.Tools.InspectorExtensions
 {
     public static class SecondHeaderTools
     {
-        public static void OpenObjectBrowser(Object target)
+        public static void OpenObjectBrowser(UnityEngine.Object target)
         {
             EditorWindow.GetWindow<ObjectBrowserWindow>().Browse(target);
         }
 
-        public static void OpenScript(Object target)
+        public static void OpenScript(UnityEngine.Object target)
         {
             if (target != null)
             {
@@ -24,16 +25,46 @@ namespace Snm.Tools.InspectorExtensions
             }
         }
 
-        public static void OpenFindReferencesInScene(Object target)
+        public static void OpenFindReferencesInScene(UnityEngine.Object target)
         {
             EditorWindow.GetWindow<SceneReferencesFinderWindow>().Find(target);
         }
 
-        public static void FindRefrencesInProject(Object target)
+        public static void FindRefrencesInProject(UnityEngine.Object target)
         {
-            typeof(SearchableEditorWindow)
-                .GetMethod("SearchForReferencesInProject", BindingFlags.NonPublic | BindingFlags.Static)
-                .Invoke(null, new object[] { target });
+            var targetPath = AssetDatabase.GetAssetPath(target);
+            var guid = AssetDatabase.AssetPathToGUID(targetPath);
+
+            foreach (string path in AssetDatabase.GetAllAssetPaths())
+            {
+                if (!path.StartsWith("Assets/"))
+                    continue;
+
+                if (AssetDatabase.IsValidFolder(path))
+                    continue;
+
+                string fullPath = Path.GetFullPath(path);
+
+                if (!File.Exists(fullPath))
+                    continue;
+
+                try
+                {
+                    string text = File.ReadAllText(fullPath);
+                    if (text.Contains(guid))
+                    {
+                        Debug.Log("Reference found in: " + path);
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Ignore protected files
+                }
+                catch (IOException)
+                {
+                    // Ignore binary or locked files
+                }
+            }
         }
     }
 

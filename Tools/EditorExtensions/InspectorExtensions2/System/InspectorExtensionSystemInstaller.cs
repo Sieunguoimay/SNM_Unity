@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Snm.Tools.InspectorExtra;
-using UnityEditor;
 using UnityEngine;
 
 namespace Snm.Tools.InspectorExtensions
@@ -26,7 +24,7 @@ namespace Snm.Tools.InspectorExtensions
         {
             yield return new SimpleInspectorTool(
                 location: InspectorExtensionLocation.Top,
-                buildVEFunc: context => new InspectorExtensionHeaderVE(null, context.InspectorWindow, new RefreshHandler(context.Coordinator.RenderToLayout)) { style = { height = EditorGUIUtility.singleLineHeight, flexShrink = 0 } });
+                buildVEFunc: context => InspectorHeaderVECreator.BuildVE(context.InspectorWindow, context.Coordinator.RenderToLayout));
         }
 
         public static IEnumerable<IInspectorExtension> GetDefaultExtensionsToInstall()
@@ -39,30 +37,9 @@ namespace Snm.Tools.InspectorExtensions
 
             yield return new SimpleInspectorExtension(
                 location: InspectorExtensionLocation.Top,
-                buildVEFunc: context => SecondHeaderVECreator.Create(context.SerializedObject),
+                buildVEFunc: context => SecondHeaderVECreator.Create(context.SerializedObject, context.InspectorElement),
                 supportedTypes: new[] { typeof(UnityEngine.Object) },
                 unsupportedTypes: Array.Empty<Type>());
-
-            yield return new SimpleInspectorExtension(
-                location: InspectorExtensionLocation.Top,
-                buildVEFunc: context => SerializedPropertyDecorator.BuildVE(context.SerializedObject),
-                supportedTypes: new[] { typeof(UnityEngine.Object) },
-                unsupportedTypes: Array.Empty<Type>());
-        }
-
-        private class RefreshHandler : IRefreshHandler
-        {
-            private readonly Action refreshCallback;
-
-            public RefreshHandler(Action refreshCallback)
-            {
-                this.refreshCallback = refreshCallback;
-            }
-
-            public void Refresh()
-            {
-                refreshCallback?.Invoke();
-            }
         }
     }
 }
