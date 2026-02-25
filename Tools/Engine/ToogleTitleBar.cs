@@ -27,6 +27,7 @@ namespace Snm.Tools.Engine
         private const int SWP_FRAMECHANGED = 0x0020;
         private const int SWP_SHOWWINDOW = 0x0040;
         private const int SW_MAXIMIZE = 3;
+        private const string MenuPath = "Tools/Snm/Toggle Title Bar _F11";
 
         private static readonly IntPtr HWND_TOP = IntPtr.Zero;
 
@@ -49,7 +50,7 @@ namespace Snm.Tools.Engine
             SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) | WS_CAPTION);
             SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
 
-            Menu.SetChecked("Title Bar/Toggle", false);
+            Menu.SetChecked(MenuPath, false);
             hidden = false;
         }
 
@@ -62,11 +63,11 @@ namespace Snm.Tools.Engine
             SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED); // unsure why this prevents add component search box to show
 
             // ShowWindow(hwnd, SW_MAXIMIZE); // also maximize
-            Menu.SetChecked("Title Bar/Toggle", true);
+            Menu.SetChecked(MenuPath, true);
             hidden = true;
         }
 
-        [MenuItem("Tools/Toggle Title Bar _F11")]
+        [MenuItem(MenuPath)]
         public static void Toggle()
         {
             if (hidden) Show();

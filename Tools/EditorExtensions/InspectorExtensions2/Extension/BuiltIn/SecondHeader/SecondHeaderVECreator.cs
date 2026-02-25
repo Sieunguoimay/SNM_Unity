@@ -12,9 +12,6 @@ namespace Snm.Tools.InspectorExtensions
             if (serializedObject.targetObjects.Length > 1) return new VisualElement();
 
             var target = serializedObject.targetObject;
-            // var assetPath = AssetDatabase.GetAssetPath(target);
-            // var debugMode = new InspectorModeViewer(serializedObject);
-
             var root = new VisualElement();
             var layout_Buttons = new VisualElement()
             {
@@ -32,7 +29,7 @@ namespace Snm.Tools.InspectorExtensions
             var button_Ping = new Button() { text = "Ping", clickable = new(() => EditorGUIUtility.PingObject(target)) };
             var button_Open = new Button() { text = "To Window", clickable = new(() => EditorPopupWindow.Open(target)), tooltip = "Open in new Window", };
             var layout_Refs = new VisualElement();
-            var button_Toggle = EditorExtraCreator.BuildVE(serializedObject, imguiContainer, layout_Refs);
+            var button_Toggle = CustomEditorVECreator.BuildVE(serializedObject, imguiContainer, layout_Refs);
             var button_Find = CreateFindReferences(target);
             var shouldShow_EditScript = target is MonoBehaviour || target is ScriptableObject;
 
@@ -57,8 +54,8 @@ namespace Snm.Tools.InspectorExtensions
                 clickable = new(() =>
                 {
                     var menu = new GenericMenu();
-                    menu.AddItem(new GUIContent("Find refs from Scene"), false, () => SecondHeaderTools.OpenFindReferencesInScene(target));
-                    menu.AddItem(new GUIContent("Find refs from Project (Takes long time)"), false, () => SecondHeaderTools.FindRefrencesInProject(target));
+                    menu.AddItem(new GUIContent("Find Scene References"), false, () => SecondHeaderTools.OpenFindReferencesInScene(target));
+                    menu.AddItem(new GUIContent("Find Asset References"), false, () => SecondHeaderTools.FindRefrencesInProject(target));
                     menu.ShowAsContext();
                 }),
 #if UNITY_2023_2_OR_NEWER

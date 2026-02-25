@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Snm.Tools.InspectorExtensions;
 using Snm.Tools.ObjectBrowser;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -308,7 +309,6 @@ namespace Snm.Tools.InspectorExtra
 
             public void OnFindReferencesInSceneClicked()
             {
-                EditorWindow.GetWindow<SceneReferencesFinderWindow>().Find(target);
             }
 
             public VisualElement CreateFindReferencesInProjectButton()

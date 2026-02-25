@@ -10,12 +10,12 @@ namespace Snm.Tools.InspectorExtensions
         public AttachmentZones AttachmentZones { get; }
         public UnityEngine.Object[] TargetObjects { get; }
         public SerializedObject SerializedObject { get; }
-        public InspectorElement InspectorElement { get; }
+        public VisualElement InspectorElement { get; }
         public EditorLayout(
             AttachmentZones attachmentZones,
             UnityEngine.Object[] targetObjects,
             SerializedObject serializedObject,
-            InspectorElement inspectorElement)
+            VisualElement inspectorElement)
         {
             AttachmentZones = attachmentZones;
             TargetObjects = targetObjects;

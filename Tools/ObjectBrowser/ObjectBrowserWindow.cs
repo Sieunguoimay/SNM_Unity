@@ -167,7 +167,14 @@ namespace Snm.Tools.ObjectBrowser
             var nonAssetScriptableObjects = Resources.FindObjectsOfTypeAll(targetType)
                 .Where(o => string.IsNullOrEmpty(AssetDatabase.GetAssetPath(o)));
             var dic = nonAssetScriptableObjects
-                .ToDictionary(o => $"{o.name} ({o.GetType().Name}@{o.GetInstanceID()})", o => o);
+                .ToDictionary(o =>
+                {
+                    if(o is EditorWindow editorWindow)
+                    {
+                        return $"{editorWindow.titleContent.text} ({o.GetType().Name}@{o.GetInstanceID()})";
+                    }
+                    return $"{o.name} ({o.GetType().Name}@{o.GetInstanceID()})";
+                }, o => o);
 
             SearchWindow.Show(dic.Keys, t => Browse(dic[t], ""));
         }

@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
-using Snm.Tools.InspectorExtra;
 using Snm.Tools.ObjectBrowser;
 using UnityEditor;
 using UnityEngine;
@@ -27,44 +26,18 @@ namespace Snm.Tools.InspectorExtensions
 
         public static void OpenFindReferencesInScene(UnityEngine.Object target)
         {
-            EditorWindow.GetWindow<SceneReferencesFinderWindow>().Find(target);
+            var window = EditorWindow.GetWindow<SceneReferenceFinderWindow>();
+            window.target = target;
+            window.Show();
+            window.FindReferences();
         }
 
         public static void FindRefrencesInProject(UnityEngine.Object target)
         {
-            var targetPath = AssetDatabase.GetAssetPath(target);
-            var guid = AssetDatabase.AssetPathToGUID(targetPath);
-
-            foreach (string path in AssetDatabase.GetAllAssetPaths())
-            {
-                if (!path.StartsWith("Assets/"))
-                    continue;
-
-                if (AssetDatabase.IsValidFolder(path))
-                    continue;
-
-                string fullPath = Path.GetFullPath(path);
-
-                if (!File.Exists(fullPath))
-                    continue;
-
-                try
-                {
-                    string text = File.ReadAllText(fullPath);
-                    if (text.Contains(guid))
-                    {
-                        Debug.Log("Reference found in: " + path);
-                    }
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    // Ignore protected files
-                }
-                catch (IOException)
-                {
-                    // Ignore binary or locked files
-                }
-            }
+            var window = EditorWindow.GetWindow<AssetReferenceFinderWindow>("Reference Finder");
+            window.targetRoots.Add(target);
+            window.searchRoots.Add(AssetDatabase.LoadAssetAtPath<UnityEngine.Object>("Assets"));
+            window.Show();
         }
     }
 

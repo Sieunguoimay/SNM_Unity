@@ -20,6 +20,7 @@ namespace Snm.Tools.InspectorExtensions
             EditorApplication.playModeStateChanged += EditorApplication_OnPlayModeStateChanged;
             AssemblyReloadEvents.afterAssemblyReload += Editor_OnChanged;
             EditorApplication.projectChanged += Editor_OnChanged;
+            UpdateInspectorWindows();
         }
 
         public void Dispose()

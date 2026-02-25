@@ -9,12 +9,12 @@ namespace Snm.Tools.InspectorExtensions
     {
         public SerializedObject SerializedObject { get; }
         public UnityEngine.Object[] TargetObjects { get; }
-        public InspectorElement InspectorElement { get; }
+        public VisualElement InspectorElement { get; }
 
         internal InspectorExtensionContext(
             UnityEngine.Object[] targets,
             SerializedObject serializedObject,
-            InspectorElement inspectorElement)
+            VisualElement inspectorElement)
         {
             TargetObjects = targets;
             SerializedObject = serializedObject;

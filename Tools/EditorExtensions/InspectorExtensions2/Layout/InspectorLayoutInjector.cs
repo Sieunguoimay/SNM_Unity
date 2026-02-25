@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 namespace Snm.Tools.InspectorExtensions
@@ -40,7 +39,7 @@ namespace Snm.Tools.InspectorExtensions
                         VisualElement t = new(), b = new(), l = new(), r = new();
                         zonesLifecycles.Add(new(imguiContainer, t, b, l, r));
 
-                        var inspectorElement = editorVE.Q<InspectorElement>();
+                        var inspectorElement = editorVE.Query<IMGUIContainer>().AtIndex(1);
                         return new EditorLayout(
                             attachmentZones: new(t, b, l, r),
                             targetObjects: editor.targets, editor.serializedObject, inspectorElement);

@@ -1,11 +1,9 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
-using UnityEngine.AI;
 using UnityEngine.UIElements;
 using static Snm.Tools.InspectorExtensions.InspectorLayoutInjector;
 
@@ -15,46 +13,9 @@ namespace Snm.Tools.InspectorExtensions
     {
         [SerializeField] private Object target;
 
-        private static Object _target;
-
-        public static void OpenFor(Object target)
-        {
-            if (target == null) return;
-
-            var type = System.Type.GetType("UnityEditor.PropertyEditor, UnityEditor");
-            var window = ScriptableObject.CreateInstance(type) as EditorWindow;
-            window.Show();
-            EditorApplication.delayCall += () =>
-            {
-                // Get tracker
-                var trackerField = type.GetField("m_Tracker", BindingFlags.NonPublic | BindingFlags.Instance);
-                var tracker = trackerField?.GetValue(window);
-
-                if (tracker == null) return;
-
-                // Call internal SetObjects via reflection
-                var setObjectsMethod = tracker.GetType().GetMethod(
-                    "SetObjects",
-                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
-                );
-
-                setObjectsMethod?.Invoke(tracker, new object[] { new Object[] { target } });
-
-                // Force rebuild
-                var rebuildMethod = tracker.GetType().GetMethod(
-                    "ForceRebuild",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                );
-
-                rebuildMethod?.Invoke(tracker, null);
-            };
-        }
-
         public static void Open(Object target)
         {
-            OpenFor(target);
-            return;
-            _target = target;
+            if (target == null) return;
 
             var foundWindow = Resources.FindObjectsOfTypeAll<EditorPopupWindow>()
                 .FirstOrDefault(w => w.target == target);
@@ -66,22 +27,27 @@ namespace Snm.Tools.InspectorExtensions
             else
             {
                 var window = CreateWindow<EditorPopupWindow>(typeof(EditorPopupWindow));
-                window.titleContent = new GUIContent(target.name);
+                window.titleContent = new GUIContent($"{target.name} ({target.GetType().Name})");
+                window.target = target;
+                window.UpdateVE();
                 window.Show();
             }
         }
 
         public void CreateGUI()
         {
-            target = _target;
-
             if (target == null) return;
 
-            var editor = Editor.CreateEditor(new[] { target });
-            rootVisualElement.Add(CreateVE(target, editor, this));
+            UpdateVE();
         }
 
-        private static VisualElement CreateVE(Object target, Editor editor, EditorWindow window)
+        private void UpdateVE()
+        {
+            rootVisualElement.Clear();
+            rootVisualElement.Add(CreateVE(target, this));
+        }
+
+        private static VisualElement CreateVE(Object target, EditorWindow window)
         {
             var root = new VisualElement();
 
@@ -93,6 +59,7 @@ namespace Snm.Tools.InspectorExtensions
             var button_Select = new Button(() => Selection.activeObject = target) { text = "Select" };
             var button_Close = new Button(window.Close) { text = "Close" };
 
+            var editor = Editor.CreateEditor(new[] { target });
             var editorVE = new InspectorElement(editor) { name = $"editor-{target.name}", style = { marginLeft = 10f, marginRight = 5f, flexGrow = 1 }, };
 
             horizontal.Add(space);
@@ -109,13 +76,6 @@ namespace Snm.Tools.InspectorExtensions
             var extensions = InspectorExtensionSystemInstaller.GetDefaultExtensionsToInstall().ToArray();
             var extensionRenderer = new InspectorExtensionRenderer(editorLayouts, new TypeBasedExtensionFilter());
             extensionRenderer.ApplyExtensions(extensions);
-
-            root.RegisterCallback<DetachFromPanelEvent>(_ =>
-            {
-                extensionRenderer.ClearVEs();
-                foreach (var zonesAttachment in zonesLifecycles)
-                    zonesAttachment.Cleanup();
-            });
             return root;
         }
     }
