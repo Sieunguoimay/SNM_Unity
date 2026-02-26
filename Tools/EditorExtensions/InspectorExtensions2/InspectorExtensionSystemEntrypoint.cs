@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -30,7 +31,13 @@ namespace Snm.Tools.InspectorExtensions
                 var extensions = InspectorExtensionSystemInstaller.GetDefaultExtensionsToInstall().ToArray();
                 var tools = InspectorExtensionSystemInstaller.GetDefaultToolsToInstall().ToArray();
 
-                _system = new InspectorExtensionSystemInstaller().Install(extensions, tools);
+                _system = new InspectorExtensionSystemInstaller().Install(
+                    extensions,
+                    tools,
+                    destroyCallback: () =>
+                {
+                    tools.OfType<IDisposable>().ToList().ForEach(t => t.Dispose());
+                });
             }
 
             UpdateCheck();

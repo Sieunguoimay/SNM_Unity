@@ -10,21 +10,26 @@ namespace Snm.Tools.InspectorExtensions
     {
         public InspectorExtensionSystem Install(
             IInspectorExtension[] extensions,
-            IInspectorTool[] tools)
+            IInspectorTool[] tools,
+            Action destroyCallback)
         {
             var extensionCoordinator = new InspectorExtensionCoordinator(extensions, tools);
 
             return new InspectorExtensionSystem(destroyCallback: () =>
             {
                 extensionCoordinator.Dispose();
+                destroyCallback?.Invoke();
             });
         }
 
         public static IEnumerable<IInspectorTool> GetDefaultToolsToInstall()
         {
+            var historyTracker = new SelectionHistoryTracker();
+
             yield return new SimpleInspectorTool(
                 location: InspectorExtensionLocation.Top,
-                buildVEFunc: context => InspectorHeaderVECreator.BuildVE(context.InspectorWindow, context.Coordinator.RenderToLayout));
+                buildVEFunc: context => InspectorHeaderVECreator.BuildVE(context.InspectorWindow, historyTracker, context.Coordinator.RenderToLayout),
+                disposeAction: historyTracker.Dispose);
         }
 
         public static IEnumerable<IInspectorExtension> GetDefaultExtensionsToInstall()

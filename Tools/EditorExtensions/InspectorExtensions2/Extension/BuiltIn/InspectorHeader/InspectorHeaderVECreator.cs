@@ -8,15 +8,22 @@ namespace Snm.Tools.InspectorExtensions
 {
     public class InspectorHeaderVECreator
     {
-        public static VisualElement BuildVE(EditorWindow inspectorWindow, Action refreshAction)
+        public static VisualElement BuildVE(EditorWindow inspectorWindow, SelectionHistoryTracker historyTracker, Action refreshAction)
         {
             var root = new VisualElement() { style = { flexDirection = FlexDirection.Row } };
 
             var button_Debug = CreateDebugButton(new InspectorModeViewer_Window(inspectorWindow), refreshAction);
-            var space = new VisualElement() { style = { flexGrow = 1 } };
+            var container = new VisualElement() { style = { flexGrow = 1, flexDirection = FlexDirection.Row } };
 
-            root.Add(space);
+            root.Add(container);
             root.Add(button_Debug);
+
+            var historyPanel = new SelectionHistoryPanelVEPresenter(historyTracker, container);
+
+            root.RegisterCallback<DetachFromPanelEvent>(_ =>
+            {
+                historyPanel.Dispose();
+            });
 
             return root;
         }

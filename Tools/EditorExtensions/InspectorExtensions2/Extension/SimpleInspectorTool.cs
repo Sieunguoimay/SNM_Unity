@@ -1,22 +1,31 @@
 #if UNITY_EDITOR
 using System;
-using UnityEditor;
 using UnityEngine.UIElements;
 
 namespace Snm.Tools.InspectorExtensions
 {
-    public class SimpleInspectorTool : IInspectorTool
+    public class SimpleInspectorTool : IInspectorTool, IDisposable
     {
         private readonly InspectorExtensionLocation location;
         private readonly Func<InspectorToolContext, VisualElement> buildVEFunc;
+        private readonly Action disposeAction;
 
-        public SimpleInspectorTool(InspectorExtensionLocation location, Func<InspectorToolContext, VisualElement> buildVEFunc)
+        public InspectorExtensionLocation Location => location;
+
+        public SimpleInspectorTool(
+            InspectorExtensionLocation location, 
+            Func<InspectorToolContext, VisualElement> buildVEFunc,
+            Action disposeAction)
         {
             this.location = location;
             this.buildVEFunc = buildVEFunc;
+            this.disposeAction = disposeAction;
         }
 
-        public InspectorExtensionLocation Location => location;
+        public void Dispose()
+        {
+            disposeAction?.Invoke();
+        }
 
         public VisualElement BuildVE(InspectorToolContext context)
         {
