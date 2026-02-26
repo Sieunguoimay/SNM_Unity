@@ -1,0 +1,31 @@
+{
+  "name": "com.snm.unity",
+  "version": "1.0.0",
+  "displayName": "SNM Unity",
+  "description": "A comprehensive Unity plugin providing animation instancing, debugging tools, and editor utilities",
+  "unity": "2021.3",
+  "author": {
+    "name": "SNM",
+    "email": "contact@snm.dev",
+    "url": "https://snm.dev"
+  },
+  "keywords": [
+    "unity",
+    "plugin",
+    "animation",
+    "instancing",
+    "debugging",
+    "tools",
+    "editor"
+  ],
+  "category": "Scripting",
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/snm/snm-unity.git"
+  },
+  "bugs": {
+    "url": "https://github.com/snm/snm-unity/issues"
+  },
+  "license": "MIT"
+}
