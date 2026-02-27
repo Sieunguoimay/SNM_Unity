@@ -62,9 +62,11 @@ namespace Snm.Tools
             var pageCount = Mathf.CeilToInt(_searchResult.Length / (float)displayCount);
 
             GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
             if (GUILayout.Button("<")) { _pageIndex = Mathf.Max(0, _pageIndex - 1); }
-            GUILayout.Label($"{_pageIndex}/{pageCount}", GUILayout.ExpandWidth(false));
+            GUILayout.Label($"{_pageIndex + 1}/{pageCount}", GUILayout.ExpandWidth(false));
             if (GUILayout.Button(">")) { _pageIndex = Mathf.Min(pageCount - 1, _pageIndex + 1); }
+            GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
         }
 
