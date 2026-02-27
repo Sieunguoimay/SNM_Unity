@@ -12,7 +12,7 @@ namespace Snm.Tools
     {
         [SerializeField] private SerializedData serializedData = new();
 
-        [MenuItem("Tools/Snm/Namespace Modify Tool")]
+        [MenuItem("Tools/Snm/Edit/Namespace Modify Tool")]
         public static void ShowWindow()
         {
             var window = GetWindow<NamespaceModifyToolWindow>();

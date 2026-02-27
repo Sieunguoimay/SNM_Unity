@@ -13,7 +13,7 @@ namespace Snm.Tools
 
         private ClickReporter _reporter;
 
-        [MenuItem("Tools/Snm/ClickReportWindow")]
+        [MenuItem("Tools/Snm/Finders/ClickReportWindow")]
         public static void Open()
         {
             GetWindow<ClickReportWindow>();

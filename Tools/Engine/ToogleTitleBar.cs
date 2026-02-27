@@ -27,7 +27,7 @@ namespace Snm.Tools.Engine
         private const int SWP_FRAMECHANGED = 0x0020;
         private const int SWP_SHOWWINDOW = 0x0040;
         private const int SW_MAXIMIZE = 3;
-        private const string MenuPath = "Tools/Snm/Toggle Title Bar _F11";
+        private const string MenuPath = "Tools/Snm/Toggle/ Title Bar _F11";
 
         private static readonly IntPtr HWND_TOP = IntPtr.Zero;
 

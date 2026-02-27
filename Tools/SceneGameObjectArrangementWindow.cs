@@ -9,10 +9,10 @@ namespace Snm.Tools
     [EditorWindowTitle(title = "SceneGameObjectArrangementWindow")]
     public class SceneGameObjectArrangementWindow : EditorWindow
     {
-        [MenuItem("Tools/Snm/SceneGameObjectArrangementWindow")]
+        [MenuItem("Tools/Snm/Game/GameObject Arrangement Window")]
         public static void Open()
         {
-            var window = GetWindow<SceneGameObjectArrangementWindow>(false, "SceneGameObjectArrangementWindow", true);
+            var window = GetWindow<SceneGameObjectArrangementWindow>(false, "GameObject Arrangement Window", true);
             window.Show();
         }
 

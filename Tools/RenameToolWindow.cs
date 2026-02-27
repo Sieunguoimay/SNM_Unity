@@ -41,7 +41,7 @@ namespace Snm.Tools
             window.Show();
         }
 
-        [MenuItem("Tools/Snm/Rename Tool")]
+        [MenuItem("Tools/Snm/Edit/Rename Tool")]
         static void OpenFromMenu()
         {
             Open(Selection.objects);

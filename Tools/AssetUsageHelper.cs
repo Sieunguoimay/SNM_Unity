@@ -35,7 +35,7 @@ namespace Snm.Tools
             }
         }
 
-        [MenuItem("Tools/Snm/Log All Missings")]
+        [MenuItem("Tools/Snm/Log/All Missing References")]
         public static void LogAllMissings()
         {
             foreach (var ap in GetAllAssetPaths())

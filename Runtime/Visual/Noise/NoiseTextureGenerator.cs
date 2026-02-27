@@ -13,7 +13,7 @@ namespace Snm.Visual.Noises
 
         private Editor _editor;
 
-        [MenuItem("Tools/Snm/NoiseTextureGenerator")]
+        [MenuItem("Tools/Snm/Game/NoiseTextureGenerator")]
         public static void ShowWindow()
         {
             GetWindow<NoiseTextureGenerator>().Show();

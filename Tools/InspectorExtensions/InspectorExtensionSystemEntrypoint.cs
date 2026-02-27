@@ -43,7 +43,7 @@ namespace Snm.Tools.InspectorExtensions
             UpdateCheck();
         }
 
-        [MenuItem("Tools/Snm/Toggle Inspector Extension")]
+        [MenuItem("Tools/Snm/Toggle/Inspector Extension")]
         private static void ToggleSystem()
         {
             SystemEnabled = !SystemEnabled;
@@ -52,7 +52,7 @@ namespace Snm.Tools.InspectorExtensions
 
         private static void UpdateCheck()
         {
-            Menu.SetChecked("Tools/Snm/Toggle Inspector Extension", SystemEnabled);
+            Menu.SetChecked("Tools/Snm/Toggle/Inspector Extension", SystemEnabled);
         }
     }
 }
