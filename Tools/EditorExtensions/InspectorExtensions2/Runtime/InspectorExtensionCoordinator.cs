@@ -63,15 +63,18 @@ namespace Snm.Tools.InspectorExtensions
             _toolRenderer?.ClearVEs();
 
             CleanupInspectorLayouts();
+            try
+            {
+                var layouts = _windows.Select(injector.GetOrCreateLayout).ToArray();
+                var editorLayouts = layouts.SelectMany(l => l.EditorLayouts).ToArray();
 
-            var layouts = _windows.Select(injector.GetOrCreateLayout).ToArray();
-            var editorLayouts = layouts.SelectMany(l => l.EditorLayouts).ToArray();
+                _extensionRenderer = new InspectorExtensionRenderer(editorLayouts, new TypeBasedExtensionFilter());
+                _toolRenderer = new InspectorToolRenderer(layouts);
 
-            _extensionRenderer = new InspectorExtensionRenderer(editorLayouts, new TypeBasedExtensionFilter());
-            _toolRenderer = new InspectorToolRenderer(layouts);
-
-            _extensionRenderer.ApplyExtensions(extensions);
-            _toolRenderer.ApplyTools(inspectorTools, this);
+                _extensionRenderer.ApplyExtensions(extensions);
+                _toolRenderer.ApplyTools(inspectorTools, this);
+            }
+            catch { }
         }
 
         private void CleanupInspectorLayouts()

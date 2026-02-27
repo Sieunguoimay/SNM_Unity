@@ -45,6 +45,13 @@ namespace Snm.Tools.InspectorExtensions
                 buildVEFunc: context => SecondHeaderVECreator.Create(context.SerializedObject, context.InspectorElement),
                 supportedTypes: new[] { typeof(UnityEngine.Object) },
                 unsupportedTypes: Array.Empty<Type>());
+
+            var tool = new SubAssetTool();
+            yield return new SimpleInspectorExtension(
+                location: InspectorExtensionLocation.Bottom,
+                buildVEFunc: context => SubAssetExtensionVECreator.Create(tool, context.SerializedObject),
+                supportedTypes: new[] { typeof(ScriptableObject) },
+                unsupportedTypes: Array.Empty<Type>());
         }
     }
 }

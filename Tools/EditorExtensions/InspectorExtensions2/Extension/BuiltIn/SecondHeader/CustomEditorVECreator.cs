@@ -113,28 +113,30 @@ namespace Snm.Tools.InspectorExtensions
             var root = new VisualElement();
             var layout_Container = new VisualElement() { style = { marginLeft = 24 } };
             var toggled = false;
-            Button button_Toggle = null;
-            button_Toggle = new Button()
-            {
-                text = "Custom",
-                clickable = new(() =>
-                {
-                    toggled = !toggled;
 
-                    layout_Container.Clear();
+            Button button_ToggleCustom = null;
+            button_ToggleCustom = new Button() { text = "Custom", clickable = new(Toggle) };
 
-                    if (toggled == true)
-                    {
-                        layout_Container.Add(CreateVE(serializedObject));
-                    }
-                    button_Toggle.text = toggled ? "Default" : "Custom";
-                    imguiContainer.style.display = toggled ? DisplayStyle.None : DisplayStyle.Flex;
-                })
-            };
-
-            root.Add(button_Toggle);
+            root.Add(button_ToggleCustom);
             (layoutContainer ?? root).Add(layout_Container);
+            
             return root;
+
+            void Toggle()
+            {
+                toggled = !toggled;
+
+                layout_Container.Clear();
+
+                if (toggled == true) layout_Container.Add(CreateVE(serializedObject));
+
+                button_ToggleCustom.text = toggled ? "Default" : "Custom";
+
+                if (imguiContainer != null)
+                {
+                    imguiContainer.style.display = toggled ? DisplayStyle.None : DisplayStyle.Flex;
+                }
+            }
         }
 
         public static VisualElement CreateVE(SerializedObject serializedObject)
@@ -170,6 +172,7 @@ namespace Snm.Tools.InspectorExtensions
 
             root.Bind(so);
         }
+
         private static void DrawPropertyRecursive(
             VisualElement root,
             SerializedProperty property)
@@ -186,21 +189,16 @@ namespace Snm.Tools.InspectorExtensions
 
             if (property.isArray && property.propertyType != SerializedPropertyType.String)
             {
-                var foldout = new Foldout
-                {
-                    text = property.displayName
-                };
+                var foldout = new Foldout { text = property.displayName };
 
                 root.Add(foldout);
 
-                // Draw array size
                 var sizeProp = property.FindPropertyRelative("Array.size");
                 if (sizeProp != null)
                 {
                     foldout.Add(new PropertyField(sizeProp.Copy()));
                 }
 
-                // Draw elements
                 for (int i = 0; i < property.arraySize; i++)
                 {
                     var element = property.GetArrayElementAtIndex(i);

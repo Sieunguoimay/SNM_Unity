@@ -90,8 +90,8 @@ namespace Snm.Tools.InspectorExtensions
 
                 parent.RemoveAt(index);
 
-                vertical = new VisualElement() { name = "Vertical" };
-                var horizontal = new VisualElement() { name = "Horizontal", style = { flexDirection = FlexDirection.Row } };
+                vertical = new VisualElement() { name = "Vertical", style = { flexGrow = 1 } };
+                var horizontal = new VisualElement() { name = "Horizontal", style = { flexDirection = FlexDirection.Row, flexGrow = 1 } };
 
                 vertical.Add(top);
                 vertical.Add(horizontal);

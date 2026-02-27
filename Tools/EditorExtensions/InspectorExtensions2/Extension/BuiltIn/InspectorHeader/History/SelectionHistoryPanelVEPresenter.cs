@@ -64,6 +64,8 @@ namespace Snm.Tools.InspectorExtensions
             menu.AddItem(new GUIContent("Quick Access Count/5"), tracker.MaxQuickAccessHistoryCount == 5, () => ChangeMaxQuickAccessHistoryCount(5));
             menu.AddItem(new GUIContent("All History"), false, OpenSearchWindow);
             menu.AddItem(new GUIContent("Clear"), false, tracker.ClearHistory);
+            menu.AddSeparator("");
+            menu.AddItem(new GUIContent("Open InspectorExtension Script"), false, () => AssetDatabase.OpenAsset(AssetDatabase.FindAssets($"t:MonoScript {nameof(InspectorExtensionSystemEntrypoint)}").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<MonoScript>).FirstOrDefault()));
             menu.ShowAsContext();
         }
 
@@ -83,46 +85,6 @@ namespace Snm.Tools.InspectorExtensions
                 var selected = dic[str];
                 Selection.activeObject = selected;
             });
-        }
-    }
-
-    public class SelectionHistoryItemVECreator
-    {
-        public static VisualElement BuildVE(SelectionHistoryItem item)
-        {
-            var root = new VisualElement();
-
-            var button = new Button(() => item.Select()) { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, height = 20, marginLeft = 0, marginRight = 0 } };
-            var content = EditorGUIUtility.ObjectContent(item.Target, item.Target?.GetType());
-            var icon = new Image { image = content.image, style = { flexShrink = 0, width = 16, height = 16 } };
-            var label = new Label(item.Target.name) { style = { unityTextAlign = TextAnchor.MiddleLeft, flexShrink = 1 }, tooltip = $"{item.Target.name} ({item.Target.GetType().Name})", };
-
-            button.Add(icon);
-            button.Add(label);
-
-            button.SetEnabled(!item.IsCurrent);
-
-            root.Add(button);
-            return root;
-        }
-    }
-
-    public class SelectionHistoryItem
-    {
-        private readonly UnityEngine.Object target;
-
-        public UnityEngine.Object Target => target;
-
-        public bool IsCurrent => Selection.activeObject == target;
-
-        public SelectionHistoryItem(UnityEngine.Object target)
-        {
-            this.target = target;
-        }
-
-        public void Select()
-        {
-            Selection.activeObject = target;
         }
     }
 }

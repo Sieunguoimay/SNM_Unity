@@ -6,11 +6,10 @@ using UnityEngine;
 
 namespace Snm.Tools.InspectorExtensions
 {
-
     public class AssetReferenceFinderWindow : EditorWindow
     {
-        public List<UnityEngine.Object> searchRoots = new();
-        public List<UnityEngine.Object> targetRoots = new();
+        public List<Object> searchRoots = new();
+        public List<Object> targetRoots = new();
 
         private Vector2 scroll;
         private List<string> results = new();
