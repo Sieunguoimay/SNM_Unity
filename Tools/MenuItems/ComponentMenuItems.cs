@@ -6,7 +6,7 @@ namespace Snm.Tools.MenuItemExtra
 {
     public static class ComponentMenuItems
     {
-        [MenuItem("CONTEXT/Component/Tools/MoveToNewGameObject - Ignore dependents")]
+        [MenuItem("CONTEXT/Component/Snm/MoveToNewGameObject - Ignore dependents")]
         private static void MoveToNewGameObject(MenuCommand command)
         {
             CopyToNewGameObject(command);
@@ -16,7 +16,7 @@ namespace Snm.Tools.MenuItemExtra
             }
         }
 
-        [MenuItem("CONTEXT/Component/Tools/CloneToNewGameObject")]
+        [MenuItem("CONTEXT/Component/Snm/CloneToNewGameObject")]
         private static void CopyToNewGameObject(MenuCommand command)
         {
             if (command.context is Component c)

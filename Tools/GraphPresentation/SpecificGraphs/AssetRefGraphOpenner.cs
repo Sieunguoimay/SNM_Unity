@@ -6,7 +6,7 @@ namespace Snm.Tools.GraphPresentation
 {
     public static class AssetRefGraphOpenner
     {
-        [MenuItem("Assets/Tools/GraphVisualizerWindow_AssetRefs")]
+        [MenuItem("Assets/Snm/GraphVisualizerWindow_AssetRefs")]
         public static void OpenAssetRefGraph()
         {
             var obj = Selection.activeObject;

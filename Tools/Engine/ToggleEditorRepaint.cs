@@ -11,10 +11,10 @@ namespace Snm.Tools.Engine
         static ToggleEditorRepaint()
         {
             // Restore menu check state on domain reload
-            Menu.SetChecked("Tools/Editor Repaint/Toggle _F10", enabled);
+            Menu.SetChecked("Tools/Snm/Editor Repaint/Toggle _F10", enabled);
         }
 
-        [MenuItem("Tools/Editor Repaint/Toggle _F10")]
+        [MenuItem("Tools/Snm/Editor Repaint/Toggle _F10")]
         public static void Toggle()
         {
             enabled = !enabled;
@@ -24,7 +24,7 @@ namespace Snm.Tools.Engine
             else
                 EditorApplication.update -= Tick;
 
-            Menu.SetChecked("Tools/Editor Repaint/Toggle _F10", enabled);
+            Menu.SetChecked("Tools/Snm/Editor Repaint/Toggle _F10", enabled);
         }
 
         private static void Tick()

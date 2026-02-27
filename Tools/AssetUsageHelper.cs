@@ -35,11 +35,28 @@ namespace Snm.Tools
             }
         }
 
+        [MenuItem("Tools/Snm/Log All Missings")]
+        public static void LogAllMissings()
+        {
+            foreach (var ap in GetAllAssetPaths())
+            {
+                var guids = FindReferenceGuidsText(ap);
+                foreach (var guid in guids)
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(guid.Item1);
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        Debug.Log($"There are Missings at {ap} {guid}", AssetDatabase.LoadAssetAtPath<Object>(ap));
+                    }
+                }
+            }
+        }
+
         private static IEnumerable<string> GetAllDependents(string guid, string fileID, IEnumerable<string> assetPaths)
         {
             foreach (var ap in assetPaths)
             {
-                if (GetReferences(ap).Any(s => s.Item1 == guid && s.Item2 == fileID))
+                if (FindReferenceGuidsText(ap).Any(s => s.Item1 == guid && s.Item2 == fileID))
                 {
                     yield return ap;
                 }
@@ -51,8 +68,7 @@ namespace Snm.Tools
             return AssetDatabase.FindAssets("", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath);
         }
 
-
-        public static IEnumerable<(string, string)> GetReferences(string path)
+        public static IEnumerable<(string, string)> FindReferenceGuidsText(string path)
         {
             var guid = AssetDatabase.AssetPathToGUID(path);
             var fullPath = Path.Combine(Application.dataPath, path["Assets/".Length..]);

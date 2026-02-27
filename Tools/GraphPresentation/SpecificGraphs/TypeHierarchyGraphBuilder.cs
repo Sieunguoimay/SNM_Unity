@@ -55,7 +55,7 @@ namespace Snm.Tools.GraphPresentation
             };
         }
 
-        [MenuItem("Assets/Tools/GraphVisualizerWindow_TypeHierarchy")]
+        [MenuItem("Assets/Snm/GraphVisualizerWindow_TypeHierarchy")]
         public static void OpenTypeGraph()
         {
             var obj = Selection.activeObject;

@@ -8,7 +8,7 @@ namespace Snm.Tools.MenuItemExtra
 
     public static class EditorMenuItems
     {
-        [MenuItem("Tools/LogAllMenuItems")]
+        [MenuItem("Tools/Snm/LogAllMenuItems")]
         private static void LogAllMenuItems()
         {
             var menuItems = FindAllMenuItems();

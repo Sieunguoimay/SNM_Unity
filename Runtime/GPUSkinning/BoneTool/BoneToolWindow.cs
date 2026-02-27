@@ -23,7 +23,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
         private Material _material;
         private GPUSkinnedMeshRendererCore _renderer;
 
-        [MenuItem("Tools/Open Bone Weight Tool")]
+        [MenuItem("Tools/Snm/Open Bone Weight Tool")]
         public static void OpenTool()
         {
             GetWindow<BoneToolWindow>();

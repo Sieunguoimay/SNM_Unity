@@ -13,7 +13,7 @@ namespace Snm.AnimationInstancing
         [SerializeField] private AnimationBakerToolSerializedData bakerToolSerializedData = new();
         private AnimationBakerTool _tool;
 
-        [MenuItem("Tools/AnimInstancing/AnimationBaker")]
+        [MenuItem("Tools/Snm/AnimInstancingBaker")]
         public static void OpenWindow()
         {
             GetWindow<AnimationBakerWindow>().Show();
