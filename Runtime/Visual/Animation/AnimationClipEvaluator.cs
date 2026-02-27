@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Snm.Tools.InspectorExtra;
+
 #if UNITY_EDITOR
 using UnityEditor.UIElements;
+using Snm.Tools.InspectorExtensions;
 #endif
 using UnityEngine;
 using UnityEngine.UIElements;

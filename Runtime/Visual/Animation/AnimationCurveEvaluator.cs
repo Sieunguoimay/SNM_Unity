@@ -1,8 +1,11 @@
 using System;
-using Snm.Tools.InspectorExtra;
+#if UNITY_EDITOR
+using Snm.Tools.InspectorExtensions;
 using UnityEditor;
+#endif
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UIElements;
 
 namespace Snm.Visual.Animation
 {
@@ -32,16 +35,20 @@ namespace Snm.Visual.Animation
         [Serializable] private class UnityEventFloat : UnityEvent<float> { }
 
 #if UNITY_EDITOR
-        private float _testValue;
-        [IMGUIMethod]
-        private void OnIMGUI()
+        [CreateVisualElement]
+        private void CreateToolVE(VisualElement root)
         {
-            var newValue = EditorGUILayout.Slider(_testValue, 0, 1);
-            if (newValue != _testValue)
+            var testValue = 0f;
+
+            root.Add(new IMGUIContainer(() =>
             {
-                _testValue = newValue;
-                Evaluate(_testValue);
-            }
+                var newValue = EditorGUILayout.Slider(testValue, 0, 1);
+                if (newValue != testValue)
+                {
+                    testValue = newValue;
+                    Evaluate(testValue);
+                }
+            }));
         }
 #endif
     }

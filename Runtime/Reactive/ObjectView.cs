@@ -1,6 +1,7 @@
 using System;
-using Snm.Tools.InspectorExtra;
+
 using Reflection;
+using Snm.Tools.InspectorExtensions;
 using UnityEngine;
 
 namespace Snm.Framework.Reactive

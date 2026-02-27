@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using Snm.Tools.InspectorExtra;
+
 using Snm.Tools;
+using Snm.Tools.InspectorExtensions;
 using UnityEngine;
 
 namespace Reflection
