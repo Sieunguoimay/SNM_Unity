@@ -25,6 +25,7 @@ namespace Snm.Tools
 
         Vector2 _scroll;
         string[] _previewNames = Array.Empty<string>();
+        private Vector2 _scrollPos;
 
         enum CaseMode { None, Upper, Lower, Title }
 
@@ -69,6 +70,7 @@ namespace Snm.Tools
 
         void OnGUI()
         {
+            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
             var serializedObject = new SerializedObject(this);
             EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(targets)), new GUIContent("Targets"), true);
@@ -129,6 +131,8 @@ namespace Snm.Tools
                 ApplyRename();
 
             GUI.enabled = true;
+
+            EditorGUILayout.EndScrollView();
         }
 
         // ======================================================
