@@ -1,26 +1,26 @@
+using Snm.App.Composition;
 using Snm.App.DependencyInjection;
-using Snm.App.Runtime;
 
-namespace Snm.App.Composition
+namespace Snm.App.Hosting
 {
     public class AppComposition
     {
-        public static AppHost Compose(IAppModuleProvider registry)
+        public static AppHost Compose(IAppModule[] modules)
         {
             var builder = new ContainerBuilder();
 
-            ConfigureModules(builder, registry);
+            ConfigureModules(builder, modules);
 
             var container = builder.Build();
 
-            return new AppHost(resolver: container);
+            return new AppHost(container);
         }
 
         private static void ConfigureModules(
             ContainerBuilder builder,
-            IAppModuleProvider registry)
+            IAppModule[] modules)
         {
-            foreach (var module in registry.GetModules())
+            foreach (var module in modules)
             {
                 module.Configure(builder);
             }

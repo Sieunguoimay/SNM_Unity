@@ -4,6 +4,6 @@ namespace Snm.App.Composition
 {
     public interface IAppModule
     {
-        void Configure(IContainer container);
+        void Configure(IBindingContext context);
     }
 }

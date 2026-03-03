@@ -19,7 +19,7 @@ public class TextAssetCombinerWindow : EditorWindow
     private bool _stylesInitialised;
 
     // ── Menu Item ──────────────────────────────────────────────────────────
-    [MenuItem("Tools/Text Asset Combiner")]
+    [MenuItem("Tools/Snm/Assets/Text Asset Combiner")]
     public static void ShowWindow()
     {
         var window = GetWindow<TextAssetCombinerWindow>("Text Asset Combiner");

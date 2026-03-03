@@ -20,14 +20,9 @@ namespace Snm.Tools
         private UnityEngine.Object _selectedObject;
         private string _selectedPath;
 
-        [MenuItem("Tools/Snm/ScriptableObjectAssetCreator")]
-        public static void OpenWindow()
-        {
-            GetWindow<ScriptableObjectAssetCreator>().Show();
-        }
-
+        [MenuItem("Tools/Snm/Assets/ScriptableObjectAssetCreator")]
         [MenuItem("Assets/Snm/ScriptableObjectAssetCreator")]
-        public static void OpenWindowFromAssets()
+        public static void OpenWindow()
         {
             GetWindow<ScriptableObjectAssetCreator>().Show();
         }

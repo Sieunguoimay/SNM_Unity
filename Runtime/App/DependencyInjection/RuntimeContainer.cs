@@ -11,8 +11,8 @@ namespace Snm.App.DependencyInjection
 
         private readonly Dictionary<Binding, object> singletonInstances = new();
         private readonly Dictionary<Binding, object> scopedInstances = new();
-        private readonly List<IDisposable> disposables = new();
         private readonly List<RuntimeContainer> children = new();
+        private readonly HashSet<Binding> resolutionStack = new();
 
         private bool IsRoot => parent == null;
 
@@ -31,7 +31,6 @@ namespace Snm.App.DependencyInjection
 
             var instance = (T)ResolveBinding(binding);
 
-            TrackDisposable(instance);
             return instance;
         }
 
@@ -59,7 +58,7 @@ namespace Snm.App.DependencyInjection
 
             scopedInstances.Clear();
 
-            // Only root disposes singletons
+            // Only entryPoint disposes singletons
             if (IsRoot)
             {
                 foreach (var instance in singletonInstances.Values.OfType<IDisposable>())
@@ -67,12 +66,6 @@ namespace Snm.App.DependencyInjection
 
                 singletonInstances.Clear();
             }
-        }
-
-        private void TrackDisposable(object obj)
-        {
-            if (obj is IDisposable d && !disposables.Contains(d))
-                disposables.Add(d);
         }
 
         public RuntimeContainer CreateScope()
@@ -98,13 +91,23 @@ namespace Snm.App.DependencyInjection
 
         private object ResolveBinding(Binding binding)
         {
-            return binding.Lifetime switch
+            if (!resolutionStack.Add(binding))
+                throw new InvalidOperationException(
+                    $"Circular dependency detected for {binding.Type.Name}");
+            try
             {
-                BindingLifetime.Transient => binding.CreateInstance(this),
-                BindingLifetime.Singleton => ResolveSingleton(binding),
-                BindingLifetime.Scoped => ResolveScoped(binding),
-                _ => throw new NotSupportedException(),
-            };
+                return binding.Lifetime switch
+                {
+                    BindingLifetime.Transient => binding.CreateInstance(this),
+                    BindingLifetime.Singleton => ResolveSingleton(binding),
+                    BindingLifetime.Scoped => ResolveScoped(binding),
+                    _ => throw new NotSupportedException(),
+                };
+            }
+            finally
+            {
+                resolutionStack.Remove(binding);
+            }
         }
 
         private object ResolveSingleton(Binding binding)

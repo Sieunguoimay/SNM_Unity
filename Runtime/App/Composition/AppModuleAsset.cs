@@ -5,6 +5,6 @@ namespace Snm.App.Composition
 {
     public abstract class AppModuleAsset : ScriptableObject, IAppModule
     {
-        public abstract void Configure(IContainer container);
+        public abstract void Configure(IBindingContext context);
     }
 }

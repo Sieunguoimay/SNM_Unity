@@ -1,5 +1,7 @@
+using System.Collections.Generic;
+using System.Linq;
 using Snm.App.Composition;
-using Snm.App.Runtime;
+using Snm.App.Hosting;
 using UnityEngine;
 
 namespace Snm.App.Unity
@@ -9,6 +11,7 @@ namespace Snm.App.Unity
         [SerializeField] private AppModulesAsset modules;
 
         private AppHost _appHost;
+
 
         private void Start()
         {
@@ -20,7 +23,9 @@ namespace Snm.App.Unity
 
             try
             {
-                _appHost = AppComposition.Compose(modules);
+                var allModules = GetModuleProviders().SelectMany(p => p.GetModules()).ToArray();
+
+                _appHost = AppComposition.Compose(allModules);
                 _appHost.Start();
             }
             catch (System.Exception ex)
@@ -33,6 +38,12 @@ namespace Snm.App.Unity
         private void OnDestroy()
         {
             _appHost?.Stop();
+        }
+
+        private IEnumerable<IAppModuleProvider> GetModuleProviders()
+        {
+            yield return new CoreModuleProvider();
+            yield return modules;
         }
     }
 }
