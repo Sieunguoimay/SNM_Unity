@@ -1,4 +1,3 @@
-using System;
 using Snm.App.DependencyInjection;
 using Snm.App.Runtime;
 
@@ -14,7 +13,7 @@ namespace Snm.App.Composition
 
             var container = builder.Build();
 
-            return new AppHost(container);
+            return new AppHost(resolver: container);
         }
 
         private static void ConfigureModules(

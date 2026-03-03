@@ -19,22 +19,27 @@ namespace Snm.App.DependencyInjection
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
-            Complete(_ => instance, Binding.Lifetime.Singleton);
+            Complete(_ => instance, BindingLifetime.Singleton);
         }
 
         public void ToSingleton(Func<IResolver, T> factory)
         {
-            Complete(r => factory(r), Binding.Lifetime.Singleton);
+            Complete(r => factory(r), BindingLifetime.Singleton);
         }
 
         public void ToTransient(Func<IResolver, T> factory)
         {
-            Complete(r => factory(r), Binding.Lifetime.Transient);
+            Complete(r => factory(r), BindingLifetime.Transient);
+        }
+        
+        public void ToScoped(Func<IResolver, T> factory)
+        {
+            Complete(r => factory(r), BindingLifetime.Scoped);
         }
 
         private void Complete(
             Func<IResolver, object> factory,
-            Binding.Lifetime lifetime)
+            BindingLifetime lifetime)
         {
             if (_completed)
                 throw new InvalidOperationException(

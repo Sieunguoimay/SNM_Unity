@@ -6,25 +6,30 @@ namespace Snm.App.DependencyInjection
 {
     public sealed class RuntimeContainer : IResolver, IDisposable
     {
-        private readonly Dictionary<(Type,string), List<Binding>> _bindings;
-        private readonly List<IDisposable> _disposables = new();
+        private readonly Dictionary<(Type, string), List<Binding>> bindings;
+        private readonly RuntimeContainer parent;
+
+        private readonly Dictionary<Binding, object> singletonInstances = new();
+        private readonly Dictionary<Binding, object> scopedInstances = new();
+        private readonly List<IDisposable> disposables = new();
+        private readonly List<RuntimeContainer> children = new();
+
+        private bool IsRoot => parent == null;
 
         internal RuntimeContainer(
-            Dictionary<(Type,string), List<Binding>> bindings)
+            Dictionary<(Type, string), List<Binding>> bindings,
+            RuntimeContainer parent = null)
         {
-            _bindings = bindings;
+            this.bindings = bindings;
+            this.parent = parent;
         }
 
         public T Resolve<T>(string id = null)
             where T : class
         {
-            var key = (typeof(T), id);
+            var binding = GetBinding(typeof(T), id);
 
-            if (!_bindings.TryGetValue(key, out var list) || list.Count == 0)
-                throw new InvalidOperationException(
-                    $"No binding found for {typeof(T).Name}");
-
-            var instance = (T)list[0].Resolve(this);
+            var instance = (T)ResolveBinding(binding);
 
             TrackDisposable(instance);
             return instance;
@@ -33,31 +38,110 @@ namespace Snm.App.DependencyInjection
         public T[] ResolveAll<T>() where T : class
         {
             var type = typeof(T);
+            var allBindings = GetAllBindings(type);
 
-            return _bindings
-                .Where(kv => kv.Key.Item1 == type)
-                .SelectMany(kv => kv.Value)
-                .Select(b =>
-                {
-                    var obj = (T)b.Resolve(this);
-                    TrackDisposable(obj);
-                    return obj;
-                })
+            return allBindings
+                .Select(b => (T)ResolveBinding(b))
                 .ToArray();
-        }
-
-        private void TrackDisposable(object obj)
-        {
-            if (obj is IDisposable d && !_disposables.Contains(d))
-                _disposables.Add(d);
         }
 
         public void Dispose()
         {
-            for (int i = _disposables.Count - 1; i >= 0; i--)
-                _disposables[i].Dispose();
+            // Dispose children first
+            for (int i = children.Count - 1; i >= 0; i--)
+                children[i].Dispose();
 
-            _disposables.Clear();
+            children.Clear();
+
+            // Dispose scoped instances
+            foreach (var instance in scopedInstances.Values.OfType<IDisposable>())
+                instance.Dispose();
+
+            scopedInstances.Clear();
+
+            // Only root disposes singletons
+            if (IsRoot)
+            {
+                foreach (var instance in singletonInstances.Values.OfType<IDisposable>())
+                    instance.Dispose();
+
+                singletonInstances.Clear();
+            }
+        }
+
+        private void TrackDisposable(object obj)
+        {
+            if (obj is IDisposable d && !disposables.Contains(d))
+                disposables.Add(d);
+        }
+
+        public RuntimeContainer CreateScope()
+        {
+            var scope = new RuntimeContainer(bindings, this);
+            children.Add(scope);
+            return scope;
+        }
+
+        private Binding GetBinding(Type type, string id)
+        {
+            var key = (type, id);
+
+            if (bindings.TryGetValue(key, out var list) && list.Count > 0)
+                return list[0];
+
+            if (parent != null)
+                return parent.GetBinding(type, id);
+
+            throw new InvalidOperationException(
+                $"No binding found for {type.Name}");
+        }
+
+        private object ResolveBinding(Binding binding)
+        {
+            return binding.Lifetime switch
+            {
+                BindingLifetime.Transient => binding.CreateInstance(this),
+                BindingLifetime.Singleton => ResolveSingleton(binding),
+                BindingLifetime.Scoped => ResolveScoped(binding),
+                _ => throw new NotSupportedException(),
+            };
+        }
+
+        private object ResolveSingleton(Binding binding)
+        {
+            if (!IsRoot)
+                return parent.ResolveSingleton(binding);
+
+            if (singletonInstances.TryGetValue(binding, out var existing))
+                return existing;
+
+            var created = binding.CreateInstance(this);
+            singletonInstances[binding] = created;
+
+            return created;
+        }
+
+        private object ResolveScoped(Binding binding)
+        {
+            if (scopedInstances.TryGetValue(binding, out var existing))
+                return existing;
+
+            var created = binding.CreateInstance(this);
+            scopedInstances[binding] = created;
+
+            return created;
+        }
+
+        private IEnumerable<Binding> GetAllBindings(Type type)
+        {
+            var local = bindings
+                .Where(kv => kv.Key.Item1 == type)
+                .SelectMany(kv => kv.Value);
+
+            if (parent == null)
+                return local;
+
+            return local.Concat(parent.GetAllBindings(type));
         }
     }
 }

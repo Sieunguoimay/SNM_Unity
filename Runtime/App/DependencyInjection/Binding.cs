@@ -2,27 +2,30 @@ using System;
 
 namespace Snm.App.DependencyInjection
 {
+
+    public enum BindingLifetime
+    {
+        Transient,
+        Singleton,
+        Scoped
+    }
+    
     internal sealed class Binding
     {
-        public enum Lifetime
-        {
-            Transient,
-            Singleton
-        }
-
         public Type Type { get; }
         public string Id { get; }
 
         private readonly Func<IResolver, object> factory;
-        private readonly Lifetime lifetime;
+        private readonly BindingLifetime lifetime;
 
-        private object _singletonInstance;
+        // private object _singletonInstance;
+        public BindingLifetime Lifetime => lifetime;
 
         public Binding(
             Type type,
             string id,
             Func<IResolver, object> factory,
-            Lifetime lifetime)
+            BindingLifetime lifetime)
         {
             Type = type;
             Id = id;
@@ -30,15 +33,20 @@ namespace Snm.App.DependencyInjection
             this.lifetime = lifetime;
         }
 
-        public object Resolve(IResolver resolver)
+        public object CreateInstance(IResolver resolver)
         {
-            if (lifetime == Lifetime.Singleton)
-            {
-                _singletonInstance ??= factory(resolver);
-                return _singletonInstance;
-            }
-
             return factory(resolver);
         }
+
+        // public object Resolve(IResolver resolver)
+        // {
+        //     if (lifetime == Lifetime.Singleton)
+        //     {
+        //         _singletonInstance ??= factory(resolver);
+        //         return _singletonInstance;
+        //     }
+
+        //     return factory(resolver);
+        // }
     }
 }
