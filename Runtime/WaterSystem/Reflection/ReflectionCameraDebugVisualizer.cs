@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Snm.Runtime.WaterSystem
 {
-    public class MirrorCameraDebugVisualizer : MonoBehaviour
+    public class ReflectionCameraDebugVisualizer : MonoBehaviour
     {
         private WaterSurface _waterSurface;
         private Camera _reflectionCamera;

@@ -18,7 +18,6 @@ namespace Snm.App.DependencyInjection
         private readonly Func<IResolver, object> factory;
         private readonly BindingLifetime lifetime;
 
-        // private object _singletonInstance;
         public BindingLifetime Lifetime => lifetime;
 
         public Binding(
@@ -37,16 +36,5 @@ namespace Snm.App.DependencyInjection
         {
             return factory(resolver);
         }
-
-        // public object Resolve(IResolver resolver)
-        // {
-        //     if (lifetime == Lifetime.Singleton)
-        //     {
-        //         _singletonInstance ??= factory(resolver);
-        //         return _singletonInstance;
-        //     }
-
-        //     return factory(resolver);
-        // }
     }
 }

@@ -2,20 +2,20 @@ using UnityEngine;
 
 namespace Snm.Runtime.WaterSystem
 {
-    public class TransformMirroringMover
+    public class TransformReflectionMover
     {
         private readonly WaterSurface waterSurface;
         private readonly Transform target;
-        private readonly Transform mirror;
+        private readonly Transform reflection;
 
-        public TransformMirroringMover(
+        public TransformReflectionMover(
             WaterSurface waterSurface,
             Transform target,
-            Transform mirror)
+            Transform reflection)
         {
             this.waterSurface = waterSurface;
             this.target = target;
-            this.mirror = mirror;
+            this.reflection = reflection;
         }
 
         public void Move()
@@ -23,7 +23,7 @@ namespace Snm.Runtime.WaterSystem
             Vector3 planeNormal = waterSurface.rotation * Vector3.up;
             Vector3 planePoint = waterSurface.position;
 
-            TransformMirroringUtil.Mirror(target, mirror, planePoint, planeNormal);
+            TransformReflectionUtil.Reflection(target, reflection, planePoint, planeNormal);
         }
     }
 }

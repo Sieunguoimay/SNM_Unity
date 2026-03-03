@@ -4,15 +4,15 @@ namespace Snm.Runtime.WaterSystem
 {
     public class WaterReflectionFrustumCalculator
     {
-        public static Matrix4x4 Calculate(WaterSurface waterSurface, Camera mirrorCamera)
+        public static Matrix4x4 Calculate(WaterSurface waterSurface, Camera reflectionCamera)
         {
             var waterCorners = GetWaterCorners(waterSurface);
             var clipPlaneCS = CameraSpacePlane(
-                mirrorCamera.worldToCameraMatrix,
+                reflectionCamera.worldToCameraMatrix,
                 waterSurface.position,
                 waterSurface.rotation * Vector3.up, 1);
 
-            var frustum = CalculateClampedWaterReflectionFrustum(mirrorCamera, waterCorners);
+            var frustum = CalculateClampedWaterReflectionFrustum(reflectionCamera, waterCorners);
             var oblique = CalculateObliqueMatrix(frustum, clipPlaneCS);
             return oblique;
         }

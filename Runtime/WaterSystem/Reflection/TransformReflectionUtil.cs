@@ -2,9 +2,9 @@ using UnityEngine;
 
 namespace Snm.Runtime.WaterSystem
 {
-    public static class TransformMirroringUtil
+    public static class TransformReflectionUtil
     {
-        public static void Mirror(
+        public static void Reflection(
             Transform sourceCamera,
             Transform reflectionCamera,
             Vector3 planePoint, Vector3 planeNormal)

@@ -15,7 +15,7 @@ namespace Snm.Tools.InspectorExtensions
             var button = new Button(() => item.Select()) { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, height = 20, marginLeft = 0, marginRight = 0 } };
             var content = EditorGUIUtility.ObjectContent(item.Target, item.Target?.GetType());
             var icon = new Image { image = content.image, style = { flexShrink = 0, width = 16, height = 16 } };
-            var label = new Label(item.Target.name) { style = { unityTextAlign = TextAnchor.MiddleLeft, flexShrink = 1 }, tooltip = $"{item.Target.name} ({item.Target.GetType().Name})", };
+            var label = new Label(item.Target.name) { style = { unityTextAlign = TextAnchor.MiddleLeft, flexShrink = 1, overflow = Overflow.Hidden }, tooltip = $"{item.Target.name} ({item.Target.GetType().Name})", };
 
             button.Add(icon);
             button.Add(label);

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Snm.Runtime.WaterSystem
 {
-    public class MirrorCameraCreator
+    public class ReflectionCameraCreator
     {
         public static Camera Create()
         {

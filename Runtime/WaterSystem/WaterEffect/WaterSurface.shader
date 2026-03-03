@@ -35,7 +35,7 @@ Shader "Custom/WaterSurface"
             #pragma multi_compile _ _SHADOWS_SOFT
             
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            #include "Assets\SNM_Unity\Runtime\WaterSystem\Reflection\RefleclionSample.hlsl"
+            #include "Assets\SNM_Unity\Runtime\WaterSystem\Reflection\ReflectionSample.hlsl"
 
             // ----------------------
             // Water parameters

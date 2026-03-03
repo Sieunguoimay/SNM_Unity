@@ -6,28 +6,28 @@ namespace Snm.Runtime.WaterSystem
     public class ReflectionMatrixDataUpdater
     {
         private readonly WaterSurface waterSurface;
-        private readonly Camera mirroringCamera;
+        private readonly Camera reflectionCamera;
         private readonly Action dataChangeCallback;
         private readonly ReflectionMatrixData reflectionData;
 
         public ReflectionMatrixDataUpdater(
             WaterSurface waterSurface,
-            Camera mirroringCamera, 
+            Camera reflectionCamera, 
             ReflectionMatrixData reflectionData,
             Action dataChangeCallback)
         {
             this.waterSurface = waterSurface;
-            this.mirroringCamera = mirroringCamera;
+            this.reflectionCamera = reflectionCamera;
             this.reflectionData = reflectionData;
             this.dataChangeCallback = dataChangeCallback;
         }
 
         public void Update()
         {
-            var proj = WaterReflectionFrustumCalculator.Calculate(waterSurface, mirroringCamera);
+            var proj = WaterReflectionFrustumCalculator.Calculate(waterSurface, reflectionCamera);
 
             reflectionData.Proj = proj;
-            reflectionData.VP = proj * mirroringCamera.worldToCameraMatrix;
+            reflectionData.VP = proj * reflectionCamera.worldToCameraMatrix;
 
             dataChangeCallback?.Invoke();
         }

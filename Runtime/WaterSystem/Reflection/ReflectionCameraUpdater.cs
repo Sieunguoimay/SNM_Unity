@@ -2,24 +2,28 @@ using System;
 
 namespace Snm.Runtime.WaterSystem
 {
-    public class MirroringCameraUpdater : IUpdateTarget
+    public class ReflectionCameraUpdater : IUpdateTarget
     {
         private readonly TransformChangeDetector targetCamMoveDetector;
-        private readonly TransformMirroringMover mirrorCamMover;
+        private readonly TransformReflectionMover reflectionCamMover;
         private readonly ReflectionMatrixDataUpdater reflectionDataUpdater;
         private readonly WaterReflectionRenderController renderController;
 
-        public MirroringCameraUpdater(
+        public ReflectionCameraUpdater(
             TransformChangeDetector targetCamMoveDetector,
-            TransformMirroringMover mirrorCamMover,
+            TransformReflectionMover reflectionCamMover,
             ReflectionMatrixDataUpdater reflectionDataUpdater,
             WaterReflectionRenderController renderController)
         {
             this.targetCamMoveDetector = targetCamMoveDetector;
-            this.mirrorCamMover = mirrorCamMover;
+            this.reflectionCamMover = reflectionCamMover;
             this.reflectionDataUpdater = reflectionDataUpdater;
             this.renderController = renderController;
-            mirrorCamMover.Move();
+        }
+
+        public void Initialize()
+        {
+            reflectionCamMover.Move();
             reflectionDataUpdater.Update();
         }
 
@@ -28,7 +32,7 @@ namespace Snm.Runtime.WaterSystem
             var changed = targetCamMoveDetector.HasChanged();
             if (changed)
             {
-                mirrorCamMover.Move();
+                reflectionCamMover.Move();
                 reflectionDataUpdater.Update();
                 renderController.MarkDirty();
             }

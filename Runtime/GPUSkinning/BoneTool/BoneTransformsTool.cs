@@ -150,7 +150,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
             rotationMatrix.SetColumn(1, col1 / scale.y);
             rotationMatrix.SetColumn(2, col2 / scale.z);
 
-            // Handle negative scale (mirroring)
+            // Handle negative scale (reflection)
             if (Matrix4x4.Determinant(rotationMatrix) < 0)
             {
                 scale.x = -scale.x;

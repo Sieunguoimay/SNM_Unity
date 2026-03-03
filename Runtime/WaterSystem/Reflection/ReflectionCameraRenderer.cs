@@ -6,12 +6,12 @@ namespace Snm.Runtime.WaterSystem
 
     public class WaterReflectionRenderController : ILateUpdateTarget
     {
-        private readonly MirrorringCameraRenderer renderer;
+        private readonly ReflectionCameraRenderer renderer;
         private readonly int interval;
         private bool _dirty;
 
         public WaterReflectionRenderController(
-            MirrorringCameraRenderer renderer,
+            ReflectionCameraRenderer renderer,
             int interval)
         {
             this.renderer = renderer;
@@ -30,6 +30,7 @@ namespace Snm.Runtime.WaterSystem
         private bool ShouldRender()
         {
             if (_dirty) return true;
+            if (interval <= 1) return true;
             if (Time.frameCount % interval == 0) return true;
             return false;
         }
@@ -40,23 +41,23 @@ namespace Snm.Runtime.WaterSystem
         }
     }
 
-    public class MirrorringCameraRenderer
+    public class ReflectionCameraRenderer
     {
         private readonly ReflectionMatrixData reflectionData;
-        private readonly Camera mirroringCamera;
+        private readonly Camera reflectionCamera;
         private readonly RenderTexture renderTexture;
         private readonly ICameraRenderExecutor renderExecutor;
         private readonly Action textureChangeCallback;
 
-        public MirrorringCameraRenderer(
+        public ReflectionCameraRenderer(
             ReflectionMatrixData reflectionData,
-            Camera mirroringCamera,
+            Camera reflectionCamera,
             RenderTexture renderTexture,
             ICameraRenderExecutor renderExecutor,
             Action textureChangeCallback)
         {
             this.reflectionData = reflectionData;
-            this.mirroringCamera = mirroringCamera;
+            this.reflectionCamera = reflectionCamera;
             this.renderTexture = renderTexture;
             this.renderExecutor = renderExecutor;
             this.textureChangeCallback = textureChangeCallback;
@@ -65,7 +66,7 @@ namespace Snm.Runtime.WaterSystem
 
         public void Render()
         {
-            renderExecutor.Render(mirroringCamera, renderTexture, reflectionData.Proj);
+            renderExecutor.Render(reflectionCamera, renderTexture, reflectionData.Proj);
             textureChangeCallback?.Invoke();
         }
     }
