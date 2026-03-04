@@ -29,7 +29,7 @@ namespace Snm.Runtime.WaterSystem
             if (!isActiveAndEnabled) return;
             if (config.waterSurfaceShader == null && config.waterSurfaceMaterial == null) return;
 
-            _handle = WaterSystemInstaller.Install(gameObject, config);
+            _handle = WaterSystemInstaller.Install(gameObject, config, Camera.main);
 
 #if UNITY_EDITOR
             _handle.PreviewReflectionTexture.PreviewReflectionTextureUpdated += OnPreviewRenderTextureUpdated;

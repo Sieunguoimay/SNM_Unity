@@ -6,32 +6,25 @@ namespace Snm.Runtime.WaterSystem
     public class ReflectionSystem : IDisposable
     {
         private readonly Action disposeCallback;
-        public RenderTexture reflectionRT;
-        public Camera reflectionCamera;
-        public ReflectionMatrixData reflectionMatrixData;
-        public TransformChangeDetector targetCamMoveDetector;
-        public WaterReflectionRenderController reflectionRenderController;
-        public PreviewReflectionTexture previewReflectionTexture;
-        public TransformReflectionMover reflectionCameraMover;
+
+        public RenderTexture ReflectionRT { get; }
+        public PreviewReflectionTexture PreviewReflectionTexture { get; }
+
+        public Action<Matrix4x4> OnReflectionVPChanged;
 
         public ReflectionSystem(
             Action disposeCallback,
             RenderTexture reflectionRT,
-            Camera reflectionCamera,
             ReflectionMatrixData reflectionMatrixData,
-            TransformChangeDetector targetCamMoveDetector,
-            WaterReflectionRenderController reflectionRenderController,
             PreviewReflectionTexture previewReflectionTexture,
-            TransformReflectionMover reflectionCameraMover)
+            ReflectionMatrixDataUpdater reflectionMatrixDataUpdater)
         {
             this.disposeCallback = disposeCallback;
-            this.reflectionRT = reflectionRT;
-            this.reflectionCamera = reflectionCamera;
-            this.reflectionMatrixData = reflectionMatrixData;
-            this.targetCamMoveDetector = targetCamMoveDetector;
-            this.reflectionRenderController = reflectionRenderController;
-            this.previewReflectionTexture = previewReflectionTexture;
-            this.reflectionCameraMover = reflectionCameraMover;
+
+            ReflectionRT = reflectionRT;
+            PreviewReflectionTexture = previewReflectionTexture;
+
+            reflectionMatrixDataUpdater.SetCallback(() => OnReflectionVPChanged?.Invoke(reflectionMatrixData.VP));
         }
 
         public void Dispose()

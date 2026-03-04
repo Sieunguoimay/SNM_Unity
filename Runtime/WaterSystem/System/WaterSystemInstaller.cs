@@ -1,4 +1,3 @@
-using System;
 using Snm.Runtime.Dispose;
 using Snm.Runtime.Unity;
 using UnityEngine;
@@ -7,7 +6,9 @@ namespace Snm.Runtime.WaterSystem
 {
     public static class WaterSystemInstaller
     {
-        public static WaterSystemHandle Install(GameObject context, WaterSystemConfig config)
+        public static WaterSystemHandle Install(
+            GameObject context, 
+            WaterSystemConfig config, Camera cam)
         {
             var size = config.waterSurfaceSize;
             var waterSurface = new WaterSurface()
@@ -21,32 +22,25 @@ namespace Snm.Runtime.WaterSystem
             waterSurfaceMB.transform.SetParent(context.transform);
             waterSurfaceMB.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 
-            var reflectionSystem = ReflectionSystemInstaller.Install(config, waterSurface);
             //render water surface
             Material material = null;
             var surfacePresenter = new WaterSurfacePresenter(waterSurface, config.waterSurfaceMaterial ?? (material = new Material(config.waterSurfaceShader)));
-            surfacePresenter.SetReflectionTex(reflectionSystem.reflectionRT);
+            var reflectionSystem = ReflectionSystemInstaller.Install(config, waterSurface, cam);
 
-            var reflectionMatrixDataUpdater = new ReflectionMatrixDataUpdater(
-                waterSurface, reflectionSystem.reflectionCamera, reflectionSystem.reflectionMatrixData,
-                dataChangeCallback: () => surfacePresenter.SetReflectionVPMatrix(reflectionSystem.reflectionMatrixData.VP));
-
-            var updater = new ReflectionCameraUpdater(
-                reflectionSystem.targetCamMoveDetector, reflectionSystem.reflectionCameraMover, reflectionMatrixDataUpdater, reflectionSystem.reflectionRenderController);
-            updater.Initialize();
+            surfacePresenter.SetReflectionTex(reflectionSystem.ReflectionRT);
+            reflectionSystem.OnReflectionVPChanged += vp => surfacePresenter.SetReflectionVPMatrix(vp);
 
             var updaterMB = UnityEngineUtility.CreateGameObjectWithComponent<WaterSystemUpdaterMB>();
-            updaterMB.AddUpdateTarget(updater);
             updaterMB.AddUpdateTarget(surfacePresenter);
-            updaterMB.AddLateUpdateTarget(reflectionSystem.reflectionRenderController);
 
             return new(new DisposeCallback(() =>
             {
                 surfacePresenter.Cleanup();
+                reflectionSystem.Dispose();
                 if (material != null) UnityEngineUtility.DestroyObject(material);
                 UnityEngineUtility.DestroyObject(updaterMB.gameObject);
                 UnityEngineUtility.DestroyObject(waterSurfaceMB.gameObject);
-            }), reflectionSystem.previewReflectionTexture);
+            }), reflectionSystem.PreviewReflectionTexture);
         }
     }
 }

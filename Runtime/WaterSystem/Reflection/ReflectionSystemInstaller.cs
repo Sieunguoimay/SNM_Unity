@@ -6,9 +6,11 @@ namespace Snm.Runtime.WaterSystem
 
     public static class ReflectionSystemInstaller
     {
-        public static ReflectionSystem Install(WaterSystemConfig config, WaterSurface waterSurface)
+        public static ReflectionSystem Install(
+            WaterSystemConfig config, 
+            WaterSurface waterSurface,
+            Camera cam)
         {
-            var cam = Camera.main;
             var reflectionCameraMoveTransform = UnityEngineUtility.CreateGameObjectWithComponent<Transform>("[ReflectionCamera]");
             var reflectionCamera = ReflectionCameraCreator.Create();
 
@@ -38,17 +40,28 @@ namespace Snm.Runtime.WaterSystem
             var targetCamMoveDetector = new TransformChangeDetector(cam.transform, .01f, .1f);
             var reflectionRenderController = new WaterReflectionRenderController(reflectionRenderer, 4);
 
+            var reflectionMatrixDataUpdater = new ReflectionMatrixDataUpdater(
+                waterSurface, reflectionCamera, reflectionMatrixData);
+
+            var updater = new ReflectionCameraUpdater(
+                targetCamMoveDetector, reflectionCameraMover, reflectionMatrixDataUpdater, reflectionRenderController);
+
+            updater.Initialize();
+
+            var updaterMB = UnityEngineUtility.CreateGameObjectWithComponent<WaterSystemUpdaterMB>();
+            updaterMB.AddUpdateTarget(updater);
+            updaterMB.AddLateUpdateTarget(reflectionRenderController);
+
             return new ReflectionSystem(disposeCallback: () =>
             {
+                UnityEngineUtility.DestroyObject(updaterMB.gameObject);
                 reflectionRT.Release();
                 UnityEngineUtility.DestroyObject(reflectionRT);
                 UnityEngineUtility.DestroyObject(reflectionCameraDebugVisual.gameObject);
                 UnityEngineUtility.DestroyObject(reflectionCamera.gameObject);
                 UnityEngineUtility.DestroyObject(reflectionCameraMoveTransform.gameObject);
             },
-            reflectionRT, reflectionCamera, reflectionMatrixData,
-            targetCamMoveDetector, reflectionRenderController, previewReflectionTexture,
-            reflectionCameraMover);
+            reflectionRT, reflectionMatrixData, previewReflectionTexture, reflectionMatrixDataUpdater);
         }
     }
 }

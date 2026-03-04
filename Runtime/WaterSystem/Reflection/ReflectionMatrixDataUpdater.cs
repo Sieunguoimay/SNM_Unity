@@ -7,19 +7,22 @@ namespace Snm.Runtime.WaterSystem
     {
         private readonly WaterSurface waterSurface;
         private readonly Camera reflectionCamera;
-        private readonly Action dataChangeCallback;
         private readonly ReflectionMatrixData reflectionData;
+        private Action _dataChangeCallback;
 
         public ReflectionMatrixDataUpdater(
             WaterSurface waterSurface,
-            Camera reflectionCamera, 
-            ReflectionMatrixData reflectionData,
-            Action dataChangeCallback)
+            Camera reflectionCamera,
+            ReflectionMatrixData reflectionData)
         {
             this.waterSurface = waterSurface;
             this.reflectionCamera = reflectionCamera;
             this.reflectionData = reflectionData;
-            this.dataChangeCallback = dataChangeCallback;
+        }
+
+        public void SetCallback(Action changeCallback)
+        {
+            _dataChangeCallback = changeCallback;
         }
 
         public void Update()
@@ -29,7 +32,7 @@ namespace Snm.Runtime.WaterSystem
             reflectionData.Proj = proj;
             reflectionData.VP = proj * reflectionCamera.worldToCameraMatrix;
 
-            dataChangeCallback?.Invoke();
+            _dataChangeCallback?.Invoke();
         }
     }
 }
