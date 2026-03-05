@@ -22,6 +22,7 @@ namespace Snm.Tools.InspectorExtensions
         public SelectionHistoryTracker()
         {
             Selection.selectionChanged += Selection_OnSelectionChanged;
+            EditorApplication.playModeStateChanged += EditorApplication_OnPlayModeStateChanged;
             LoadHistory();
             CaptureHistory();
         }
@@ -29,8 +30,14 @@ namespace Snm.Tools.InspectorExtensions
         public void Dispose()
         {
             Selection.selectionChanged -= Selection_OnSelectionChanged;
+            EditorApplication.playModeStateChanged -= EditorApplication_OnPlayModeStateChanged;
             SaveHistory();
             allHistory.Clear();
+        }
+
+        private void EditorApplication_OnPlayModeStateChanged(PlayModeStateChange change)
+        {
+            ClearHistory();
         }
 
         private void Selection_OnSelectionChanged()

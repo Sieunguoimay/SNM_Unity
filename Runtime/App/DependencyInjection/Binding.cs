@@ -1,6 +1,6 @@
 using System;
 
-namespace Snm.App.DependencyInjection
+namespace Snm.Runtime.App.DependencyInjection
 {
 
     public enum BindingLifetime

@@ -1,4 +1,4 @@
-namespace Snm.App.DependencyInjection
+namespace Snm.Runtime.App.DependencyInjection
 {
     public interface IResolver
     {

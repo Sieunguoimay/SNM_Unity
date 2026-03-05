@@ -1,6 +1,6 @@
-using Snm.App.DependencyInjection;
+using Snm.Runtime.App.DependencyInjection;
 
-namespace Snm.App.Composition
+namespace Snm.Runtime.App.Composition
 {
     public interface IAppModule
     {

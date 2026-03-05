@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace Snm.App.Composition
+namespace Snm.Runtime.App.Composition
 {
     [CustomEditor(typeof(AppModulesAsset))]
     public class AppModulesAssetEditor : Editor

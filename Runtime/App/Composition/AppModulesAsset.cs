@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Snm.App.Composition
+namespace Snm.Runtime.App.Composition
 {
     public class AppModulesAsset : ScriptableObject, IAppModuleProvider
     {

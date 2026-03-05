@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Snm.App.DependencyInjection
+namespace Snm.Runtime.App.DependencyInjection
 {
     public sealed class RuntimeContainer : IResolver, IDisposable
     {

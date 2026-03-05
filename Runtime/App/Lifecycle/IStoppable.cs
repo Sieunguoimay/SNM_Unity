@@ -1,4 +1,4 @@
-namespace Snm.App.Lifecycle
+namespace Snm.Runtime.App.Lifecycle
 {
     public interface IStoppable
     {

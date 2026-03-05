@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Snm.App.DependencyInjection
+namespace Snm.Runtime.App.DependencyInjection
 {
     public sealed class ContainerBuilder : IContainer, IBindingContext
     {

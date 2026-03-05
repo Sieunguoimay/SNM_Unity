@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
-using Snm.App.Composition;
-using Snm.App.Hosting;
+using Snm.Runtime.App.Composition;
+using Snm.Runtime.App.Hosting;
 using UnityEngine;
 
-namespace Snm.App.Unity
+namespace Snm.Runtime.App.Unity
 {
     public class AppBootstrapper : MonoBehaviour
     {

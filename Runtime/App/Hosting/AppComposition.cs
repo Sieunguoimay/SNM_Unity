@@ -1,7 +1,7 @@
-using Snm.App.Composition;
-using Snm.App.DependencyInjection;
+using Snm.Runtime.App.Composition;
+using Snm.Runtime.App.DependencyInjection;
 
-namespace Snm.App.Hosting
+namespace Snm.Runtime.App.Hosting
 {
     public class AppComposition
     {

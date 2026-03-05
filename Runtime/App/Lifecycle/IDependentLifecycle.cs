@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Snm.App.Lifecycle
+namespace Snm.Runtime.App.Lifecycle
 {
     public interface IDependentLifecycle
     {

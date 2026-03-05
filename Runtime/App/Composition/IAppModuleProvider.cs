@@ -1,4 +1,4 @@
-namespace Snm.App.Composition
+namespace Snm.Runtime.App.Composition
 {
     public interface IAppModuleProvider
     {

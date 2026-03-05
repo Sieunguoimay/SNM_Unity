@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Snm.App.DependencyInjection;
+using Snm.Runtime.App.DependencyInjection;
 
-namespace Snm.App.Lifecycle
+namespace Snm.Runtime.App.Lifecycle
 {
     // ----------------------------
     // Lifecycle Service

@@ -1,6 +1,6 @@
-using Snm.App.Composition;
+using Snm.Runtime.App.Composition;
 
-namespace Snm.App.Hosting
+namespace Snm.Runtime.App.Hosting
 {
     public class CoreModuleProvider : IAppModuleProvider
     {
