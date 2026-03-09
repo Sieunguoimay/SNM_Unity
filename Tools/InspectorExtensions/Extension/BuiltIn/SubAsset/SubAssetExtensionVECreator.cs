@@ -45,7 +45,7 @@ namespace Snm.Tools.InspectorExtensions
 
             var button_Add = new Button()
             {
-                text = "Add ScriptableObject",
+                text = "Add Sub Asset",
                 style = { flexWrap = Wrap.Wrap, alignSelf = Align.Center, width = 200, height = 25, marginTop = 10, marginBottom = 10 },
                 focusable = false,
                 clickable = new(OnButtonClicked)
