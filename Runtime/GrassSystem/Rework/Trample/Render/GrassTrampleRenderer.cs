@@ -27,6 +27,7 @@ namespace Snm.Runtime.GrassSystem
             this.renderTexture = renderTexture;
             this.worldCanvas = worldCanvas;
             this.fadeSpeed = fadeSpeed;
+
             renderTexture2 = new RenderTexture(renderTexture.descriptor);
             renderTexture2.Create();
 
