@@ -1,4 +1,4 @@
-using Snm.Runtime.App.DependencyInjection;
+using Snm.DependencyInjection;
 using UnityEngine;
 
 namespace Snm.Runtime.App.Composition

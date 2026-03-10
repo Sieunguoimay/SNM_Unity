@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Snm.WaterSystem
 {
@@ -6,9 +7,17 @@ namespace Snm.WaterSystem
     {
         private readonly IDisposable dispose;
 
-        public WaterSystemHandle(IDisposable dispose)
+        public RenderTexture ReflectionTexture { get; }
+        public RenderTexture WaveDisplayTexture { get; }
+
+        public WaterSystemHandle(
+            IDisposable dispose,
+            RenderTexture reflectionTexture = null,
+            RenderTexture waveDisplayTexture = null)
         {
             this.dispose = dispose;
+            ReflectionTexture = reflectionTexture;
+            WaveDisplayTexture = waveDisplayTexture;
         }
 
         public void Dispose()

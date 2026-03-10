@@ -29,14 +29,14 @@ namespace Snm.WaterSystem
 
         private bool ValidateConfig()
         {
-            return config.waterSurfaceShader == null && config.waterSurfaceMaterial == null;
+            return config.surface.waterSurfaceShader == null && config.surface.waterSurfaceMaterial == null;
         }
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             Gizmos.matrix = transform.localToWorldMatrix;
-            Gizmos.DrawWireCube(Vector3.zero, new Vector3(config.waterSurfaceSize.x, 0, config.waterSurfaceSize.y));
+            Gizmos.DrawWireCube(Vector3.zero, new Vector3(config.surface.size.x, 0, config.surface.size.y));
         }
 #endif
     }

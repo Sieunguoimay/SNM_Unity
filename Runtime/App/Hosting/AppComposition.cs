@@ -1,5 +1,5 @@
 using Snm.Runtime.App.Composition;
-using Snm.Runtime.App.DependencyInjection;
+using Snm.DependencyInjection;
 
 namespace Snm.Runtime.App.Hosting
 {

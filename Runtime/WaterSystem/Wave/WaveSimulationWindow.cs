@@ -1,9 +1,10 @@
+using Snm.DependencyInjection;
+using Snm.Reactivity;
 using Snm.Runtime.Dispose;
 using Snm.Runtime.Unity;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 using UnityEngine.UIElements;
 
 namespace Snm.WaterSystem.Wave
@@ -11,25 +12,43 @@ namespace Snm.WaterSystem.Wave
     public class WaveSimulationWindow : EditorWindow
     {
         [Header("Disturbance Settings")]
-        [SerializeField] private float radius = 0.05f;
-        [SerializeField] private float strength = 0.15f;
+        [SerializeField] private float radius = 0.02f;
+        [SerializeField] private float strength = 0.01f;
 
         [Header("Simulation Settings")]
-        [SerializeField] private float damping = 0.99f;
-        [SerializeField] private float waveSpeed = 0.4f;
+        [SerializeField] private float damping = 0.97f;
+        [Range(0.01f, 0.5f)]
+        [SerializeField] private float waveSpeed = 0.5f;
+        [Tooltip("Multiplier for wave propagation speed. Higher = faster waves.")]
+        [Range(0.1f, 10.0f)]
+        [SerializeField] private float waveSpreadSpeed = 5.0f;
+
+        [Header("Display Settings")]
+        [SerializeField] private float heightfieldStrength = 1.0f;
 
         [Header("Interaction")]
         [SerializeField] private bool continuousDrag = true;
-        [SerializeField] private float dragSpacing = 0.02f;
+        [SerializeField] private float dragSpacing = 0.01f;
 
-        private DisposeCollection _disposable;
-        private WaveSimulationRenderer _renderer;
+        private static readonly string[] DisplayModeLabels = { "Height", "Normal", "Heightfield" };
+
+        private RuntimeContainer _scope;
+        private IWaveSimulation _simulation;
         private Image _waveImage;
+        private Label _waveDisplayLabel;
         private VisualElement _simulationContainer;
+
+        // Signals for reactive config binding
+        private Signal<float> _dampingSignal;
+        private Signal<float> _waveSpeedSignal;
+        private Signal<float> _waveSpreadSpeedSignal;
+        private Signal<float> _heightfieldStrengthSignal;
+        private Signal<int> _displayModeSignal;
+        private Effect _configReaction;
 
         private bool _isDragging;
         private Vector2 _lastDropUV;
-        private float _dragAccumulator;
+        private Editor _settingsEditor;
 
         [MenuItem("Tools/Snm/Water Wave")]
         private static void Open()
@@ -42,6 +61,12 @@ namespace Snm.WaterSystem.Wave
         private void OnDisable()
         {
             Stop();
+            
+            if (_settingsEditor != null)
+            {
+                DestroyImmediate(_settingsEditor);
+                _settingsEditor = null;
+            }
         }
 
         private void CreateGUI()
@@ -63,10 +88,14 @@ namespace Snm.WaterSystem.Wave
 
             toolbar.Add(runButton);
             toolbar.Add(stopButton);
-            toolbar.Add(new VisualElement { style = { flexGrow = 1 } });
 
-            rootVisualElement.Add(toolbar);
-            rootVisualElement.Add(new VisualElement { name = "simulation-container" });
+            _settingsEditor = Editor.CreateEditor(this);
+            var inspector = new IMGUIContainer(() => { _settingsEditor.OnInspectorGUI(); }) { style = { flexShrink = 1, flexGrow = 0 } };
+            var scrollView = new ScrollView();
+            scrollView.Add(inspector);
+            scrollView.Add(toolbar);
+            scrollView.Add(new VisualElement { name = "simulation-container" });
+            rootVisualElement.Add(scrollView);
         }
 
         private void Run()
@@ -75,18 +104,28 @@ namespace Snm.WaterSystem.Wave
 
             var waveSimulationShader = AssetDatabase.LoadAssetAtPath<Shader>(
                 "Assets/SNM_Unity/Runtime/WaterSystem/Wave/WaveSimulation.shader");
+            var displayShader = AssetDatabase.LoadAssetAtPath<Shader>(
+                "Assets/SNM_Unity/Runtime/WaterSystem/Wave/WaveDisplay.shader");
 
-            var renderTexture = CreateRenderTexture(512);
             var updater = new GameObject("WaveSimulationUpdater").AddComponent<UpdateDispatcher>();
-            var updaterDispose = new DisposeCallback(() => { UnityEngineUtility.DestroyObject(updater.gameObject); });
 
-            _renderer = new WaveSimulationRenderer(renderTexture, waveSimulationShader, updater)
-            {
-                damping = damping,
-                waveSpeed = waveSpeed
-            };
+            var builder = new ContainerBuilder();
 
-            _disposable = new DisposeCollection(updaterDispose, _renderer);
+            builder.Bind<IUpdateService>().ToInstance(updater);
+
+            WaveSimulationInstaller.Install(builder, 512, waveSimulationShader, displayShader);
+
+            // Register updater GameObject cleanup
+            builder.Bind<DisposeCallback>().ToScoped(_ =>
+                new DisposeCallback(() => UnityEngineUtility.DestroyObject(updater.gameObject)));
+
+            _scope = builder.Build();
+            _simulation = _scope.Resolve<IWaveSimulation>();
+            // Force DisposeCallback creation so it's tracked for disposal
+            _scope.Resolve<DisposeCallback>();
+
+            // Set up reactive config binding
+            SetupSignals();
 
             _simulationContainer = rootVisualElement.Q<VisualElement>("simulation-container");
             _simulationContainer.Clear();
@@ -95,24 +134,28 @@ namespace Snm.WaterSystem.Wave
             var settingsPanel = CreateSettingsPanel();
             _simulationContainer.Add(settingsPanel);
 
-            // Wave visualization image
+            // Wave display label
+            _waveDisplayLabel = new Label("Wave Display - " + DisplayModeLabels[_displayModeSignal.Value])
+            {
+                style = { unityTextAlign = TextAnchor.MiddleCenter, color = new Color(0.7f, 0.7f, 0.7f) }
+            };
+            _simulationContainer.Add(_waveDisplayLabel);
+
+            // Wave display image
             _waveImage = new Image
             {
-                image = renderTexture,
+                image = _simulation.GetDisplayTexture(),
                 style =
                 {
                     flexGrow = 1,
                     minHeight = 300,
-                    marginTop = 8
+                    marginTop = 4
                 }
             };
-
-            // Mouse interaction callbacks
             _waveImage.RegisterCallback<MouseDownEvent>(OnMouseDown);
             _waveImage.RegisterCallback<MouseMoveEvent>(OnMouseMove);
             _waveImage.RegisterCallback<MouseUpEvent>(OnMouseUp);
             _waveImage.RegisterCallback<MouseLeaveEvent>(OnMouseLeave);
-
             _simulationContainer.Add(_waveImage);
 
             // Info label
@@ -129,6 +172,28 @@ namespace Snm.WaterSystem.Wave
 
             // Repaint schedule
             _waveImage.schedule.Execute(_ => _waveImage.MarkDirtyRepaint()).Every(50);
+        }
+
+        private void SetupSignals()
+        {
+            _dampingSignal = new Signal<float>(damping);
+            _waveSpeedSignal = new Signal<float>(waveSpeed);
+            _waveSpreadSpeedSignal = new Signal<float>(waveSpreadSpeed);
+            _heightfieldStrengthSignal = new Signal<float>(heightfieldStrength);
+            _displayModeSignal = new Signal<int>(0);
+
+            // Reaction: signals -> config (runs once on creation + on any signal change)
+            _configReaction = new Effect(() =>
+            {
+                if (_simulation == null) return;
+
+                var config = _simulation.Config;
+                config.damping = _dampingSignal.Value;
+                config.waveSpeed = _waveSpeedSignal.Value;
+                config.waveSpreadSpeed = _waveSpreadSpeedSignal.Value;
+                config.heightfieldStrength = _heightfieldStrengthSignal.Value;
+                config.displayMode = _displayModeSignal.Value;
+            });
         }
 
         private VisualElement CreateSettingsPanel()
@@ -149,10 +214,6 @@ namespace Snm.WaterSystem.Wave
                 }
             };
 
-            // Inspector for serialized settings
-            var inspector = new InspectorElement(Editor.CreateEditor(this));
-            panel.Add(inspector);
-
             // Quick action buttons
             var buttonRow = new VisualElement
             {
@@ -168,9 +229,13 @@ namespace Snm.WaterSystem.Wave
             var centerDropBtn = new Button { text = "Center Drop" };
             centerDropBtn.clicked += () => AddDisturbance(new Vector2(0.5f, 0.5f));
 
+            var toggleModeBtn = new Button { text = "Toggle Display Mode" };
+            toggleModeBtn.clicked += ToggleDisplayMode;
+
             buttonRow.Add(randomDropBtn);
             buttonRow.Add(centerDropBtn);
             buttonRow.Add(clearBtn);
+            buttonRow.Add(toggleModeBtn);
             panel.Add(buttonRow);
 
             // Apply settings button
@@ -197,19 +262,23 @@ namespace Snm.WaterSystem.Wave
                 _waveImage = null;
             }
 
-            _disposable?.Dispose();
-            _disposable = null;
-            _renderer = null;
+            _waveDisplayLabel = null;
+
+            _configReaction?.Dispose();
+            _configReaction = null;
+
+            _scope?.Dispose();
+            _scope = null;
+            _simulation = null;
         }
 
         #region Mouse Interaction
 
         private void OnMouseDown(MouseDownEvent evt)
         {
-            if (_renderer == null) return;
+            if (_simulation == null) return;
 
             _isDragging = true;
-            _dragAccumulator = 0f;
 
             var uv = GetUVFromMouse(evt.localMousePosition, _waveImage.contentRect);
             AddDisturbance(uv);
@@ -218,7 +287,7 @@ namespace Snm.WaterSystem.Wave
 
         private void OnMouseMove(MouseMoveEvent evt)
         {
-            if (!_isDragging || _renderer == null) return;
+            if (!_isDragging || _simulation == null) return;
 
             var uv = GetUVFromMouse(evt.localMousePosition, _waveImage.contentRect);
 
@@ -226,7 +295,6 @@ namespace Snm.WaterSystem.Wave
             {
                 var distance = Vector2.Distance(uv, _lastDropUV);
 
-                // Interpolate drops along the drag path
                 if (distance >= dragSpacing)
                 {
                     int steps = Mathf.CeilToInt(distance / dragSpacing);
@@ -257,13 +325,11 @@ namespace Snm.WaterSystem.Wave
 
         private Vector2 GetUVFromMouse(Vector2 localPosition, Rect contentRect)
         {
-            // Handle aspect ratio preservation
             var imageRect = GetImageRect(contentRect);
 
-            // Convert to UV relative to the displayed image
             var uv = new Vector2(
                 (localPosition.x - imageRect.x) / imageRect.width,
-                1f - (localPosition.y - imageRect.y) / imageRect.height // Flip Y
+                1f - (localPosition.y - imageRect.y) / imageRect.height
             );
 
             return uv;
@@ -271,9 +337,38 @@ namespace Snm.WaterSystem.Wave
 
         private Rect GetImageRect(Rect contentRect)
         {
-            // Simple case: image fills the content rect
-            // For proper aspect ratio handling, you'd need texture dimensions
-            return contentRect;
+            int textureWidth = 512;
+            int textureHeight = 512;
+
+            if (_simulation != null)
+            {
+                var displayTex = _simulation.GetDisplayTexture();
+                if (displayTex != null)
+                {
+                    textureWidth = displayTex.width;
+                    textureHeight = displayTex.height;
+                }
+            }
+
+            float contentAspect = contentRect.width / contentRect.height;
+            float textureAspect = (float)textureWidth / textureHeight;
+
+            Rect imageRect = contentRect;
+
+            if (contentAspect > textureAspect)
+            {
+                float scaledWidth = contentRect.height * textureAspect;
+                imageRect.x = contentRect.x + (contentRect.width - scaledWidth) * 0.5f;
+                imageRect.width = scaledWidth;
+            }
+            else
+            {
+                float scaledHeight = contentRect.width / textureAspect;
+                imageRect.y = contentRect.y + (contentRect.height - scaledHeight) * 0.5f;
+                imageRect.height = scaledHeight;
+            }
+
+            return imageRect;
         }
 
         #endregion
@@ -282,13 +377,12 @@ namespace Snm.WaterSystem.Wave
 
         private void AddDisturbance(Vector2 uv)
         {
-            if (_renderer == null) return;
+            if (_simulation == null) return;
 
-            // Clamp UV to valid range
             uv.x = Mathf.Clamp01(uv.x);
             uv.y = Mathf.Clamp01(uv.y);
 
-            _renderer.AddDisturbance(new WaveDisturbance
+            _simulation.AddDisturbance(new WaveDisturbance
             {
                 uvPos = uv,
                 radius = radius,
@@ -305,51 +399,32 @@ namespace Snm.WaterSystem.Wave
             AddDisturbance(uv);
         }
 
+        private void ToggleDisplayMode()
+        {
+            if (_displayModeSignal == null) return;
+
+            _displayModeSignal.Value = (_displayModeSignal.Value + 1) % 3;
+
+            if (_waveDisplayLabel != null)
+                _waveDisplayLabel.text = "Wave Display - " + DisplayModeLabels[_displayModeSignal.Value];
+        }
+
         private void ClearWaves()
         {
-            if (_renderer == null) return;
-            // Re-create render textures to clear
-            Stop();
-            Run();
+            _simulation?.ClearSimulation();
         }
 
         private void ApplySettings()
         {
-            if (_renderer != null)
-            {
-                _renderer.damping = damping;
-                _renderer.waveSpeed = waveSpeed;
-            }
+            if (_dampingSignal == null) return;
+
+            // Push editor values into signals -> reaction auto-updates config
+            _dampingSignal.Value = damping;
+            _waveSpeedSignal.Value = waveSpeed;
+            _waveSpreadSpeedSignal.Value = waveSpreadSpeed;
+            _heightfieldStrengthSignal.Value = heightfieldStrength;
         }
 
         #endregion
-
-        public static RenderTexture CreateRenderTexture(int size)
-        {
-            var desc = new RenderTextureDescriptor(size, size)
-            {
-                graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat,
-                depthBufferBits = 0,
-                msaaSamples = 1,
-                sRGB = false,
-                enableRandomWrite = false,
-            };
-
-            // Use new RenderTexture instead of GetTemporary for persistent use
-            var rt = new RenderTexture(desc);
-            rt.filterMode = FilterMode.Bilinear;
-            rt.wrapMode = TextureWrapMode.Clamp;
-            rt.useMipMap = false;
-            rt.autoGenerateMips = false;
-            rt.Create();
-
-            // Clear to black
-            var prev = RenderTexture.active;
-            RenderTexture.active = rt;
-            GL.Clear(true, true, Color.black);
-            RenderTexture.active = prev;
-
-            return rt;
-        }
     }
 }

@@ -9,7 +9,7 @@ namespace Snm.WaterSystem
     }
     public interface IUpdateTarget
     {
-        void Update();
+        void Update(float deltaTime);
     }
 
     public interface IUpdateService
@@ -24,24 +24,25 @@ namespace Snm.WaterSystem
     public class UpdateDispatcher : MonoBehaviour, IUpdateService
     {
         private readonly List<IUpdateTarget> targets = new();
-        private readonly List<ILateUpdateTarget> lateUpdteTargets = new();
+        private readonly List<ILateUpdateTarget> lateUpdateTargets = new();
 
         public void AddUpdateTarget(IUpdateTarget target) { targets.Add(target); }
-        public void AddLateUpdateTarget(ILateUpdateTarget target) { lateUpdteTargets.Add(target); }
+        public void AddLateUpdateTarget(ILateUpdateTarget target) { lateUpdateTargets.Add(target); }
         public void RemoveUpdateTarget(IUpdateTarget target) { targets.Remove(target); }
-        public void RemoveLateUpdateTarget(ILateUpdateTarget target) { lateUpdteTargets.Remove(target); }
+        public void RemoveLateUpdateTarget(ILateUpdateTarget target) { lateUpdateTargets.Remove(target); }
 
         private void Update()
         {
+            float deltaTime = Time.deltaTime;
             foreach (var t in targets)
             {
-                t.Update();
+                t.Update(deltaTime);
             }
         }
 
         private void LateUpdate()
         {
-            foreach (var t in lateUpdteTargets)
+            foreach (var t in lateUpdateTargets)
             {
                 t.LateUpdate();
             }

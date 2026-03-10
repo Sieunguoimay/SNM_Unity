@@ -1,5 +1,5 @@
 using System;
-using Snm.Runtime.App.DependencyInjection;
+using Snm.DependencyInjection;
 using Snm.Runtime.App.Lifecycle;
 
 namespace Snm.Runtime.App.Hosting

@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Snm.WaterSystem.Wave
 {
-    public class WaveDisturbance
+    public struct WaveDisturbance
     {
         public Vector2 uvPos;
         public float radius;

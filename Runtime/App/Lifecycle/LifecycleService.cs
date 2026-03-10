@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Snm.Runtime.App.DependencyInjection;
+using Snm.DependencyInjection;
 
 namespace Snm.Runtime.App.Lifecycle
 {

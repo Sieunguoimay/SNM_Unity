@@ -4,7 +4,7 @@ Shader "Hidden/WaveSimulation"
     {
         _MainTex ("Texture", 2D) = "white" {}
         _Damping ("Damping", Range(0.9, 1.0)) = 0.99
-        _WaveSpeed ("Wave Speed", Range(0.1, 0.5)) = 0.5
+        _WaveSpeed ("Wave Speed", Range(0.1, 0.5)) = 0.45
     }
 
     SubShader
@@ -100,6 +100,7 @@ Shader "Hidden/WaveSimulation"
                 }
 
                 h_new += totalDisturbance;
+                h_new = clamp(h_new, -1.0, 1.0);
 
                 // === 5. Output ===
                 return float4(h_new, h_curr, 0.0, 1.0);

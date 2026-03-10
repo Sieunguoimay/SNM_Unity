@@ -1,16 +1,19 @@
 using System;
-using UnityEngine;
+using Snm.WaterSystem.Caustics;
+using Snm.WaterSystem.Depth;
+using Snm.WaterSystem.Reflection;
+using Snm.WaterSystem.Surface;
+using Snm.WaterSystem.Wave;
 
 namespace Snm.WaterSystem
 {
     [Serializable]
     public class WaterConfig
     {
-        public Shader waterSurfaceShader;
-        public Material waterSurfaceMaterial;
-        public bool autoGenerateMesh;
-        public Mesh mesh;
-        public Vector2 waterSurfaceSize = new(10f, 10f);
-        public int reflectionTextureWidth = 256;
+        public SurfaceConfig surface = new();
+        public ReflectionConfig reflection = new();
+        public CausticsConfig caustics = new();
+        public WaterDepthConfig depth = new();
+        public WaveConfig wave = new();
     }
 }

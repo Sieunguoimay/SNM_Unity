@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
-// WaterSurfaceInstaller.cs
+// SurfaceInstaller.cs
 // Creates and owns the MeshRenderer GameObject for the water quad.
 // Applies material property updates each frame via the binder.
 // ═══════════════════════════════════════════════════════════════
 using Snm.Runtime.Dispose;
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.WaterSystem.Surface
@@ -12,15 +13,15 @@ namespace Snm.WaterSystem.Surface
     {
         public static SurfaceHandle Install(
             GameObject context,
-            WaterConfig config,
+            SurfaceConfig config,
             IUpdateService updateService)
         {
             // ── water surface data ───────────────────────────────────────────
             var surface = new SurfaceData
             {
-                size = config.waterSurfaceSize,
+                size = config.size,
                 mesh = config.autoGenerateMesh
-                    ? SurfaceMeshBuilder.CreateQuad(config.waterSurfaceSize)
+                    ? SurfaceMeshBuilder.CreateQuad(config.size)
                     : config.mesh,
             };
 
@@ -45,8 +46,8 @@ namespace Snm.WaterSystem.Surface
                 disposable: new DisposeCallback(() =>
             {
                 surfaceRenderer.Dispose();
-                if (ownsMaterial) Object.Destroy(material);
-                Object.Destroy(surfaceMB.gameObject);
+                if (ownsMaterial) UnityEngineUtility.DestroyObject(material);
+                UnityEngineUtility.DestroyObject(surfaceMB.gameObject);
             }));
         }
     }

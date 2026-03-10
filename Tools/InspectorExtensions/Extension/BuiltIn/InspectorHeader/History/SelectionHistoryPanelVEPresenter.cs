@@ -51,6 +51,7 @@ namespace Snm.Tools.InspectorExtensions
 
             foreach (var item in tracker.QuickAccessHistory)
             {
+                if (item == null) continue;
                 var itemVE = SelectionHistoryItemVECreator.BuildVE(new SelectionHistoryItem(item));
                 itemVEContainer.Add(itemVE);
             }

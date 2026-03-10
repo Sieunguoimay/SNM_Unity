@@ -57,9 +57,9 @@ Shader "Custom/WaterSurface"
             CBUFFER_END
 
             // URP includes
-            #include "WaterEffect.hlsl"
+            #include "WaterDepth.hlsl"
             #include "WaterCaustics.hlsl"
-            #include "ReflectionSample.hlsl"
+            #include "Reflection.hlsl"
 
             struct Attributes
             {
@@ -73,6 +73,13 @@ Shader "Custom/WaterSurface"
                 float4 screenPos  : TEXCOORD0;
                 float3 worldPos : TEXCOORD1;
             };
+
+            float ComputeStylizedFresnel(float rawDepth, float waterDepth)
+            {
+                float sceneDepth = LinearEyeDepth(rawDepth, _ZBufferParams);
+                float depthDifference = sceneDepth - waterDepth;
+                return ease_OutSine(saturate(depthDifference / 50.0));
+            }
 
             Varyings vert (Attributes v)
             {
@@ -92,18 +99,18 @@ Shader "Custom/WaterSurface"
                 // Screen UV
                 // ----------------------
                 float2 screenUV = i.screenPos.xy / i.screenPos.w;
+
                 float surfaceDepth = i.screenPos.z / i.screenPos.w;
-
                 float rawDepth = SampleSceneDepth(screenUV);
-
                 float3 bgPositionWS = ComputeWorldSpacePosition(screenUV, rawDepth, UNITY_MATRIX_I_VP);
                 float thickness = ComputeThickness(bgPositionWS, worldPos, normalWS);
                 float absorption = ComputeAbsorption(screenUV, thickness);
-                float fresnel = ComputeStylizedFresnel(rawDepth, surfaceDepth);
-
+                
                 float3 backgroundColor = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, screenUV).rgb;
                 float3 caustics = ComputeCaustics(bgPositionWS);
                 float4 reflectionColor = SampleReflection(worldPos);
+                
+                float fresnel = ComputeStylizedFresnel(rawDepth, surfaceDepth);
 
                 float3 waterColor = lerp(backgroundColor * _ShallowColor, _DeepColor, absorption);
                 float reflectionWeight = fresnel * reflectionColor.a;

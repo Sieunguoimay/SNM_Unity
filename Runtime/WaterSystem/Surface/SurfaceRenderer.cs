@@ -3,6 +3,7 @@
 // Creates and owns the MeshRenderer GameObject for the water quad.
 // Applies material property updates each frame via the binder.
 // ═══════════════════════════════════════════════════════════════
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.WaterSystem.Surface
@@ -22,14 +23,14 @@ namespace Snm.WaterSystem.Surface
             _gameObject = go;
         }
 
-        public void Update()
+        public void Update(float deltaTime)
         {
             _gameObject.transform.SetPositionAndRotation(_surface.position, _surface.rotation);
         }
 
         public void Dispose()
         {
-            UnityEngine.Object.Destroy(_gameObject);
+            UnityEngineUtility.DestroyObject(_gameObject);
         }
     }
 }

@@ -42,6 +42,8 @@ namespace Snm.Tools.InspectorExtensions
 
         private void Selection_OnSelectionChanged()
         {
+            ClearNulls(allHistory);
+            ClearNulls(quickAccessHistory);
             CaptureHistory();
         }
 
@@ -54,6 +56,19 @@ namespace Snm.Tools.InspectorExtensions
                 CaptureQuickAccessHistory(current);
                 OnSelectionHistoryChanged?.Invoke();
                 SaveHistory();
+            }
+        }
+
+        private void ClearNulls(List<UnityEngine.Object> l)
+        {
+            var list = new List<UnityEngine.Object>(l);
+            for (int i = 0; i < list.Count; i++)
+            {
+                var item = list[i];
+                if (item == null)
+                {
+                    allHistory.RemoveAt(i);
+                }
             }
         }
 
