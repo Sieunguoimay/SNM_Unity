@@ -2,11 +2,33 @@ using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Text;
+using System.IO;
 
 public class TextAssetCombinerWindow : EditorWindow
 {
+    // ── Data ───────────────────────────────────────────────────────────────
+    private enum AssetType { TextAsset, Shader }
+
+    private class AssetEntry
+    {
+        public Object Asset;
+        public AssetType Type;
+
+        public string DisplayName => Asset != null ? Asset.name : "(none)";
+
+        public string GetText()
+        {
+            if (Asset == null) return null;
+            if (Type == AssetType.TextAsset)
+                return ((TextAsset)Asset).text;
+            // Shader: read raw source via AssetDatabase
+            string path = AssetDatabase.GetAssetPath(Asset);
+            return File.Exists(path) ? File.ReadAllText(path) : $"// Could not read shader source: {path}";
+        }
+    }
+
     // ── State ──────────────────────────────────────────────────────────────
-    private List<TextAsset> _textAssets = new List<TextAsset>();
+    private List<AssetEntry> _entries = new List<AssetEntry>();
     private string _combinedText = "";
     private Vector2 _listScroll;
     private Vector2 _previewScroll;
@@ -23,7 +45,7 @@ public class TextAssetCombinerWindow : EditorWindow
     public static void ShowWindow()
     {
         var window = GetWindow<TextAssetCombinerWindow>("Text Asset Combiner");
-        window.minSize = new Vector2(420, 520);
+        window.minSize = new Vector2(460, 540);
     }
 
     // ── GUI ────────────────────────────────────────────────────────────────
@@ -51,7 +73,7 @@ public class TextAssetCombinerWindow : EditorWindow
     private void DrawHeader()
     {
         EditorGUILayout.LabelField("Text Asset Combiner", EditorStyles.boldLabel);
-        EditorGUILayout.LabelField("Drag TextAssets below, combine them and copy to clipboard.",
+        EditorGUILayout.LabelField("Drag TextAssets or Shaders below, combine them and copy to clipboard.",
             EditorStyles.miniLabel);
         DrawHorizontalLine();
     }
@@ -59,45 +81,53 @@ public class TextAssetCombinerWindow : EditorWindow
     // ── Asset list ─────────────────────────────────────────────────────────
     private void DrawAssetList()
     {
-        EditorGUILayout.LabelField("Text Assets", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Assets  (TextAsset & Shader)", EditorStyles.boldLabel);
 
         // Drop-zone
         Rect dropRect = GUILayoutUtility.GetRect(0, 44, GUILayout.ExpandWidth(true));
-        GUI.Box(dropRect, "Drop TextAssets here  ✦", EditorStyles.helpBox);
+        GUI.Box(dropRect, "Drop TextAssets or Shaders here  ✦", EditorStyles.helpBox);
         HandleDragAndDrop(dropRect);
 
         // Scrollable list
         _listScroll = EditorGUILayout.BeginScrollView(_listScroll,
-            GUILayout.Height(Mathf.Clamp(_textAssets.Count * 24 + 8, 40, 160)));
+            GUILayout.Height(Mathf.Clamp(_entries.Count * 24 + 8, 40, 180)));
 
         int removeIndex = -1;
-        for (int i = 0; i < _textAssets.Count; i++)
+        for (int i = 0; i < _entries.Count; i++)
         {
+            var entry = _entries[i];
             EditorGUILayout.BeginHorizontal();
 
-            // Re-orderable drag handle (up/down arrows)
+            // Up / Down arrows
             GUI.enabled = i > 0;
             if (GUILayout.Button("▲", GUILayout.Width(22), GUILayout.Height(18)))
             {
-                (_textAssets[i - 1], _textAssets[i]) = (_textAssets[i], _textAssets[i - 1]);
+                (_entries[i - 1], _entries[i]) = (_entries[i], _entries[i - 1]);
                 RebuildCombined();
             }
-            GUI.enabled = i < _textAssets.Count - 1;
+            GUI.enabled = i < _entries.Count - 1;
             if (GUILayout.Button("▼", GUILayout.Width(22), GUILayout.Height(18)))
             {
-                (_textAssets[i + 1], _textAssets[i]) = (_textAssets[i], _textAssets[i + 1]);
+                (_entries[i + 1], _entries[i]) = (_entries[i], _entries[i + 1]);
                 RebuildCombined();
             }
             GUI.enabled = true;
 
-            var updated = (TextAsset)EditorGUILayout.ObjectField(
-                _textAssets[i], typeof(TextAsset), false);
-            if (updated != _textAssets[i])
+            // Type badge
+            var badgeStyle = entry.Type == AssetType.Shader ? GetShaderBadgeStyle() : GetTextBadgeStyle();
+            GUILayout.Label(entry.Type == AssetType.Shader ? "HLSL" : "TXT", badgeStyle,
+                GUILayout.Width(36), GUILayout.Height(18));
+
+            // Object field — accept either type
+            System.Type fieldType = entry.Type == AssetType.Shader ? typeof(Shader) : typeof(TextAsset);
+            var updated = EditorGUILayout.ObjectField(entry.Asset, fieldType, false);
+            if (updated != entry.Asset)
             {
-                _textAssets[i] = updated;
+                entry.Asset = updated;
                 RebuildCombined();
             }
 
+            // Remove
             if (GUILayout.Button("✕", GUILayout.Width(22), GUILayout.Height(18)))
                 removeIndex = i;
 
@@ -106,7 +136,7 @@ public class TextAssetCombinerWindow : EditorWindow
 
         if (removeIndex >= 0)
         {
-            _textAssets.RemoveAt(removeIndex);
+            _entries.RemoveAt(removeIndex);
             RebuildCombined();
         }
 
@@ -114,11 +144,13 @@ public class TextAssetCombinerWindow : EditorWindow
 
         // Manual add / clear row
         EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("+ Add Slot", GUILayout.Height(20)))
-            _textAssets.Add(null);
+        if (GUILayout.Button("+ Text Slot", GUILayout.Height(20)))
+            _entries.Add(new AssetEntry { Type = AssetType.TextAsset });
+        if (GUILayout.Button("+ Shader Slot", GUILayout.Height(20)))
+            _entries.Add(new AssetEntry { Type = AssetType.Shader });
         if (GUILayout.Button("Clear All", GUILayout.Height(20)))
         {
-            _textAssets.Clear();
+            _entries.Clear();
             _combinedText = "";
         }
         EditorGUILayout.EndHorizontal();
@@ -176,9 +208,16 @@ public class TextAssetCombinerWindow : EditorWindow
         if (!string.IsNullOrEmpty(_combinedText))
         {
             int validCount = 0;
-            foreach (var a in _textAssets) if (a != null) validCount++;
+            int shaderCount = 0;
+            foreach (var e in _entries)
+            {
+                if (e.Asset == null) continue;
+                validCount++;
+                if (e.Type == AssetType.Shader) shaderCount++;
+            }
+            int textCount = validCount - shaderCount;
             EditorGUILayout.LabelField(
-                $"{validCount} asset(s)  ·  {_combinedText.Length:N0} chars  ·  {CountLines(_combinedText):N0} lines",
+                $"{textCount} text  ·  {shaderCount} shader(s)  ·  {_combinedText.Length:N0} chars  ·  {CountLines(_combinedText):N0} lines",
                 EditorStyles.centeredGreyMiniLabel);
         }
     }
@@ -196,7 +235,6 @@ public class TextAssetCombinerWindow : EditorWindow
         _previewScroll = EditorGUILayout.BeginScrollView(
             _previewScroll, GUILayout.Height(Mathf.Max(remaining, 80)));
 
-        // Selectable, read-only textarea
         EditorGUILayout.SelectableLabel(
             string.IsNullOrEmpty(_combinedText)
                 ? "(no content – add assets and click Rebuild)"
@@ -208,23 +246,28 @@ public class TextAssetCombinerWindow : EditorWindow
         EditorGUILayout.EndScrollView();
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────
+    // ── Core logic ─────────────────────────────────────────────────────────
     private void RebuildCombined()
     {
         var sb = new StringBuilder();
         bool first = true;
 
-        foreach (var asset in _textAssets)
+        foreach (var entry in _entries)
         {
-            if (asset == null) continue;
+            if (entry.Asset == null) continue;
+            string text = entry.GetText();
+            if (text == null) continue;
 
             if (!first) sb.Append(_separator);
             first = false;
 
             if (_includeFilenames)
-                sb.AppendLine($"### {asset.name} ###");
+            {
+                string ext = entry.Type == AssetType.Shader ? ".shader" : "";
+                sb.AppendLine($"### {entry.Asset.name}{ext} ###");
+            }
 
-            sb.Append(asset.text);
+            sb.Append(text);
         }
 
         _combinedText = sb.ToString();
@@ -246,14 +289,24 @@ public class TextAssetCombinerWindow : EditorWindow
             DragAndDrop.AcceptDrag();
             foreach (var obj in DragAndDrop.objectReferences)
             {
-                if (obj is TextAsset ta && !_textAssets.Contains(ta))
-                    _textAssets.Add(ta);
+                if (obj is TextAsset ta && !AlreadyContains(ta))
+                    _entries.Add(new AssetEntry { Asset = ta, Type = AssetType.TextAsset });
+                else if (obj is Shader sh && !AlreadyContains(sh))
+                    _entries.Add(new AssetEntry { Asset = sh, Type = AssetType.Shader });
             }
             RebuildCombined();
             evt.Use();
         }
     }
 
+    private bool AlreadyContains(Object obj)
+    {
+        foreach (var e in _entries)
+            if (e.Asset == obj) return true;
+        return false;
+    }
+
+    // ── Style helpers ───────────────────────────────────────────────────────
     private void InitStyles()
     {
         if (_stylesInitialised) return;
@@ -265,6 +318,37 @@ public class TextAssetCombinerWindow : EditorWindow
             stretchHeight = true,
         };
         _stylesInitialised = true;
+    }
+
+    private static GUIStyle _shaderBadgeStyle;
+    private static GUIStyle _textBadgeStyle;
+
+    private static GUIStyle GetShaderBadgeStyle()
+    {
+        if (_shaderBadgeStyle == null)
+        {
+            _shaderBadgeStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = new Color(0.4f, 0.9f, 1f) },
+                fontStyle = FontStyle.Bold,
+            };
+        }
+        return _shaderBadgeStyle;
+    }
+
+    private static GUIStyle GetTextBadgeStyle()
+    {
+        if (_textBadgeStyle == null)
+        {
+            _textBadgeStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = new Color(0.7f, 1f, 0.6f) },
+                fontStyle = FontStyle.Bold,
+            };
+        }
+        return _textBadgeStyle;
     }
 
     private static void DrawHorizontalLine()

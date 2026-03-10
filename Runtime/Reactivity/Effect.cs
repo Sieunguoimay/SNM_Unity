@@ -3,13 +3,13 @@ using System.Collections.Generic;
 
 namespace Snm.Reactivity
 {
-    public class Reaction : IDisposable
+    public class Effect : IDisposable
     {
         private readonly Action _callback;
         private readonly HashSet<ISignal> _trackedSignals = new();
         private bool _isExecuting;
 
-        public Reaction(Action callback)
+        public Effect(Action callback)
         {
             _callback = callback;
             Execute();
@@ -27,11 +27,15 @@ namespace Snm.Reactivity
 
             UntrackAllSignals();
 
-            using var _ = new ReactionContext(this);
-
-            _callback();
-
-            _isExecuting = false;
+            try
+            {
+                using var _ = new EffectContext(this);
+                _callback();
+            }
+            finally
+            {
+                _isExecuting = false;
+            }
         }
 
         internal void TrackSignal(ISignal signal)

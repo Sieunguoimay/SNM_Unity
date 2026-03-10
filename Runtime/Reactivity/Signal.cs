@@ -1,16 +1,19 @@
+using System;
 using System.Collections.Generic;
 
 namespace Snm.Reactivity
 {
     internal interface ISignal
     {
-        void Unsubscribe(Reaction reaction);
+        void Unsubscribe(Effect effect);
     }
 
     public class Signal<T> : ISignal
     {
-        private readonly HashSet<Reaction> _subscribers = new();
-        private readonly List<Reaction> _notifyBuffer = new();
+        private readonly HashSet<Effect> _subscribers = new();
+        private readonly List<Effect> _notifyBuffer = new();
+        private readonly HashSet<Action<T>> _listeners = new();
+        private readonly List<Action<T>> _listenerBuffer = new();
 
         private T _value;
 
@@ -18,7 +21,7 @@ namespace Snm.Reactivity
         {
             get
             {
-                TrackCurrentReaction();
+                TrackCurrentEffect();
 
                 return _value;
             }
@@ -38,9 +41,16 @@ namespace Snm.Reactivity
             _value = initialValue;
         }
 
-        void ISignal.Unsubscribe(Reaction reaction)
+        void ISignal.Unsubscribe(Effect effect)
         {
-            _subscribers.Remove(reaction);
+            _subscribers.Remove(effect);
+        }
+
+        public IDisposable Subscribe(Action<T> listener)
+        {
+            _listeners.Add(listener);
+            listener(_value);
+            return new Unsubscriber(() => _listeners.Remove(listener));
         }
 
         private void NotifySubscribers()
@@ -51,16 +61,30 @@ namespace Snm.Reactivity
             {
                 subscriber.Execute();
             }
+
+            _listenerBuffer.Clear();
+            _listenerBuffer.AddRange(_listeners);
+            foreach (var listener in _listenerBuffer)
+            {
+                listener(_value);
+            }
         }
 
-        private void TrackCurrentReaction()
+        private void TrackCurrentEffect()
         {
-            var reaction = ReactionContext.ActiveReaction;
-            if (reaction != null)
+            var effect = EffectContext.ActiveEffect;
+            if (effect != null)
             {
-                _subscribers.Add(reaction);
-                reaction.TrackSignal(this);
+                _subscribers.Add(effect);
+                effect.TrackSignal(this);
             }
+        }
+
+        private sealed class Unsubscriber : IDisposable
+        {
+            private readonly Action _onDispose;
+            public Unsubscriber(Action onDispose) => _onDispose = onDispose;
+            public void Dispose() => _onDispose();
         }
     }
 }
