@@ -8,7 +8,7 @@ namespace Snm.WaterSystem.Surface
     {
         public Shader waterSurfaceShader;
         public Material waterSurfaceMaterial;
-        public bool autoGenerateMesh;
+        public bool autoGenerateMesh = true;
         public Mesh mesh;
         public Vector2 size = new(10f, 10f);
     }

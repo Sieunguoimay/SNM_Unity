@@ -19,12 +19,11 @@ namespace Snm.WaterSystem
     public static class WaterSystemInstaller
     {
         public static WaterSystemHandle Install(
-            GameObject context,
             WaterConfig config,
             Camera sourceCamera)
         {
             var updater = new GameObject("[WaterUpdater]").AddComponent<UpdateDispatcher>();
-            var waterSurface = SurfaceInstaller.Install(context, config.surface, updater);
+            var waterSurface = SurfaceInstaller.Install(config.surface, updater);
 
             var ctx = new WaterFeatureContext(
                 config,
@@ -72,11 +71,19 @@ namespace Snm.WaterSystem
                 ? scope.Resolve<ReflectionHandle>().Texture
                 : null;
 
-            var waveDisplayTexture = config.wave.enabled
-                ? scope.Resolve<IWaveSimulation>().GetDisplayTexture()
-                : null;
+            IWaveSimulation waveSimulation = null;
+            RenderTexture waveDisplayTexture = null;
+            if (config.wave.enabled)
+            {
+                waveSimulation = scope.Resolve<IWaveSimulation>();
+                waveDisplayTexture = waveSimulation.GetDisplayTexture();
 
-            return new WaterSystemHandle(scope, reflectionTexture, waveDisplayTexture);
+                // Bind wave simulation texture to the surface material each frame
+                var waveBinder = new WaveShaderBinder(ctx.SurfaceMaterial, waveSimulation);
+                updater.AddUpdateTarget(waveBinder);
+            }
+
+            return new WaterSystemHandle(scope, reflectionTexture, waveSimulation);
         }
     }
 }

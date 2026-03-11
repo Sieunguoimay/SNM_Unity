@@ -13,6 +13,7 @@ namespace Snm.WaterSystem.Reflection
         private readonly ReflectionCamera reflectionCamera;
         private readonly RenderTexture renderTexture;
         private readonly ReflectionFeature feature;
+        private bool _isDisposed = false;
 
         public RenderTexture Texture => renderTexture;
 
@@ -28,6 +29,9 @@ namespace Snm.WaterSystem.Reflection
 
         public void Dispose()
         {
+            if (_isDisposed) return;
+            _isDisposed = true;
+
             feature.Dispose();
             renderTexture.Release();
             UnityEngineUtility.DestroyObject(renderTexture);

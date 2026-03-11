@@ -48,13 +48,6 @@ float3 ComputeCaustics(float3 bgPositionWS)
     // Instead of light-space transform, try direct projection:
     Light mainLight = GetMainLight();
     
-    float shadowAttenuation = 1.0;
-    
-    #if defined(_MAIN_LIGHT_SHADOWS) || defined(_MAIN_LIGHT_SHADOWS_CASCADE)
-    float4 shadowCoord = TransformWorldToShadowCoord(bgPositionWS);
-    shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
-    #endif
-
     float3 lightDirWS = normalize(-mainLight.direction); // No negation
     
     // Project position onto plane perpendicular to light
@@ -72,5 +65,5 @@ float3 ComputeCaustics(float3 bgPositionWS)
 
     float3 caustic = min(c1, c2);
 
-    return caustic * shadowAttenuation * _CausticStrength;
+    return caustic * _CausticStrength;
 }

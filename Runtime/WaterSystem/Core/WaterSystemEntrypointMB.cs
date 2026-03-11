@@ -17,7 +17,7 @@ namespace Snm.WaterSystem
             if (!isActiveAndEnabled) return;
             if (ValidateConfig()) return;
 
-            _handle = WaterSystemInstaller.Install(gameObject, config, Camera.main);
+            _handle = WaterSystemInstaller.Install(config, Camera.main);
         }
 
         [ContextMenu("Teardown")]

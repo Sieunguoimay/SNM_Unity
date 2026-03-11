@@ -51,6 +51,8 @@ namespace Snm.WaterSystem.Wave
 
         public RenderTexture GetDisplayTexture() => displayTexture;
 
+        public RenderTexture GetSimulationTexture() => simulation.GetResult();
+
         public void ClearSimulation()
         {
             simulation.Clear();

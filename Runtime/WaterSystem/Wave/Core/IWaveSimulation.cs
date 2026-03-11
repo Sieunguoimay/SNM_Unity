@@ -7,6 +7,7 @@ namespace Snm.WaterSystem.Wave
     {
         void AddDisturbance(WaveDisturbance disturbance);
         RenderTexture GetDisplayTexture();
+        RenderTexture GetSimulationTexture();
         void ClearSimulation();
         WaveSimulationConfig Config { get; }
     }

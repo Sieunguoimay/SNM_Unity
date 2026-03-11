@@ -12,7 +12,6 @@ namespace Snm.WaterSystem.Surface
     public static class SurfaceInstaller
     {
         public static SurfaceHandle Install(
-            GameObject context,
             SurfaceConfig config,
             IUpdateService updateService)
         {
@@ -27,7 +26,6 @@ namespace Snm.WaterSystem.Surface
 
             // ── scene bridge: keeps surface.Position/Rotation in sync ────────
             var surfaceMB = new GameObject("[WaterSurface]").AddComponent<WaterSurfaceMB>();
-            surfaceMB.transform.SetParent(context.transform);
             surfaceMB.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
             surfaceMB.Bind(surface);
 

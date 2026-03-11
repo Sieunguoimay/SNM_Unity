@@ -1,4 +1,5 @@
 using System;
+using Snm.WaterSystem.Wave;
 using UnityEngine;
 
 namespace Snm.WaterSystem
@@ -8,16 +9,16 @@ namespace Snm.WaterSystem
         private readonly IDisposable dispose;
 
         public RenderTexture ReflectionTexture { get; }
-        public RenderTexture WaveDisplayTexture { get; }
+        public IWaveSimulation WaveSimulation { get; }
 
         public WaterSystemHandle(
             IDisposable dispose,
             RenderTexture reflectionTexture = null,
-            RenderTexture waveDisplayTexture = null)
+            IWaveSimulation waveSimulation = null)
         {
             this.dispose = dispose;
             ReflectionTexture = reflectionTexture;
-            WaveDisplayTexture = waveDisplayTexture;
+            WaveSimulation = waveSimulation;
         }
 
         public void Dispose()
