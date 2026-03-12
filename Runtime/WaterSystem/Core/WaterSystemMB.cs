@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Snm.WaterSystem.Wave;
 using UnityEngine;
 
 namespace Snm.WaterSystem
@@ -8,7 +9,7 @@ namespace Snm.WaterSystem
         [SerializeField] private WaterConfig config;
         [SerializeField] private Camera sourceCamera;
 
-        private WaterSystemHandle           _handle;
+        private WaterSystemHandle _handle;
         private IEnumerable<IWaveDisturber> _disturbers;
 
         /// <summary>
