@@ -14,14 +14,13 @@ namespace Snm.WaterSystem.Reflection
         [Header("Water Surface")]
         [SerializeField] private Vector3 surfacePosition = Vector3.zero;
         [SerializeField] private Vector3 surfaceRotationEuler = Vector3.zero;
-        [SerializeField] private Vector2 surfaceSize = new Vector2(10f, 10f);
+        [SerializeField] private Vector2 surfaceSize = new(10f, 10f);
 
         [Header("Camera")]
         [SerializeField] private Camera sourceCamera;
 
         [Header("Reflection Settings")]
         [SerializeField] private int textureWidth = 256;
-        [SerializeField] private int frameInterval = 1;
 
         private RuntimeContainer _scope;
         private ReflectionFeature _feature;

@@ -4,6 +4,7 @@
 // Composition root for the entire water system.
 // The only place that knows how all pieces connect.
 // ═══════════════════════════════════════════════════════════════
+using System.Collections.Generic;
 using Snm.DependencyInjection;
 using Snm.Runtime.Dispose;
 using Snm.Runtime.Unity;
@@ -23,9 +24,15 @@ namespace Snm.WaterSystem
 {
     public static class WaterSystemInstaller
     {
+        /// <param name="disturbers">
+        ///   Optional live enumerable of <see cref="IWaveDisturber"/> objects.
+        ///   When provided and <c>config.disturber.enabled</c> is true,
+        ///   the system will generate ripples whenever a disturber enters or moves through the water.
+        /// </param>
         public static WaterSystemHandle Install(
             WaterConfig config,
-            Camera sourceCamera)
+            Camera sourceCamera,
+            IEnumerable<IWaveDisturber> disturbers = null)
         {
             var updater = new GameObject("[WaterUpdater]").AddComponent<UpdateDispatcher>();
             var (surface, surfaceMaterial, surfaceCleanup) = SurfaceInstaller.Install(config.surface, updater);
@@ -70,6 +77,9 @@ namespace Snm.WaterSystem
             if (config.scrollNormal.enabled)   ScrollNormalInstaller.Install(builder);
             if (config.rain.enabled && config.wave.enabled) RainInstaller.Install(builder);
 
+            bool useDisturbers = config.disturber.enabled && config.wave.enabled && disturbers != null;
+            if (useDisturbers) WaveDisturberInstaller.Install(builder, disturbers);
+
             // cleanup for non-DI owned resources
             builder.Bind<DisposeCallback>().ToScoped(_ =>
                 new DisposeCallback(() =>
@@ -92,6 +102,7 @@ namespace Snm.WaterSystem
             if (config.sparkle.enabled)        composite.Add(scope.Resolve<SparkleFeature>());
             if (config.scrollNormal.enabled)   composite.Add(scope.Resolve<ScrollNormalFeature>());
             if (config.rain.enabled && config.wave.enabled) composite.Add(scope.Resolve<RainFeature>());
+            if (useDisturbers)                 composite.Add(scope.Resolve<WaveDisturberFeature>());
 
             updater.AddUpdateTarget(composite);
             updater.AddLateUpdateTarget(composite);

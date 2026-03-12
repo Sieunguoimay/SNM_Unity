@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Snm.WaterSystem
@@ -7,7 +8,24 @@ namespace Snm.WaterSystem
         [SerializeField] private WaterConfig config;
         [SerializeField] private Camera sourceCamera;
 
-        private WaterSystemHandle _handle;
+        private WaterSystemHandle           _handle;
+        private IEnumerable<IWaveDisturber> _disturbers;
+
+        /// <summary>
+        /// The active water system handle. Available after <see cref="Start"/> has run.
+        /// </summary>
+        public WaterSystemHandle Handle => _handle;
+
+        /// <summary>
+        /// Provides a live disturber source before Start() runs.
+        /// Call this immediately after the prefab is instantiated (e.g. from WaterEntity.OnInitialized).
+        /// The list is held by reference and re-enumerated each frame, so registration changes
+        /// made to the source list are picked up automatically.
+        /// </summary>
+        public void SetDisturbers(IEnumerable<IWaveDisturber> disturbers)
+        {
+            _disturbers = disturbers;
+        }
 
         private void Awake()
         {
@@ -24,7 +42,7 @@ namespace Snm.WaterSystem
             if (!isActiveAndEnabled) return;
             if (!ValidateConfig()) return;
 
-            _handle = WaterSystemInstaller.Install(config, sourceCamera);
+            _handle = WaterSystemInstaller.Install(config, sourceCamera, _disturbers);
         }
 
         [ContextMenu("Teardown")]
