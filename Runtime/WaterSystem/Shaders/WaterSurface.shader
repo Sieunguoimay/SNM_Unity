@@ -19,6 +19,37 @@ Shader "Custom/WaterSurface"
         _CausticAbsorption("CausticAbsorption", Float) = 1
 
         _WaveNormalStrength("Wave Normal Strength", Float) = 1.0
+
+        // Foam
+        _FoamTex("Foam Texture", 2D) = "white" {}
+        _FoamStrength("Foam Strength", Float) = 1
+        _FoamDepthThreshold("Foam Depth Threshold", Float) = 1
+        _FoamScale("Foam Scale", Float) = 0.5
+        _FoamSpeed("Foam Speed", Float) = 0.05
+
+        // Shoreline
+        _ShorelineWaveCount("Shoreline Wave Count", Int) = 3
+        _ShorelineSpeed("Shoreline Speed", Float) = 0.5
+        _ShorelineFoamStrength("Shoreline Foam Strength", Float) = 1
+        _ShorelineFoamScale("Shoreline Foam Scale", Float) = 1
+        _ShorelineMaxDepth("Shoreline Max Depth", Float) = 3
+
+        // Sparkle
+        _SparkleIntensity("Sparkle Intensity", Float) = 1
+        _SparkleDensity("Sparkle Density", Float) = 30
+        _SparkleSpeed("Sparkle Speed", Float) = 0.5
+
+        // Scroll Normal
+        _ScrollNormalMap("Scroll Normal Map", 2D) = "bump" {}
+        _ScrollNormalStrength("Scroll Normal Strength", Float) = 0.5
+        _ScrollNormalScale("Scroll Normal Scale", Float) = 0.2
+
+        // Rain
+        _RainRippleTex("Rain Ripple Texture", 2D) = "bump" {}
+        _RainIntensity("Rain Intensity", Float) = 1
+        _RainDensity("Rain Density", Float) = 3
+        _RainSpeed("Rain Speed", Float) = 1
+        _RainScale("Rain Scale", Float) = 0.5
     }
 
     SubShader
@@ -35,6 +66,16 @@ Shader "Custom/WaterSurface"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile _ _SHADOWS_SOFT
+
+            #pragma shader_feature_local _CAUSTICS_ON
+            #pragma shader_feature_local _CAUSTICS_CHROMATIC
+            #pragma shader_feature_local _REFLECTION_ON
+            #pragma shader_feature_local _SPECULAR_ON
+            #pragma shader_feature_local _FOAM_ON
+            #pragma shader_feature_local _SHORELINE_ON
+            #pragma shader_feature_local _SPARKLE_ON
+            #pragma shader_feature_local _SCROLL_NORMAL_ON
+            #pragma shader_feature_local _RAIN_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -60,6 +101,34 @@ Shader "Custom/WaterSurface"
 
             // Wave
             float _WaveNormalStrength;
+
+            // Foam
+            float _FoamStrength;
+            float _FoamDepthThreshold;
+            float _FoamScale;
+            float _FoamSpeed;
+
+            // Shoreline
+            int   _ShorelineWaveCount;
+            float _ShorelineSpeed;
+            float _ShorelineFoamStrength;
+            float _ShorelineFoamScale;
+            float _ShorelineMaxDepth;
+
+            // Sparkle
+            float _SparkleIntensity;
+            float _SparkleDensity;
+            float _SparkleSpeed;
+
+            // Scroll Normal
+            float _ScrollNormalStrength;
+            float _ScrollNormalScale;
+
+            // Rain
+            float _RainIntensity;
+            float _RainDensity;
+            float _RainSpeed;
+            float _RainScale;
             CBUFFER_END
 
             // Wave heightfield
@@ -71,6 +140,11 @@ Shader "Custom/WaterSurface"
             #include "WaterDepth.hlsl"
             #include "WaterCaustics.hlsl"
             #include "Reflection.hlsl"
+            #include "WaterFoam.hlsl"
+            #include "WaterShoreline.hlsl"
+            #include "WaterSparkle.hlsl"
+            #include "WaterScrollNormal.hlsl"
+            #include "WaterRain.hlsl"
 
             struct Attributes
             {
@@ -143,6 +217,29 @@ Shader "Custom/WaterSurface"
                     TransformObjectToWorldNormal(waveNormal));
 
                 // ----------------------
+                // Scrolling normal map (blends into surface normal)
+                // ----------------------
+                #ifdef _SCROLL_NORMAL_ON
+                float3 scrollN = ComputeScrollNormal(worldPos);
+                // Blend scrolling normal with wave normal
+                normalWS = normalize(float3(
+                    normalWS.x + scrollN.x,
+                    normalWS.y,
+                    normalWS.z + scrollN.z));
+                #endif
+
+                // ----------------------
+                // Rain ripples (perturb normal)
+                // ----------------------
+                #ifdef _RAIN_ON
+                float3 rainN = ComputeRainRipples(worldPos);
+                normalWS = normalize(float3(
+                    normalWS.x + rainN.x,
+                    normalWS.y,
+                    normalWS.z + rainN.z));
+                #endif
+
+                // ----------------------
                 // Screen UV with refraction offset
                 // ----------------------
                 float2 screenUV = i.screenPos.xy / i.screenPos.w;
@@ -157,28 +254,82 @@ Shader "Custom/WaterSurface"
 
                 float3 backgroundColor = SAMPLE_TEXTURE2D(
                     _CameraOpaqueTexture, sampler_CameraOpaqueTexture, refractedUV).rgb;
+
+                #ifdef _CAUSTICS_ON
                 float3 caustics = ComputeCaustics(bgPositionWS);
+                #else
+                float3 caustics = float3(0, 0, 0);
+                #endif
 
                 // Perturb reflection sample by wave normal
+                #ifdef _REFLECTION_ON
                 float3 reflWorldPos = worldPos + float3(normalWS.x, 0, normalWS.z) * 0.5;
                 float4 reflectionColor = SampleReflection(reflWorldPos);
+                #else
+                float4 reflectionColor = float4(0, 0, 0, 0);
+                #endif
 
-                float shadowAttenuation = 1.0;
+                // ----------------------
+                // Shadows
+                // ----------------------
                 Light mainLight = GetMainLight();
-                shadowAttenuation = mainLight.shadowAttenuation;
-
-                // #if defined(_MAIN_LIGHT_SHADOWS) || defined(_MAIN_LIGHT_SHADOWS_CASCADE)
-                // float4 shadowCoord = TransformWorldToShadowCoord(bgPositionWS);
-                // shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
-                // #endif
+                float shadowAttenuation = 1.0;
+                #if defined(_MAIN_LIGHT_SHADOWS) || defined(_MAIN_LIGHT_SHADOWS_CASCADE)
+                float4 shadowCoord = TransformWorldToShadowCoord(worldPos);
+                shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
+                #endif
 
                 float fresnel = ComputeStylizedFresnel(normalWS, viewDir, rawDepth, surfaceDepth);
 
                 float3 waterColor = lerp(backgroundColor * _ShallowColor, _DeepColor, absorption);
+
+                // Mask caustics by shadow so light patterns don't appear in shadow
+                float3 maskedCaustics = caustics * shadowAttenuation;
+
+                // ----------------------
+                // Foam (edge foam where water meets geometry)
+                // ----------------------
+                #ifdef _FOAM_ON
+                float foamAmount = ComputeFoam(worldPos, thickness);
+                waterColor = lerp(waterColor, float3(1, 1, 1), foamAmount);
+                #endif
+
+                // ----------------------
+                // Shoreline waves (animated foam bands rolling to shore)
+                // ----------------------
+                #ifdef _SHORELINE_ON
+                float shorelineFoam = ComputeShoreline(thickness);
+                waterColor = lerp(waterColor, float3(1, 1, 1), shorelineFoam);
+                #endif
+
+                // ----------------------
+                // Specular (GGX)
+                // ----------------------
+                #ifdef _SPECULAR_ON
+                float3 halfDir = normalize(mainLight.direction + viewDir);
+                float NdotH = saturate(dot(normalWS, halfDir));
+                float roughness = 0.1;
+                float a2 = roughness * roughness;
+                float denom = NdotH * NdotH * (a2 - 1.0) + 1.0;
+                float D = a2 / (PI * denom * denom);
+                float3 specular = mainLight.color * D * shadowAttenuation * 0.25;
+                #else
+                float3 specular = float3(0, 0, 0);
+                #endif
+
                 float reflectionWeight = fresnel * reflectionColor.a;
                 float3 final = waterColor * (1.0 - reflectionWeight)
                              + reflectionColor.rgb * reflectionWeight
-                             + caustics;
+                             + maskedCaustics
+                             + specular;
+
+                // ----------------------
+                // Surface sparkle (additive glints)
+                // ----------------------
+                #ifdef _SPARKLE_ON
+                float sparkle = ComputeSparkle(worldPos, normalWS, viewDir);
+                final += mainLight.color * sparkle * shadowAttenuation;
+                #endif
 
                 return float4(final, 1.0);
             }
