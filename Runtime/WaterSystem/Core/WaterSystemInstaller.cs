@@ -54,7 +54,6 @@ namespace Snm.WaterSystem
             if (config.shoreline.enabled)      surfaceMaterial.EnableKeyword("_SHORELINE_ON");
             if (config.sparkle.enabled)        surfaceMaterial.EnableKeyword("_SPARKLE_ON");
             if (config.scrollNormal.enabled)   surfaceMaterial.EnableKeyword("_SCROLL_NORMAL_ON");
-            if (config.rain.enabled)           surfaceMaterial.EnableKeyword("_RAIN_ON");
             surfaceMaterial.EnableKeyword("_SPECULAR_ON");
 
             if (config.reflection.enabled)     ReflectionInstaller.Install(builder);
@@ -69,7 +68,7 @@ namespace Snm.WaterSystem
             if (config.shoreline.enabled)      ShorelineInstaller.Install(builder);
             if (config.sparkle.enabled)        SparkleInstaller.Install(builder);
             if (config.scrollNormal.enabled)   ScrollNormalInstaller.Install(builder);
-            if (config.rain.enabled)           RainInstaller.Install(builder);
+            if (config.rain.enabled && config.wave.enabled) RainInstaller.Install(builder);
 
             // cleanup for non-DI owned resources
             builder.Bind<DisposeCallback>().ToScoped(_ =>
@@ -92,7 +91,7 @@ namespace Snm.WaterSystem
             if (config.shoreline.enabled)      composite.Add(scope.Resolve<ShorelineFeature>());
             if (config.sparkle.enabled)        composite.Add(scope.Resolve<SparkleFeature>());
             if (config.scrollNormal.enabled)   composite.Add(scope.Resolve<ScrollNormalFeature>());
-            if (config.rain.enabled)           composite.Add(scope.Resolve<RainFeature>());
+            if (config.rain.enabled && config.wave.enabled) composite.Add(scope.Resolve<RainFeature>());
 
             updater.AddUpdateTarget(composite);
             updater.AddLateUpdateTarget(composite);

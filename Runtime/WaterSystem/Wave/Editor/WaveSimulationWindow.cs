@@ -1,4 +1,4 @@
-using Snm.DependencyInjection;
+using System;
 using Snm.Runtime.Dispose;
 using Snm.Runtime.Unity;
 using UnityEditor;
@@ -58,14 +58,7 @@ namespace Snm.WaterSystem.Wave
             var updater = new GameObject("WaveUpdater")
                 .AddComponent<UpdateDispatcher>();
 
-            var builder = new ContainerBuilder();
-
-            builder.Bind<IUpdateService>().ToInstance(updater);
-
-            WaveSimulationInstaller.Install(builder, 512, simShader, displayShader);
-
-            var scope = builder.Build();
-            _simulation = scope.Resolve<IWaveSimulation>();
+            _simulation = WaveSimulationFactory.Create(512, simShader, displayShader);
 
             var waveConfig = _simulation.Config;
             waveConfig.damping = config.damping;
@@ -75,8 +68,14 @@ namespace Snm.WaterSystem.Wave
 
             _view.Attach(_simulation);
 
+            // Drive simulation updates from the updater
+            var simFeature = (IWaterFeature)_simulation;
+            var composite = new WaterFeatureComposite();
+            composite.Add(simFeature);
+            updater.AddUpdateTarget(composite);
+
             _dispose = new DisposeCollection(
-                scope, 
+                _simulation,
                 new DisposeCallback(() => UnityEngineUtility.DestroyObject(updater.gameObject)));
         }
 

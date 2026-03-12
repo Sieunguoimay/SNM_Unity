@@ -1,3 +1,6 @@
+#ifndef WATER_DEPTH_INCLUDED
+#define WATER_DEPTH_INCLUDED
+
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 
@@ -31,3 +34,5 @@ float ComputeAbsorption(float2 screenUV, float thickness)
     return absorption;
     // return pow(saturate(absorption), _AbsorptionPow);
 }
+
+#endif // WATER_DEPTH_INCLUDED

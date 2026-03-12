@@ -15,6 +15,10 @@ namespace Snm.WaterSystem.Wave
         [Range(0.1f, 10f)]
         public float waveSpreadSpeed = 5f;
 
+        [Tooltip("Clamps max simulation iterations per frame. 0 = no cap.")]
+        [Range(0, 10)]
+        public int maxIterations = 0;
+
         public float heightfieldStrength = 1f;
 
         [Range(0f, 10f)]

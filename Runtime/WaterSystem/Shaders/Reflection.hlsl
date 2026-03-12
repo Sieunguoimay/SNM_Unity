@@ -1,3 +1,6 @@
+#ifndef WATER_REFLECTION_INCLUDED
+#define WATER_REFLECTION_INCLUDED
+
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 float4x4 _ReflectionVP;
 TEXTURE2D(_ReflectionTex);
@@ -15,4 +18,6 @@ float4 SampleReflection(float3 worldPos)
 
     return SAMPLE_TEXTURE2D(_ReflectionTex, sampler_ReflectionTex, uv);
 }
+
+#endif // WATER_REFLECTION_INCLUDED
                 

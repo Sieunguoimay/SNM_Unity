@@ -24,7 +24,7 @@ namespace Snm.WaterSystem.Reflection
         [SerializeField] private int frameInterval = 1;
 
         private RuntimeContainer _scope;
-        private ReflectionHandle _handle;
+        private ReflectionFeature _feature;
         private SurfaceData _surfaceData;
         private Image _reflectionImage;
         private VisualElement _simulationContainer;
@@ -125,17 +125,22 @@ namespace Snm.WaterSystem.Reflection
 
             var builder = new ContainerBuilder();
             builder.Bind<IUpdateService>().ToInstance(updater);
-            builder.Bind<ReflectionHandle>().ToScoped(_ => ReflectionInstaller.Install(ctx));
+            builder.Bind<ReflectionFeature>().ToScoped(_ => ReflectionInstaller.Install(ctx));
             builder.Bind<DisposeCallback>().ToScoped(_ =>
                 new DisposeCallback(() =>
                 {
-                    UnityEngineUtility.DestroyObject(updater.gameObject);
+                    if(updater) UnityEngineUtility.DestroyObject(updater.gameObject);
                     DestroyImmediate(dummyMaterial);
                 }));
 
             _scope = builder.Build();
-            _handle = _scope.Resolve<ReflectionHandle>();
+            _feature = _scope.Resolve<ReflectionFeature>();
             _scope.Resolve<DisposeCallback>();
+
+            var composite = new WaterFeatureComposite();
+            composite.Add(_feature);
+            updater.AddUpdateTarget(composite);
+            updater.AddLateUpdateTarget(composite);
 
             SetupSignals();
 
@@ -156,7 +161,7 @@ namespace Snm.WaterSystem.Reflection
             // Reflection display image
             _reflectionImage = new Image
             {
-                image = _handle.Texture,
+                image = _feature.Texture,
                 style =
                 {
                     flexGrow = 1,
@@ -237,7 +242,7 @@ namespace Snm.WaterSystem.Reflection
 
             _scope?.Dispose();
             _scope = null;
-            _handle = null;
+            _feature = null;
             _surfaceData = null;
         }
 

@@ -3,6 +3,7 @@
 // Creates and owns the MeshRenderer GameObject for the water quad.
 // Applies material property updates each frame via the binder.
 // ═══════════════════════════════════════════════════════════════
+using System;
 using Snm.Runtime.Dispose;
 using Snm.Runtime.Unity;
 using UnityEngine;
@@ -11,7 +12,7 @@ namespace Snm.WaterSystem.Surface
 {
     public static class SurfaceInstaller
     {
-        public static SurfaceHandle Install(
+        public static (SurfaceData surface, Material material, IDisposable cleanup) Install(
             SurfaceConfig config,
             IUpdateService updateService)
         {
@@ -25,7 +26,7 @@ namespace Snm.WaterSystem.Surface
             };
 
             // ── scene bridge: keeps surface.Position/Rotation in sync ────────
-            var surfaceMB = new GameObject("[WaterSurface]").AddComponent<WaterSurfaceMB>();
+            var surfaceMB = new GameObject("[WaterSurface]").AddComponent<SurfaceMB>();
             surfaceMB.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
             surfaceMB.Bind(surface);
 
@@ -37,16 +38,15 @@ namespace Snm.WaterSystem.Surface
             var surfaceRenderer = new SurfaceRenderer(surface, material);
             updateService.AddUpdateTarget(surfaceRenderer);
 
-            return new SurfaceHandle(
+            return (
                 surface,
-                surfaceRenderer,
                 material,
-                disposable: new DisposeCallback(() =>
-            {
-                surfaceRenderer.Dispose();
-                if (ownsMaterial) UnityEngineUtility.DestroyObject(material);
-                UnityEngineUtility.DestroyObject(surfaceMB.gameObject);
-            }));
+                cleanup: new DisposeCallback(() =>
+                {
+                    surfaceRenderer.Dispose();
+                    if (ownsMaterial) UnityEngineUtility.DestroyObject(material);
+                    if(surfaceMB) UnityEngineUtility.DestroyObject(surfaceMB.gameObject);
+                }));
         }
     }
 }

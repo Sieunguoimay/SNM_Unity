@@ -44,12 +44,6 @@ Shader "Custom/WaterSurface"
         _ScrollNormalStrength("Scroll Normal Strength", Float) = 0.5
         _ScrollNormalScale("Scroll Normal Scale", Float) = 0.2
 
-        // Rain
-        _RainRippleTex("Rain Ripple Texture", 2D) = "bump" {}
-        _RainIntensity("Rain Intensity", Float) = 1
-        _RainDensity("Rain Density", Float) = 3
-        _RainSpeed("Rain Speed", Float) = 1
-        _RainScale("Rain Scale", Float) = 0.5
     }
 
     SubShader
@@ -75,7 +69,7 @@ Shader "Custom/WaterSurface"
             #pragma shader_feature_local _SHORELINE_ON
             #pragma shader_feature_local _SPARKLE_ON
             #pragma shader_feature_local _SCROLL_NORMAL_ON
-            #pragma shader_feature_local _RAIN_ON
+
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -124,11 +118,6 @@ Shader "Custom/WaterSurface"
             float _ScrollNormalStrength;
             float _ScrollNormalScale;
 
-            // Rain
-            float _RainIntensity;
-            float _RainDensity;
-            float _RainSpeed;
-            float _RainScale;
             CBUFFER_END
 
             // Wave heightfield
@@ -144,7 +133,7 @@ Shader "Custom/WaterSurface"
             #include "WaterShoreline.hlsl"
             #include "WaterSparkle.hlsl"
             #include "WaterScrollNormal.hlsl"
-            #include "WaterRain.hlsl"
+
 
             struct Attributes
             {
@@ -226,17 +215,6 @@ Shader "Custom/WaterSurface"
                     normalWS.x + scrollN.x,
                     normalWS.y,
                     normalWS.z + scrollN.z));
-                #endif
-
-                // ----------------------
-                // Rain ripples (perturb normal)
-                // ----------------------
-                #ifdef _RAIN_ON
-                float3 rainN = ComputeRainRipples(worldPos);
-                normalWS = normalize(float3(
-                    normalWS.x + rainN.x,
-                    normalWS.y,
-                    normalWS.z + rainN.z));
                 #endif
 
                 // ----------------------

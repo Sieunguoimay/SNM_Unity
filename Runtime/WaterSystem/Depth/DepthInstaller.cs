@@ -6,7 +6,7 @@ namespace Snm.WaterSystem.Depth
     {
         public static void Install(IBindingContext container)
         {
-            container.Bind<DepthHandle>()
+            container.Bind<DepthFeature>()
                 .ToScoped(r =>
                 {
                     var ctx = r.Resolve<WaterFeatureContext>();
@@ -14,14 +14,11 @@ namespace Snm.WaterSystem.Depth
                 });
         }
 
-        public static DepthHandle Install(WaterFeatureContext ctx)
+        public static DepthFeature Install(WaterFeatureContext ctx)
         {
-            var feature = new DepthFeature(
+            return new DepthFeature(
                 ctx.SurfaceMaterial,
-                ctx.Config.depth,
-                ctx.UpdateService);
-
-            return new DepthHandle(feature);
+                ctx.Config.depth);
         }
     }
 }

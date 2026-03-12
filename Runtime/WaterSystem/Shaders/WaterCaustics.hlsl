@@ -1,3 +1,6 @@
+#ifndef WATER_CAUSTICS_INCLUDED
+#define WATER_CAUSTICS_INCLUDED
+
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
 TEXTURE2D(_CausticsTex);
@@ -60,10 +63,17 @@ float3 ComputeCaustics(float3 bgPositionWS)
     float2 uv1 = Panner(causticsUV, _CausticSpeed, 1.0 / _CausticsTex_ST.x);
     float2 uv2 = Panner(causticsUV, _CausticSpeed, - 1.0 / _CausticsTex_ST.x);
 
+    #ifdef _CAUSTICS_CHROMATIC
     float3 c1 = SampleCaustics(uv1, _CausticSplit);
     float3 c2 = SampleCaustics(uv2, _CausticSplit);
+    #else
+    float3 c1 = SAMPLE_TEXTURE2D(_CausticsTex, sampler_CausticsTex, uv1).rrr;
+    float3 c2 = SAMPLE_TEXTURE2D(_CausticsTex, sampler_CausticsTex, uv2).rrr;
+    #endif
 
     float3 caustic = min(c1, c2);
 
     return caustic * _CausticStrength;
 }
+
+#endif // WATER_CAUSTICS_INCLUDED

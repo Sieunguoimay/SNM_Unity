@@ -26,15 +26,23 @@ namespace Snm.WaterSystem
         private readonly List<IUpdateTarget> targets = new();
         private readonly List<ILateUpdateTarget> lateUpdateTargets = new();
 
-        public void AddUpdateTarget(IUpdateTarget target) { targets.Add(target); }
-        public void AddLateUpdateTarget(ILateUpdateTarget target) { lateUpdateTargets.Add(target); }
-        public void RemoveUpdateTarget(IUpdateTarget target) { targets.Remove(target); }
-        public void RemoveLateUpdateTarget(ILateUpdateTarget target) { lateUpdateTargets.Remove(target); }
+        // Snapshot arrays for safe iteration while targets add/remove themselves.
+        private IUpdateTarget[] _updateSnapshot = System.Array.Empty<IUpdateTarget>();
+        private ILateUpdateTarget[] _lateSnapshot = System.Array.Empty<ILateUpdateTarget>();
+        private bool _updateDirty = true;
+        private bool _lateDirty = true;
+
+        public void AddUpdateTarget(IUpdateTarget target)     { targets.Add(target);            _updateDirty = true; }
+        public void AddLateUpdateTarget(ILateUpdateTarget target) { lateUpdateTargets.Add(target); _lateDirty = true;   }
+        public void RemoveUpdateTarget(IUpdateTarget target)     { targets.Remove(target);         _updateDirty = true; }
+        public void RemoveLateUpdateTarget(ILateUpdateTarget target) { lateUpdateTargets.Remove(target); _lateDirty = true; }
 
         private void Update()
         {
+            if (_updateDirty) { _updateSnapshot = targets.ToArray(); _updateDirty = false; }
+
             float deltaTime = Time.deltaTime;
-            foreach (var t in targets)
+            foreach (var t in _updateSnapshot)
             {
                 t.Update(deltaTime);
             }
@@ -42,7 +50,9 @@ namespace Snm.WaterSystem
 
         private void LateUpdate()
         {
-            foreach (var t in lateUpdateTargets)
+            if (_lateDirty) { _lateSnapshot = lateUpdateTargets.ToArray(); _lateDirty = false; }
+
+            foreach (var t in _lateSnapshot)
             {
                 t.LateUpdate();
             }

@@ -28,7 +28,8 @@ namespace Snm.WaterSystem
 
         private void OnEnable()
         {
-            AutoAssignConfigReferences();
+            AutoAssignConfigReferences(config);
+            sourceCamera = Camera.main;
         }
 
         private void OnDisable()
@@ -143,13 +144,13 @@ namespace Snm.WaterSystem
             _handle = null;
         }
 
-        private void AutoAssignConfigReferences()
+        public static void AutoAssignConfigReferences(WaterConfig config)
         {
+            if (config == null) return;
             config.surface.waterSurfaceShader = AssetDatabase.FindAssets($"t:Shader WaterSurface").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Shader>).FirstOrDefault();
             config.caustics.causticsTexture = AssetDatabase.FindAssets($"t:Texture2D caustics").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Texture2D>).FirstOrDefault();
             config.wave.simulationShader = AssetDatabase.FindAssets($"t:Shader WaveSimulation").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Shader>).FirstOrDefault();
             config.wave.displayShader = AssetDatabase.FindAssets($"t:Shader WaveDisplay").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Shader>).FirstOrDefault();
-            sourceCamera = Camera.main;
         }
     }
 }

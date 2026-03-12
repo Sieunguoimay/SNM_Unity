@@ -6,24 +6,24 @@ namespace Snm.WaterSystem
 {
     public class WaterSystemHandle : IDisposable
     {
-        private readonly IDisposable dispose;
+        private readonly IDisposable _scope;
 
         public RenderTexture ReflectionTexture { get; }
         public IWaveSimulation WaveSimulation { get; }
 
         public WaterSystemHandle(
-            IDisposable dispose,
+            IDisposable scope,
             RenderTexture reflectionTexture = null,
             IWaveSimulation waveSimulation = null)
         {
-            this.dispose = dispose;
+            _scope = scope;
             ReflectionTexture = reflectionTexture;
             WaveSimulation = waveSimulation;
         }
 
         public void Dispose()
         {
-            dispose.Dispose();
+            _scope.Dispose();
         }
     }
 }

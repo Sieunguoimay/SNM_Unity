@@ -8,19 +8,16 @@ namespace Snm.WaterSystem.Rain
     {
         public bool enabled;
 
-        [Tooltip("Ripple normal map or atlas texture.")]
-        public Texture2D rippleTexture;
-
+        [Tooltip("Strength of each raindrop disturbance.")]
         [Range(0f, 3f)]
-        public float intensity = 1f;
+        public float intensity = 0.5f;
 
-        [Range(0.5f, 10f)]
-        public float density = 3f;
+        [Tooltip("Number of raindrops per second.")]
+        [Range(1f, 30f)]
+        public float density = 10f;
 
-        [Range(0.1f, 5f)]
-        public float speed = 1f;
-
-        [Range(0.01f, 2f)]
-        public float scale = 0.5f;
+        [Tooltip("Radius of each raindrop ripple in UV space.")]
+        [Range(0.01f, 0.1f)]
+        public float dropRadius = 0.03f;
     }
 }

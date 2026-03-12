@@ -1,4 +1,5 @@
 using Snm.DependencyInjection;
+using Snm.WaterSystem.Wave;
 
 namespace Snm.WaterSystem.Rain
 {
@@ -10,15 +11,9 @@ namespace Snm.WaterSystem.Rain
                 .ToScoped(r =>
                 {
                     var ctx = r.Resolve<WaterFeatureContext>();
-                    return Install(ctx);
+                    var waveSim = r.Resolve<IWaveSimulation>();
+                    return new RainFeature(waveSim, ctx.Config.rain);
                 });
-        }
-
-        public static RainFeature Install(WaterFeatureContext ctx)
-        {
-            return new RainFeature(
-                ctx.SurfaceMaterial,
-                ctx.Config.rain);
         }
     }
 }

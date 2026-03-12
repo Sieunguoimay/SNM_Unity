@@ -11,14 +11,14 @@ namespace Snm.WaterSystem.Surface
     public class SurfaceRenderer : IUpdateTarget
     {
         private readonly SurfaceData _surface;
-        private readonly GameObject   _gameObject;
+        private readonly GameObject _gameObject;
 
         public SurfaceRenderer(SurfaceData surface, Material material)
         {
-            _surface  = surface;
+            _surface = surface;
 
             var go = new GameObject("[WaterSurface]");
-            go.AddComponent<MeshFilter>().sharedMesh      = surface.mesh;
+            go.AddComponent<MeshFilter>().sharedMesh = surface.mesh;
             go.AddComponent<MeshRenderer>().sharedMaterial = material;
             _gameObject = go;
         }
@@ -30,7 +30,7 @@ namespace Snm.WaterSystem.Surface
 
         public void Dispose()
         {
-            UnityEngineUtility.DestroyObject(_gameObject);
+            if (_gameObject) UnityEngineUtility.DestroyObject(_gameObject);
         }
     }
 }

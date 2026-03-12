@@ -6,7 +6,7 @@ namespace Snm.WaterSystem.Caustics
     {
         public static void Install(IBindingContext container)
         {
-            container.Bind<CausticsHandle>()
+            container.Bind<CausticsFeature>()
                 .ToScoped(r =>
                 {
                     var ctx = r.Resolve<WaterFeatureContext>();
@@ -14,14 +14,11 @@ namespace Snm.WaterSystem.Caustics
                 });
         }
 
-        public static CausticsHandle Install(WaterFeatureContext ctx)
+        public static CausticsFeature Install(WaterFeatureContext ctx)
         {
-            var feature = new CausticsFeature(
+            return new CausticsFeature(
                 ctx.SurfaceMaterial,
-                ctx.Config.caustics,
-                ctx.UpdateService);
-
-            return new CausticsHandle(feature);
+                ctx.Config.caustics);
         }
     }
 }
