@@ -12,7 +12,7 @@ namespace Snm.WaterSystem.Surface
 {
     public static class SurfaceInstaller
     {
-        public static (SurfaceData surface, Material material, IDisposable cleanup) Install(
+        internal static (SurfaceData surface, Material material, IDisposable cleanup) Install(
             SurfaceConfig config,
             IUpdateService updateService)
         {

@@ -41,8 +41,7 @@ namespace Snm.WaterSystem
                 config,
                 surface,
                 surfaceMaterial,
-                sourceCamera,
-                updater);
+                sourceCamera);
 
             // ── DI container ─────────────────────────────────────────────────
             var builder = new ContainerBuilder();

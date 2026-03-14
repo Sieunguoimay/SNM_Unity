@@ -1,4 +1,7 @@
+#if UNITY_EDITOR
 using System.Linq;
+using Snm.Reactivity;
+using Snm.Reactivity.Unity;
 using Snm.WaterSystem.Wave;
 using UnityEditor;
 using UnityEngine;
@@ -54,14 +57,18 @@ namespace Snm.WaterSystem
                 }
             };
 
-            var runButton = new Button { text = "\u25b6 Run" };
-            runButton.clicked += Run;
+            var signal_Run = new Signal<bool>(false);
+            var runButton = new Button() { clickable = new(RunButtonClicked) };
+            UIBindingUtil.AutoDispose(runButton, new(() => runButton.text = signal_Run.Value ? "\u25a0 Stop" : "\u25b6 Run"));
 
-            var stopButton = new Button { text = "\u25a0 Stop" };
-            stopButton.clicked += Stop;
+            void RunButtonClicked()
+            {
+                if (signal_Run.Value) Stop();
+                else Run();
+                signal_Run.Value = !signal_Run.Value;
+            }
 
             toolbar.Add(runButton);
-            toolbar.Add(stopButton);
 
             _settingsEditor = Editor.CreateEditor(this);
             var inspector = new IMGUIContainer(() => { _settingsEditor.OnInspectorGUI(); })
@@ -154,3 +161,4 @@ namespace Snm.WaterSystem
         }
     }
 }
+#endif

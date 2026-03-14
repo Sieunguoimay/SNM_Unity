@@ -120,7 +120,7 @@ namespace Snm.WaterSystem.Reflection
             var dummyMaterial = new Material(Shader.Find("Hidden/Internal-Colored"));
             var config = new WaterConfig { reflection = { textureWidth = textureWidth } };
 
-            var ctx = new WaterFeatureContext(config, _surfaceData, dummyMaterial, resolvedCamera, updater);
+            var ctx = new WaterFeatureContext(config, _surfaceData, dummyMaterial, resolvedCamera);
 
             var builder = new ContainerBuilder();
             builder.Bind<IUpdateService>().ToInstance(updater);

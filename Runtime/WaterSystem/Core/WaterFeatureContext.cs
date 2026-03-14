@@ -9,20 +9,17 @@ namespace Snm.WaterSystem
         public readonly SurfaceData Surface;
         public readonly Material SurfaceMaterial;
         public readonly Camera SourceCamera;
-        public readonly IUpdateService UpdateService;
 
         public WaterFeatureContext(
             WaterConfig config,
             SurfaceData surface,
             Material surfaceMaterial,
-            Camera sourceCamera,
-            IUpdateService updateService)
+            Camera sourceCamera)
         {
             Config = config;
             Surface = surface;
             SurfaceMaterial = surfaceMaterial;
             SourceCamera = sourceCamera;
-            UpdateService = updateService;
         }
     }
 }

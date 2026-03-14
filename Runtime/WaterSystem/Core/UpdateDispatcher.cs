@@ -12,7 +12,7 @@ namespace Snm.WaterSystem
         void Update(float deltaTime);
     }
 
-    public interface IUpdateService
+    internal interface IUpdateService
     {
         void AddUpdateTarget(IUpdateTarget target);
         void AddLateUpdateTarget(ILateUpdateTarget target);
