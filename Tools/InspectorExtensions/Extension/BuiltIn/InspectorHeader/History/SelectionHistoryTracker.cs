@@ -62,7 +62,7 @@ namespace Snm.Tools.InspectorExtensions
         private void ClearNulls(List<UnityEngine.Object> l)
         {
             var list = new List<UnityEngine.Object>(l);
-            for (int i = 0; i < list.Count; i++)
+            for (int i = list.Count - 1; i >= 0; i--)
             {
                 var item = list[i];
                 if (item == null)
