@@ -15,16 +15,17 @@ namespace Snm.WaterSystem
     [Serializable]
     public class WaterConfig
     {
-        public SurfaceConfig      surface     = new();
-        public ReflectionConfig   reflection  = new();
-        public CausticsConfig     caustics    = new();
-        public DepthConfig        depth       = new();
-        public WaveConfig         wave        = new();
-        public FoamConfig         foam        = new();
-        public ShorelineConfig    shoreline   = new();
-        public SparkleConfig      sparkle     = new();
+        public SurfaceConfig surface = new();
+        public ReflectionConfig reflection = new();
+        public CausticsConfig caustics = new();
+        public DepthConfig depth = new();
+        public WaveConfig wave = new();
+        public WaveSimulationConfig waveSimulation = new();
+        public FoamConfig foam = new();
+        public ShorelineConfig shoreline = new();
+        public SparkleConfig sparkle = new();
         public ScrollNormalConfig scrollNormal = new();
-        public RainConfig         rain        = new();
-        public WaveDisturberConfig disturber  = new();
+        public RainConfig rain = new();
+        public WaveDisturberConfig disturber = new();
     }
 }

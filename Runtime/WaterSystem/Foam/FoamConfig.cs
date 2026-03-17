@@ -6,7 +6,7 @@ namespace Snm.WaterSystem.Foam
     [Serializable]
     public class FoamConfig
     {
-        public bool enabled;
+        public bool enabled = true;
         public Texture2D foamTexture;
 
         [Range(0f, 3f)]

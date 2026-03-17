@@ -13,7 +13,7 @@ namespace Snm.WaterSystem.Wave
         public float waveSpeed = 0.5f;
 
         [Range(0.1f, 10f)]
-        public float waveSpreadSpeed = 5f;
+        public float waveSpreadSpeed = 2f;
 
         [Tooltip("Clamps max simulation iterations per frame. 0 = no cap.")]
         [Range(0, 10)]

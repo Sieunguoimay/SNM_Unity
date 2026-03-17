@@ -53,27 +53,27 @@ namespace Snm.WaterSystem
             // ── features ─────────────────────────────────────────────────────
             // Add a feature = add one line + config toggle.
             // ── shader keywords ───────────────────────────────────────────
-            if (config.caustics.enabled)       surfaceMaterial.EnableKeyword("_CAUSTICS_ON");
+            if (config.caustics.enabled) surfaceMaterial.EnableKeyword("_CAUSTICS_ON");
             if (config.caustics.chromaticSplit) surfaceMaterial.EnableKeyword("_CAUSTICS_CHROMATIC");
-            if (config.reflection.enabled)     surfaceMaterial.EnableKeyword("_REFLECTION_ON");
-            if (config.foam.enabled)           surfaceMaterial.EnableKeyword("_FOAM_ON");
-            if (config.shoreline.enabled)      surfaceMaterial.EnableKeyword("_SHORELINE_ON");
-            if (config.sparkle.enabled)        surfaceMaterial.EnableKeyword("_SPARKLE_ON");
-            if (config.scrollNormal.enabled)   surfaceMaterial.EnableKeyword("_SCROLL_NORMAL_ON");
+            if (config.reflection.enabled) surfaceMaterial.EnableKeyword("_REFLECTION_ON");
+            if (config.foam.enabled) surfaceMaterial.EnableKeyword("_FOAM_ON");
+            if (config.shoreline.enabled) surfaceMaterial.EnableKeyword("_SHORELINE_ON");
+            if (config.sparkle.enabled) surfaceMaterial.EnableKeyword("_SPARKLE_ON");
+            if (config.scrollNormal.enabled) surfaceMaterial.EnableKeyword("_SCROLL_NORMAL_ON");
             surfaceMaterial.EnableKeyword("_SPECULAR_ON");
 
-            if (config.reflection.enabled)     ReflectionInstaller.Install(builder);
-            if (config.caustics.enabled)       CausticsInstaller.Install(builder);
-            if (config.depth.enabled)          DepthInstaller.Install(builder);
-            if (config.wave.enabled)           WaveSimulationInstaller.Install(
-                                                   builder,
-                                                   config.wave.textureSize,
-                                                   config.wave.simulationShader,
-                                                   config.wave.displayShader);
-            if (config.foam.enabled)           FoamInstaller.Install(builder);
-            if (config.shoreline.enabled)      ShorelineInstaller.Install(builder);
-            if (config.sparkle.enabled)        SparkleInstaller.Install(builder);
-            if (config.scrollNormal.enabled)   ScrollNormalInstaller.Install(builder);
+            if (config.reflection.enabled) ReflectionInstaller.Install(builder);
+            if (config.caustics.enabled) CausticsInstaller.Install(builder);
+            if (config.depth.enabled) DepthInstaller.Install(builder);
+            if (config.wave.enabled) WaveSimulationInstaller.Install(
+                                                    builder,
+                                                    config.waveSimulation,
+                                                    config.wave.textureSize,
+                                                    config.wave.simulationShader);
+            if (config.foam.enabled) FoamInstaller.Install(builder);
+            if (config.shoreline.enabled) ShorelineInstaller.Install(builder);
+            if (config.sparkle.enabled) SparkleInstaller.Install(builder);
+            if (config.scrollNormal.enabled) ScrollNormalInstaller.Install(builder);
             if (config.rain.enabled && config.wave.enabled) RainInstaller.Install(builder);
 
             bool useDisturbers = config.disturber.enabled && config.wave.enabled && disturbers != null;
@@ -84,7 +84,7 @@ namespace Snm.WaterSystem
                 new DisposeCallback(() =>
                 {
                     surfaceCleanup.Dispose();
-                    if(updater) UnityEngineUtility.DestroyObject(updater.gameObject);
+                    if (updater) UnityEngineUtility.DestroyObject(updater.gameObject);
                 }));
 
             var scope = builder.Build();
@@ -92,16 +92,16 @@ namespace Snm.WaterSystem
             // ── collect features into composite ──────────────────────────────
             var composite = new WaterFeatureComposite();
 
-            if (config.reflection.enabled)     composite.Add(scope.Resolve<ReflectionFeature>());
-            if (config.caustics.enabled)       composite.Add(scope.Resolve<CausticsFeature>());
-            if (config.depth.enabled)          composite.Add(scope.Resolve<DepthFeature>());
-            if (config.wave.enabled)           composite.Add((IWaterFeature)scope.Resolve<IWaveSimulation>());
-            if (config.foam.enabled)           composite.Add(scope.Resolve<FoamFeature>());
-            if (config.shoreline.enabled)      composite.Add(scope.Resolve<ShorelineFeature>());
-            if (config.sparkle.enabled)        composite.Add(scope.Resolve<SparkleFeature>());
-            if (config.scrollNormal.enabled)   composite.Add(scope.Resolve<ScrollNormalFeature>());
+            if (config.reflection.enabled) composite.Add(scope.Resolve<ReflectionFeature>());
+            if (config.caustics.enabled) composite.Add(scope.Resolve<CausticsFeature>());
+            if (config.depth.enabled) composite.Add(scope.Resolve<DepthFeature>());
+            if (config.wave.enabled) composite.Add((IWaterFeature)scope.Resolve<IWaveSimulation>());
+            if (config.foam.enabled) composite.Add(scope.Resolve<FoamFeature>());
+            if (config.shoreline.enabled) composite.Add(scope.Resolve<ShorelineFeature>());
+            if (config.sparkle.enabled) composite.Add(scope.Resolve<SparkleFeature>());
+            if (config.scrollNormal.enabled) composite.Add(scope.Resolve<ScrollNormalFeature>());
             if (config.rain.enabled && config.wave.enabled) composite.Add(scope.Resolve<RainFeature>());
-            if (useDisturbers)                 composite.Add(scope.Resolve<WaveDisturberFeature>());
+            if (useDisturbers) composite.Add(scope.Resolve<WaveDisturberFeature>());
 
             updater.AddUpdateTarget(composite);
             updater.AddLateUpdateTarget(composite);

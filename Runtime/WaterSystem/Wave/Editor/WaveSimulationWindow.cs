@@ -58,13 +58,7 @@ namespace Snm.WaterSystem.Wave
             var updater = new GameObject("WaveUpdater")
                 .AddComponent<UpdateDispatcher>();
 
-            _simulation = WaveSimulationFactory.Create(512, simShader, displayShader);
-
-            var waveConfig = _simulation.Config;
-            waveConfig.damping = config.damping;
-            waveConfig.waveSpeed = config.waveSpeed;
-            waveConfig.waveSpreadSpeed = config.waveSpreadSpeed;
-            waveConfig.waveNormalStrength = config.waveNormalStrength;
+            _simulation = WaveSimulationFactory.Create(config, 512, new Material(simShader), new Material(displayShader));
 
             _view.Attach(_simulation);
 

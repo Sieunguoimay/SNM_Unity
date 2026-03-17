@@ -7,9 +7,10 @@ namespace Snm.WaterSystem.Wave
     public static class WaveSimulationFactory
     {
         public static WaveSimulationController Create(
+            WaveSimulationConfig config,
             int textureSize,
-            Shader simShader,
-            Shader displayShader,
+            Material simMaterial,
+            Material displayMaterial,
             Material surfaceMaterial = null)
         {
             var desc = new RenderTextureDescriptor(textureSize, textureSize)
@@ -21,21 +22,20 @@ namespace Snm.WaterSystem.Wave
                 enableRandomWrite = false,
             };
 
-            var config = new WaveSimulationConfig();
+            // var config = new WaveSimulationConfig();
             var disturbanceBuffer = new DisturbanceBuffer();
             var pingPong = new PingPongTexture(desc);
-
-            var simMaterial = new Material(simShader);
-            var displayMaterial = new Material(displayShader);
 
             var simPass = new WaveSimulationPass(simMaterial, pingPong, disturbanceBuffer);
             var displayPass = new WaveDisplayPass(displayMaterial);
 
-            var displayRT = new RenderTexture(desc);
-            displayRT.filterMode = FilterMode.Bilinear;
-            displayRT.wrapMode = TextureWrapMode.Clamp;
-            displayRT.useMipMap = false;
-            displayRT.autoGenerateMips = false;
+            var displayRT = new RenderTexture(desc)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                useMipMap = false,
+                autoGenerateMips = false
+            };
             displayRT.Create();
 
             return new WaveSimulationController(

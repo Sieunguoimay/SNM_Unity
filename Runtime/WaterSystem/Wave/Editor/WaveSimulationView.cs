@@ -21,7 +21,7 @@ namespace Snm.WaterSystem.Wave
         private IWaveSimulation _simulation;
 
         private readonly Signal<float> radius = new(0.02f);
-        private readonly Signal<float> strength = new(0.1f);
+        private readonly Signal<float> strength = new(1f);
         private readonly Signal<int> _displayModeSignal = new(0);
 
         private bool _dragging;

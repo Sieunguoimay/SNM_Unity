@@ -6,7 +6,7 @@ namespace Snm.WaterSystem.Rain
     [Serializable]
     public class RainConfig
     {
-        public bool enabled;
+        public bool enabled = true;
 
         [Tooltip("Strength of each raindrop disturbance.")]
         [Range(0f, 3f)]

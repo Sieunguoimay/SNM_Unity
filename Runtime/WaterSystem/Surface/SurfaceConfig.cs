@@ -10,6 +10,6 @@ namespace Snm.WaterSystem.Surface
         public Material waterSurfaceMaterial;
         public bool autoGenerateMesh = true;
         public Mesh mesh;
-        public Vector2 size = new(10f, 10f);
+        public Vector2 size = new(50f, 50f);
     }
 }

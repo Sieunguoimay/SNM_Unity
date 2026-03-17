@@ -131,13 +131,7 @@ namespace Snm.WaterSystem
             var img = new Image
             {
                 image = texture,
-                style =
-                {
-                    flexGrow = 1,
-                    minHeight = 200,
-                    marginTop = 4,
-                    marginBottom = 8,
-                }
+                style = { flexGrow = 1, minHeight = 200, marginTop = 4, marginBottom = 8, }
             };
             _simulationContainer.Add(img);
             img.schedule.Execute(_ => img.MarkDirtyRepaint()).Every(50);
