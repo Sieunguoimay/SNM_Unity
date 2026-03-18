@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 
 using System;
+using Snm.SurfaceInteraction;
 using UnityEditor;
 using UnityEngine;
 
@@ -10,18 +11,18 @@ namespace Snm.Runtime.GrassSystem
     {
         private SceneTextureDrawer _dudvDrawer;
         private SceneTextureDrawer _trampleDrawer;
-        private readonly WorldCanvas worldCanvas;
+        private readonly SurfaceCanvas canvas;
         private readonly GrassSystemConfig systemConfig;
         private readonly RenderTexture trampleTexture;
 
         public RenderTexture TrampleTexture => trampleTexture;
 
         public GrassDebugTool(
-            WorldCanvas worldCanvas,
+            SurfaceCanvas canvas,
             GrassSystemConfig systemConfig,
             Texture trampleTexture)
         {
-            this.worldCanvas = worldCanvas;
+            this.canvas = canvas;
             this.systemConfig = systemConfig;
             this.trampleTexture = trampleTexture as RenderTexture;
         }
@@ -77,8 +78,10 @@ namespace Snm.Runtime.GrassSystem
 
         void DrawDudvToScene(SceneView view)
         {
-            var canvasPos = (worldCanvas.worldMax + worldCanvas.worldMin) / 2f;
-            var canvasSize = worldCanvas.worldMax - worldCanvas.worldMin;
+            var min = canvas.WorldMin;
+            var max = canvas.WorldMax;
+            var canvasPos = (max + min) / 2f;
+            var canvasSize = max - min;
 
             _dudvDrawer.Draw(
                 systemConfig.windConfig.dudvMap,
@@ -104,8 +107,10 @@ namespace Snm.Runtime.GrassSystem
 
         void DrawTrampleToScene(SceneView view)
         {
-            var canvasPos = (worldCanvas.worldMax + worldCanvas.worldMin) / 2f;
-            var canvasSize = worldCanvas.worldMax - worldCanvas.worldMin;
+            var min = canvas.WorldMin;
+            var max = canvas.WorldMax;
+            var canvasPos = (max + min) / 2f;
+            var canvasSize = max - min;
 
             _trampleDrawer.Draw(
                 trampleTexture,

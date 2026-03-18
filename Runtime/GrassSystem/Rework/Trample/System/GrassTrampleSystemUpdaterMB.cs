@@ -6,17 +6,23 @@ namespace Snm.Runtime.GrassSystem
     public class GrassTrampleSystemUpdaterMB : MonoBehaviour
     {
         private GrassTrampleRenderer _renderer;
-        private BrushRenderBatchesMaker _brushBatchMaker;
+        private GrassTrampleBrushRegistry _brushRegistry;
         private GrassTrampleBrushDirUpdater _driver;
 
-        public void SetBrushDirUpdater(GrassTrampleBrushDirUpdater driver) => _driver = driver;
-        public void SetBrushBatchMaker(BrushRenderBatchesMaker brushBatchMaker) => _brushBatchMaker = brushBatchMaker;
-        public void SetRenderer(GrassTrampleRenderer renderer) => _renderer = renderer;
+        public void Init(
+            GrassTrampleBrushDirUpdater driver,
+            GrassTrampleBrushRegistry brushRegistry,
+            GrassTrampleRenderer renderer)
+        {
+            _driver = driver;
+            _brushRegistry = brushRegistry;
+            _renderer = renderer;
+        }
 
         private void Update()
         {
             _driver?.Update();
-            _brushBatchMaker?.Update();
+            _renderer?.FillStamps(_brushRegistry?.GetBrushes());
             _renderer?.Render(Time.deltaTime);
         }
     }

@@ -9,7 +9,7 @@ namespace Snm.Runtime.App.Hosting
         void IAppModule.Configure(IBindingContext context)
         {
             context.Bind<LifecycleService>()
-                .ToSingleton(r => new LifecycleService(r));
+                .ToFactory(r => new LifecycleService(r)).AsSingleton();
         }
     }
 }

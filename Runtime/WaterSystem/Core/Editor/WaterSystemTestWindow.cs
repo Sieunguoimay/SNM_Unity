@@ -1,7 +1,5 @@
 #if UNITY_EDITOR
 using System.Linq;
-using Snm.Reactivity;
-using Snm.Reactivity.Unity;
 using Snm.WaterSystem.Wave;
 using UnityEditor;
 using UnityEngine;
@@ -17,15 +15,19 @@ namespace Snm.WaterSystem
         [SerializeField] private Camera sourceCamera;
 
         private WaterSystemHandle _handle;
-        private VisualElement _simulationContainer;
+        private WaterSystemMB _attachedMB;
+        private bool _ownsHandle;
+
+        private VisualElement _contentContainer;
         private Editor _settingsEditor;
         private WaveSimulationView _waveSimulationView;
+        private VisualElement _disturberContainer;
 
         [MenuItem("Tools/Snm/Water System")]
         private static void Open()
         {
             var window = GetWindow<WaterSystemTestWindow>();
-            window.titleContent = new GUIContent("Water System");
+            window.titleContent = new GUIContent("Water Monitor");
             window.minSize = new Vector2(400, 500);
         }
 
@@ -33,11 +35,13 @@ namespace Snm.WaterSystem
         {
             AutoAssignConfigReferences(config);
             sourceCamera = Camera.main;
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         }
 
         private void OnDisable()
         {
-            Stop();
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            Detach();
 
             if (_settingsEditor != null)
             {
@@ -46,46 +50,80 @@ namespace Snm.WaterSystem
             }
         }
 
+        private void OnPlayModeStateChanged(PlayModeStateChange change)
+        {
+            Detach();
+        }
+
         private void CreateGUI()
         {
+            var scrollView = new ScrollView();
+            rootVisualElement.Add(scrollView);
+
+            // ── Toolbar ──
             var toolbar = new VisualElement
             {
                 style =
                 {
                     flexDirection = FlexDirection.Row,
-                    marginBottom = 8
+                    marginBottom = 8,
+                    marginTop = 4,
+                    marginLeft = 4,
+                    marginRight = 4
                 }
             };
 
-            var signal_Run = new Signal<bool>(false);
-            var runButton = new Button() { clickable = new(RunButtonClicked) };
-            UIBindingUtil.AutoDispose(runButton, new(() => runButton.text = signal_Run.Value ? "\u25a0 Stop" : "\u25b6 Run"));
+            var attachButton = new Button(AttachToScene) { text = "Attach to Scene" };
+            var runButton = new Button(RunStandalone) { text = "Run Standalone" };
+            var stopButton = new Button(Detach) { text = "Stop" };
 
-            void RunButtonClicked()
-            {
-                if (signal_Run.Value) Stop();
-                else Run();
-                signal_Run.Value = !signal_Run.Value;
-            }
-
+            toolbar.Add(attachButton);
             toolbar.Add(runButton);
+            toolbar.Add(stopButton);
+            scrollView.Add(toolbar);
 
+            // ── Settings (for standalone mode) ──
             _settingsEditor = Editor.CreateEditor(this);
             var inspector = new IMGUIContainer(() => { _settingsEditor.OnInspectorGUI(); })
             {
                 style = { flexShrink = 1, flexGrow = 0 }
             };
-
-            var scrollView = new ScrollView();
             scrollView.Add(inspector);
-            scrollView.Add(toolbar);
-            scrollView.Add(new VisualElement { name = "simulation-container" });
-            rootVisualElement.Add(scrollView);
+
+            // ── Content ──
+            _contentContainer = new VisualElement { name = "content-container" };
+            scrollView.Add(_contentContainer);
         }
 
-        private void Run()
+        // ── Attach to scene WaterSystemMB ──
+        private void AttachToScene()
         {
-            Stop();
+            Detach();
+
+            _attachedMB = FindFirstObjectByType<WaterSystemMB>();
+            if (_attachedMB == null)
+            {
+                Debug.LogWarning("[WaterMonitor] No WaterSystemMB found in scene.");
+                return;
+            }
+
+            var handle = _attachedMB.Handle;
+            if (handle == null)
+            {
+                Debug.LogWarning("[WaterMonitor] WaterSystemMB found but has no active handle. Is it running?");
+                return;
+            }
+
+            _handle = handle;
+            _ownsHandle = false;
+
+            BuildMonitorUI();
+        }
+
+        // ── Run standalone test ──
+        private void RunStandalone()
+        {
+            Detach();
 
             var resolvedCamera = sourceCamera;
             if (resolvedCamera == null)
@@ -93,28 +131,145 @@ namespace Snm.WaterSystem
                 var sceneView = SceneView.lastActiveSceneView;
                 if (sceneView == null)
                 {
-                    Debug.LogError("No camera assigned and no active SceneView found.");
+                    Debug.LogError("[WaterMonitor] No camera assigned and no active SceneView found.");
                     return;
                 }
                 resolvedCamera = sceneView.camera;
             }
 
-            _handle = WaterSystemInstaller.Install(config, resolvedCamera);
+            _handle = WaterSystemFactory.Create(config, resolvedCamera);
+            _ownsHandle = true;
+            _attachedMB = null;
 
-            _simulationContainer = rootVisualElement.Q<VisualElement>("simulation-container");
-            _simulationContainer.Clear();
+            BuildMonitorUI();
+        }
 
-            // Texture previews
+        private void Detach()
+        {
+            _waveSimulationView?.Detach();
+            _contentContainer?.Clear();
+            _disturberContainer = null;
+
+            if (_ownsHandle)
+                _handle?.Dispose();
+
+            _handle = null;
+            _attachedMB = null;
+            _ownsHandle = false;
+        }
+
+        // ── Build UI ──
+        private void BuildMonitorUI()
+        {
+            _contentContainer.Clear();
+
+            // Source label
+            string source = _attachedMB != null
+                ? $"Attached to: {_attachedMB.gameObject.name}"
+                : "Standalone test system";
+            _contentContainer.Add(new Label(source)
+            {
+                style =
+                {
+                    unityFontStyleAndWeight = FontStyle.Bold,
+                    marginBottom = 8,
+                    marginLeft = 4
+                }
+            });
+
+            // Reflection texture
             AddTexturePreview("Reflection Output", _handle.ReflectionTexture);
 
+            // Wave simulation
             if (_handle.WaveSimulation != null)
             {
                 _waveSimulationView = new WaveSimulationView();
                 _waveSimulationView.Attach(_handle.WaveSimulation);
 
-                var foldout_Wave = new Foldout() { text = "Wave Simulation" };
-                foldout_Wave.Add(_waveSimulationView.Root);
-                _simulationContainer.Add(foldout_Wave);
+                var foldout = new Foldout { text = "Wave Simulation", value = true };
+                foldout.Add(_waveSimulationView.Root);
+                _contentContainer.Add(foldout);
+            }
+
+            // Disturber monitor
+            BuildDisturberUI();
+        }
+
+        private void BuildDisturberUI()
+        {
+            var tracker = _handle.DisturberTracker;
+
+            var foldout = new Foldout { text = "Disturbers", value = true };
+
+            if (tracker == null)
+            {
+                foldout.Add(new Label("Disturber system not active.")
+                {
+                    style = { color = new Color(0.6f, 0.6f, 0.6f) }
+                });
+                _contentContainer.Add(foldout);
+                return;
+            }
+
+            // Config summary
+            var cfg = tracker.Config;
+            var configLabel = new Label(
+                $"Entry scale: {cfg.entryStrengthScale:F2}  |  Max entry: {cfg.maxEntryStrength:F2}  |  " +
+                $"Wake: {cfg.wakeStrength:F3} |  Speed range: {cfg.wakeMinSpeed:F2}  {cfg.wakeMaxSpeed:F2}  |  Proximity: {cfg.wakeProximityTolerance:F2}")
+            {
+                style = { fontSize = 10, color = new Color(0.7f, 0.7f, 0.7f), marginBottom = 4 }
+            };
+            foldout.Add(configLabel);
+
+            _disturberContainer = new VisualElement();
+            foldout.Add(_disturberContainer);
+
+            // Schedule periodic refresh
+            _disturberContainer.schedule.Execute(_ => RefreshDisturberList()).Every(100);
+
+            _contentContainer.Add(foldout);
+        }
+
+        private void RefreshDisturberList()
+        {
+            if (_disturberContainer == null || _handle?.DisturberTracker == null) return;
+
+            var snapshot = _handle.DisturberTracker.Snapshot;
+
+            _disturberContainer.Clear();
+
+            if (snapshot.Count == 0)
+            {
+                _disturberContainer.Add(new Label("No disturbers tracked.")
+                {
+                    style = { color = new Color(0.5f, 0.5f, 0.5f), unityFontStyleAndWeight = FontStyle.Italic }
+                });
+                return;
+            }
+
+            _disturberContainer.Add(new Label($"Tracking {snapshot.Count} disturber(s):")
+            {
+                style = { marginBottom = 4, unityFontStyleAndWeight = FontStyle.Bold }
+            });
+
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                var info = snapshot[i];
+                var speed = info.Velocity.magnitude;
+                var statusIcon = info.IsInWater ? "~ " : "  ";
+                var text = $"{statusIcon}[{i}]  pos({info.Position.x:F1}, {info.Position.y:F1}, {info.Position.z:F1})  " +
+                           $"speed: {speed:F2}  contact: {info.ContactRadius:F2}  " +
+                           $"{(info.IsInWater ? "IN WATER" : "above")}";
+
+                _disturberContainer.Add(new Label(text)
+                {
+                    style =
+                    {
+                        fontSize = 11,
+                        color = info.IsInWater ? new Color(0.4f, 0.8f, 1f) : new Color(0.6f, 0.6f, 0.6f),
+                        unityFontStyleAndWeight = FontStyle.Normal
+                    }
+                });
             }
         }
 
@@ -126,32 +281,24 @@ namespace Snm.WaterSystem
             {
                 style = { unityTextAlign = TextAnchor.MiddleCenter, color = new Color(0.7f, 0.7f, 0.7f) }
             };
-            _simulationContainer.Add(outputLabel);
+            _contentContainer.Add(outputLabel);
 
             var img = new Image
             {
                 image = texture,
-                style = { flexGrow = 1, minHeight = 200, marginTop = 4, marginBottom = 8, }
+                style = { flexGrow = 1, minHeight = 200, marginTop = 4, marginBottom = 8 }
             };
-            _simulationContainer.Add(img);
+            _contentContainer.Add(img);
             img.schedule.Execute(_ => img.MarkDirtyRepaint()).Every(50);
-        }
-
-        private void Stop()
-        {
-            _waveSimulationView?.Detach();
-            _simulationContainer?.Clear();
-            _handle?.Dispose();
-            _handle = null;
         }
 
         public static void AutoAssignConfigReferences(WaterConfig config)
         {
             if (config == null) return;
-            config.surface.waterSurfaceShader = AssetDatabase.FindAssets($"t:Shader WaterSurface").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Shader>).FirstOrDefault();
-            config.caustics.causticsTexture = AssetDatabase.FindAssets($"t:Texture2D caustics").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Texture2D>).FirstOrDefault();
-            config.wave.simulationShader = AssetDatabase.FindAssets($"t:Shader WaveSimulation").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Shader>).FirstOrDefault();
-            config.wave.displayShader = AssetDatabase.FindAssets($"t:Shader WaveDisplay").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Shader>).FirstOrDefault();
+            config.surface.waterSurfaceShader = AssetDatabase.FindAssets("t:Shader WaterSurface").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Shader>).FirstOrDefault();
+            config.caustics.causticsTexture = AssetDatabase.FindAssets("t:Texture2D caustics").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Texture2D>).FirstOrDefault();
+            config.wave.simulationShader = AssetDatabase.FindAssets("t:Shader WaveSimulation").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Shader>).FirstOrDefault();
+            config.wave.displayShader = AssetDatabase.FindAssets("t:Shader WaveDisplay").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Shader>).FirstOrDefault();
         }
     }
 }

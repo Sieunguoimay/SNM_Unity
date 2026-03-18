@@ -2,7 +2,7 @@ using Snm.DependencyInjection;
 using Snm.Reactivity;
 using Snm.Runtime.Dispose;
 using Snm.Runtime.Unity;
-using Snm.WaterSystem.Surface;
+using Snm.SurfaceInteraction;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -24,7 +24,7 @@ namespace Snm.WaterSystem.Reflection
 
         private RuntimeContainer _scope;
         private ReflectionFeature _feature;
-        private SurfaceData _surfaceData;
+        private SurfaceCanvas _surfaceCanvas;
         private Image _reflectionImage;
         private VisualElement _simulationContainer;
         private Editor _settingsEditor;
@@ -110,27 +110,27 @@ namespace Snm.WaterSystem.Reflection
             }
             var updater = new GameObject("ReflectionTestUpdater").AddComponent<UpdateDispatcher>();
 
-            _surfaceData = new SurfaceData
+            _surfaceCanvas = new SurfaceCanvas
             {
-                position = surfacePosition,
-                rotation = Quaternion.Euler(surfaceRotationEuler),
-                size = surfaceSize
+                Position = surfacePosition,
+                Rotation = Quaternion.Euler(surfaceRotationEuler),
+                Size = surfaceSize
             };
 
             var dummyMaterial = new Material(Shader.Find("Hidden/Internal-Colored"));
             var config = new WaterConfig { reflection = { textureWidth = textureWidth } };
 
-            var ctx = new WaterFeatureContext(config, _surfaceData, dummyMaterial, resolvedCamera);
+            var ctx = new WaterFeatureContext(config, _surfaceCanvas, dummyMaterial, resolvedCamera);
 
             var builder = new ContainerBuilder();
             builder.Bind<IUpdateService>().ToInstance(updater);
-            builder.Bind<ReflectionFeature>().ToScoped(_ => ReflectionInstaller.Install(ctx));
-            builder.Bind<DisposeCallback>().ToScoped(_ =>
+            builder.Bind<ReflectionFeature>().ToFactory(_ => ReflectionInstaller.Install(ctx)).AsScoped();
+            builder.Bind<DisposeCallback>().ToFactory(_ =>
                 new DisposeCallback(() =>
                 {
                     if(updater) UnityEngineUtility.DestroyObject(updater.gameObject);
                     DestroyImmediate(dummyMaterial);
-                }));
+                })).AsScoped();
 
             _scope = builder.Build();
             _feature = _scope.Resolve<ReflectionFeature>();
@@ -194,11 +194,11 @@ namespace Snm.WaterSystem.Reflection
 
             _configReaction = new Effect(() =>
             {
-                if (_surfaceData == null) return;
+                if (_surfaceCanvas == null) return;
 
-                _surfaceData.position = _surfacePositionSignal.Value;
-                _surfaceData.rotation = Quaternion.Euler(_surfaceRotationSignal.Value);
-                _surfaceData.size = _surfaceSizeSignal.Value;
+                _surfaceCanvas.Position = _surfacePositionSignal.Value;
+                _surfaceCanvas.Rotation = Quaternion.Euler(_surfaceRotationSignal.Value);
+                _surfaceCanvas.Size = _surfaceSizeSignal.Value;
             });
         }
 
@@ -242,7 +242,7 @@ namespace Snm.WaterSystem.Reflection
             _scope?.Dispose();
             _scope = null;
             _feature = null;
-            _surfaceData = null;
+            _surfaceCanvas = null;
         }
 
         private void ApplySettings()

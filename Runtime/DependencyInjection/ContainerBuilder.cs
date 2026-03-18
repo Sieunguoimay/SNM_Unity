@@ -8,13 +8,17 @@ namespace Snm.DependencyInjection
         private readonly Dictionary<(Type,string), List<Binding>> _bindings
             = new();
 
+        private readonly List<IBindingBuilder> _builders = new();
+
         private bool _built;
 
         public BindingBuilder<T> Bind<T>(string id = null)
             where T : class
         {
             EnsureNotBuilt();
-            return new BindingBuilder<T>(this, id);
+            var builder = new BindingBuilder<T>(this, id);
+            _builders.Add(builder);
+            return builder;
         }
 
         internal void AddBinding(Binding binding)
@@ -36,7 +40,13 @@ namespace Snm.DependencyInjection
 
             _built = true;
 
-            // optional: validation pass here
+            foreach (var builder in _builders)
+            {
+                if (!builder.Completed)
+                    throw new InvalidOperationException(
+                        $"Binding for {builder.BoundType.Name} was started but never completed. " +
+                        "Did you forget to call ToInstance() or ToFactory().AsSingleton()/AsTransient()/AsScoped()?");
+            }
 
             return new RuntimeContainer(
                 new Dictionary<(Type,string), List<Binding>>(_bindings));

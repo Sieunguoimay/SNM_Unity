@@ -14,10 +14,10 @@ namespace Snm.WaterSystem.Rain
 
         [Tooltip("Number of raindrops per second.")]
         [Range(1f, 30f)]
-        public float density = 10f;
+        public float density = 30f;
 
         [Tooltip("Radius of each raindrop ripple in UV space.")]
         [Range(0.01f, 0.1f)]
-        public float dropRadius = 0.03f;
+        public float dropRadius = 0.01f;
     }
 }

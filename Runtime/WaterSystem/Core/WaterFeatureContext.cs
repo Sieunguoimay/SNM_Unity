@@ -1,4 +1,4 @@
-using Snm.WaterSystem.Surface;
+using Snm.SurfaceInteraction;
 using UnityEngine;
 
 namespace Snm.WaterSystem
@@ -6,13 +6,13 @@ namespace Snm.WaterSystem
     public sealed class WaterFeatureContext
     {
         public readonly WaterConfig Config;
-        public readonly SurfaceData Surface;
+        public readonly SurfaceCanvas Surface;
         public readonly Material SurfaceMaterial;
         public readonly Camera SourceCamera;
 
         public WaterFeatureContext(
             WaterConfig config,
-            SurfaceData surface,
+            SurfaceCanvas surface,
             Material surfaceMaterial,
             Camera sourceCamera)
         {

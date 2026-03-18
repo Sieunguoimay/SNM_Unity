@@ -58,7 +58,7 @@ namespace Snm.WaterSystem.Wave
             var updater = new GameObject("WaveUpdater")
                 .AddComponent<UpdateDispatcher>();
 
-            _simulation = WaveSimulationFactory.Create(config, 512, new Material(simShader), new Material(displayShader));
+            _simulation = WaveSimulationFactory.Create(config, 512, simShader, displayShader);
 
             _view.Attach(_simulation);
 

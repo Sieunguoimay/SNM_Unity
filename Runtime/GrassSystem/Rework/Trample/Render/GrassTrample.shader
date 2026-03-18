@@ -20,10 +20,10 @@ Shader "Hidden/GrassTrample"
 
             sampler2D _MainTex;
 
-            float4 _Brush_PosDir[BRUSH_MAX_COUNT]; // xy = world pos, zw = direction
-            float  _Brush_Radius[BRUSH_MAX_COUNT];
+            // xy = world pos, z = direction angle, w = radius
+            float4 _Brushes[BRUSH_MAX_COUNT];
 
-            int   _BrushCount;
+            float _BrushCount;
             float _FadeAmount;
             float4 _WorldCanvas; // xy = origin, zw = size
 
@@ -79,12 +79,15 @@ Shader "Hidden/GrassTrample"
                 // --------------------
                 // Brush accumulation
                 // --------------------
+                int count = (int)min(_BrushCount, (float)BRUSH_MAX_COUNT);
+
                 [loop]
-                for (int b = 0; b < _BrushCount; b++)
+                for (int b = 0; b < count; b++)
                 {
-                    float2 brushPos = _Brush_PosDir[b].xy;
-                    float2 brushDir = normalize(_Brush_PosDir[b].zw + EPSILON);
-                    float  radius   = _Brush_Radius[b];
+                    float4 brush = _Brushes[b];
+                    float2 brushPos = brush.xy;
+                    float2 brushDir = float2(cos(brush.z), sin(brush.z));
+                    float  radius   = brush.w;
 
                     float d = distance(worldPos, brushPos);
                     if (d > radius) continue;

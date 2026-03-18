@@ -1,3 +1,4 @@
+using Snm.SurfaceInteraction;
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -67,11 +68,12 @@ namespace Snm.Runtime.GrassSystem
             material.SetVector("_WindParams", new Vector4(windData.strength, windData.scrollSpeed, windData.mapScale.x, windData.mapScale.y));
         }
 
-        public void SetWorldCanvas(WorldCanvas worldCanvas)
+        public void SetWorldCanvas(SurfaceCanvas canvas)
         {
-            var worldPos = worldCanvas.worldMin;
-            var size = worldCanvas.worldMax - worldCanvas.worldMin;
-            material.SetVector("_WorldCanvas", new Vector4(worldPos.x, worldPos.y, size.x, size.y));
+            var min = canvas.WorldMin;
+            var max = canvas.WorldMax;
+            var size = max - min;
+            material.SetVector("_WorldCanvas", new Vector4(min.x, min.y, size.x, size.y));
         }
 
         public void SetTrampleConfig(Texture trampleMap, TrampleConfig config)

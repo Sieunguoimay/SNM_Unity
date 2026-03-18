@@ -1,4 +1,4 @@
-using Snm.Runtime.Unity;
+using Snm.SurfaceInteraction;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 
@@ -9,8 +9,8 @@ namespace Snm.WaterSystem.Wave
         public static WaveSimulationController Create(
             WaveSimulationConfig config,
             int textureSize,
-            Material simMaterial,
-            Material displayMaterial,
+            Shader simulationShader,
+            Shader displayShader,
             Material surfaceMaterial = null)
         {
             var desc = new RenderTextureDescriptor(textureSize, textureSize)
@@ -22,11 +22,14 @@ namespace Snm.WaterSystem.Wave
                 enableRandomWrite = false,
             };
 
-            // var config = new WaveSimulationConfig();
-            var disturbanceBuffer = new DisturbanceBuffer();
+            var stampBuffer = new StampBuffer(32);
             var pingPong = new PingPongTexture(desc);
+            var simMaterial = new Material(simulationShader);
+            var stampRenderer = new SurfaceStampRenderer(simMaterial, pingPong);
 
-            var simPass = new WaveSimulationPass(simMaterial, pingPong, disturbanceBuffer);
+            var simPass = new WaveSimulationPass(stampRenderer, stampBuffer);
+
+            var displayMaterial = new Material(displayShader);
             var displayPass = new WaveDisplayPass(displayMaterial);
 
             var displayRT = new RenderTexture(desc)
@@ -41,7 +44,7 @@ namespace Snm.WaterSystem.Wave
             return new WaveSimulationController(
                 simPass,
                 displayPass,
-                disturbanceBuffer,
+                stampBuffer,
                 displayRT,
                 config,
                 surfaceMaterial);

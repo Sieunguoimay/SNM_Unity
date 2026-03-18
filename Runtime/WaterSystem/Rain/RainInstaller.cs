@@ -5,15 +5,14 @@ namespace Snm.WaterSystem.Rain
 {
     public static class RainInstaller
     {
-        public static void Install(IBindingContext container)
+        public static void Install(IBindingContext container, WaterFeatureContext ctx)
         {
             container.Bind<RainFeature>()
-                .ToScoped(r =>
+                .ToFactory(r =>
                 {
-                    var ctx = r.Resolve<WaterFeatureContext>();
                     var waveSim = r.Resolve<IWaveSimulation>();
                     return new RainFeature(waveSim, ctx.Config.rain);
-                });
+                }).AsScoped();
         }
     }
 }

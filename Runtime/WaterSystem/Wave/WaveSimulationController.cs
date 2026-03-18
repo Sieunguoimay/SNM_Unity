@@ -1,5 +1,6 @@
 using System;
 using Snm.Runtime.Unity;
+using Snm.SurfaceInteraction;
 using UnityEngine;
 
 namespace Snm.WaterSystem.Wave
@@ -11,7 +12,7 @@ namespace Snm.WaterSystem.Wave
 
         private readonly IWaveSimulationPass simulation;
         private readonly IWaveDisplayPass display;
-        private readonly DisturbanceBuffer disturbances;
+        private readonly StampBuffer stampBuffer;
         private readonly RenderTexture displayTexture;
         private readonly Material surfaceMaterial;
 
@@ -20,14 +21,14 @@ namespace Snm.WaterSystem.Wave
         public WaveSimulationController(
             IWaveSimulationPass simulation,
             IWaveDisplayPass display,
-            DisturbanceBuffer disturbances,
+            StampBuffer stampBuffer,
             RenderTexture displayTexture,
             WaveSimulationConfig config,
             Material surfaceMaterial = null)
         {
             this.simulation = simulation;
             this.display = display;
-            this.disturbances = disturbances;
+            this.stampBuffer = stampBuffer;
             this.displayTexture = displayTexture;
             Config = config;
             this.surfaceMaterial = surfaceMaterial;
@@ -53,7 +54,11 @@ namespace Snm.WaterSystem.Wave
 
         public void AddDisturbance(WaveDisturbance disturbance)
         {
-            disturbances.Add(disturbance);
+            stampBuffer.Add(new Vector4(
+                disturbance.uvPos.x,
+                disturbance.uvPos.y,
+                disturbance.radius,
+                disturbance.strength));
         }
 
         public RenderTexture GetDisplayTexture() => displayTexture;
@@ -67,9 +72,6 @@ namespace Snm.WaterSystem.Wave
 
         public void Dispose()
         {
-            // simulation.Dispose();
-            // display.Dispose();
-
             if (displayTexture != null)
             {
                 displayTexture.Release();

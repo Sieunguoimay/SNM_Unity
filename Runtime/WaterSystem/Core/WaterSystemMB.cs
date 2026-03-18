@@ -43,7 +43,7 @@ namespace Snm.WaterSystem
             if (!isActiveAndEnabled) return;
             if (!ValidateConfig()) return;
 
-            _handle = WaterSystemInstaller.Install(config, sourceCamera, _disturbers);
+            _handle = WaterSystemFactory.Create(config, sourceCamera, _disturbers, transform);
         }
 
         [ContextMenu("Teardown")]
@@ -72,6 +72,7 @@ namespace Snm.WaterSystem
 
         [ContextMenu("Auto-assign config references")]
         private void AutoAssignConfigReferences() => WaterSystemTestWindow.AutoAssignConfigReferences(config);
+
 #endif
     }
 }

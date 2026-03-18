@@ -12,16 +12,6 @@ namespace Snm.WaterSystem.Reflection
     {
         private static readonly int ReflectionTexID = Shader.PropertyToID("_ReflectionTex");
 
-        public static void Install(IBindingContext container)
-        {
-            container.Bind<ReflectionFeature>()
-                .ToScoped(r =>
-                {
-                    var ctx = r.Resolve<WaterFeatureContext>();
-                    return Install(ctx);
-                });
-        }
-
         public static ReflectionFeature Install(WaterFeatureContext ctx)
         {
             var reflectionCamera = new ReflectionCamera(ctx.SourceCamera);

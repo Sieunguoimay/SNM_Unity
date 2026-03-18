@@ -1,5 +1,5 @@
 using Snm.Reactivity;
-using Snm.WaterSystem.Surface;
+using Snm.SurfaceInteraction;
 using UnityEngine;
 
 namespace Snm.WaterSystem.Reflection
@@ -17,11 +17,11 @@ namespace Snm.WaterSystem.Reflection
             RenderRequested = new Signal<bool>(false);
         }
 
-        public Vector3[] ComputeWaterCorners(SurfaceData surface)
+        public Vector3[] ComputeWaterCorners(SurfaceCanvas surface)
         {
-            var right = surface.rotation * Vector3.right * surface.size.x * 0.5f;
-            var forward = surface.rotation * Vector3.forward * surface.size.y * 0.5f;
-            var center = surface.position;
+            var right = surface.Rotation * Vector3.right * surface.Size.x * 0.5f;
+            var forward = surface.Rotation * Vector3.forward * surface.Size.y * 0.5f;
+            var center = surface.Position;
 
             _waterCorners[0] = center - right - forward;
             _waterCorners[1] = center - right + forward;

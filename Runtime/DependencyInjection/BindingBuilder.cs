@@ -2,16 +2,23 @@ using System;
 
 namespace Snm.DependencyInjection
 {
-    public sealed class BindingBuilder<T> where T : class
+    internal interface IBindingBuilder
     {
-        private readonly ContainerBuilder container;
-        private readonly string id;
-        private bool _completed;
+        bool Completed { get; }
+        Type BoundType { get; }
+    }
+
+    public sealed class BindingBuilder<T> : IBindingBuilder where T : class
+    {
+        private readonly ContainerBuilder _container;
+        private readonly string _id;
+        public bool Completed { get; private set; }
+        public Type BoundType => typeof(T);
 
         internal BindingBuilder(ContainerBuilder container, string id)
         {
-            this.container = container;
-            this.id = id;
+            _container = container;
+            _id = id;
         }
 
         public void ToInstance(T instance)
@@ -22,38 +29,31 @@ namespace Snm.DependencyInjection
             Complete(_ => instance, BindingLifetime.Singleton);
         }
 
-        public void ToSingleton(Func<IResolver, T> factory)
+        public LifetimeBuilder<T> ToFactory(Func<IResolver, T> factory)
         {
-            Complete(r => factory(r), BindingLifetime.Singleton);
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+
+            return new LifetimeBuilder<T>(this, factory);
         }
 
-        public void ToTransient(Func<IResolver, T> factory)
-        {
-            Complete(r => factory(r), BindingLifetime.Transient);
-        }
-        
-        public void ToScoped(Func<IResolver, T> factory)
-        {
-            Complete(r => factory(r), BindingLifetime.Scoped);
-        }
-
-        private void Complete(
+        internal void Complete(
             Func<IResolver, object> factory,
             BindingLifetime lifetime)
         {
-            if (_completed)
+            if (Completed)
                 throw new InvalidOperationException(
                     $"Binding for {typeof(T).Name} already configured.");
 
-            _completed = true;
+            Completed = true;
 
             var binding = new Binding(
                 typeof(T),
-                id,
+                _id,
                 factory,
                 lifetime);
 
-            container.AddBinding(binding);
+            _container.AddBinding(binding);
         }
     }
 }

@@ -6,9 +6,6 @@ namespace Snm.Runtime.App.Composition
     {
         public AppModuleAsset[] modules;
 
-        public IAppModule[] GetModules()
-        {
-            return modules;
-        }
+        public IAppModule[] GetModules() => modules;
     }
 }

@@ -2,12 +2,19 @@
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.Compilation;
 
 namespace Snm.Tools.MenuItemExtra
 {
 
     public static class EditorMenuItems
     {
+        [MenuItem("Tools/Snm/Recompile")]
+        private static void Recompile()
+        {
+            CompilationPipeline.RequestScriptCompilation();
+        }
+
         [MenuItem("Tools/Snm/Log/All MenuItems")]
         private static void LogAllMenuItems()
         {

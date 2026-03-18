@@ -1,7 +1,7 @@
 using System;
 using Snm.Reactivity;
 using Snm.Runtime.Unity;
-using Snm.WaterSystem.Surface;
+using Snm.SurfaceInteraction;
 using UnityEngine;
 
 namespace Snm.WaterSystem.Reflection
@@ -26,7 +26,7 @@ namespace Snm.WaterSystem.Reflection
             CameraTracker tracker,
             ReflectionCamera reflectionCamera,
             RenderTexture renderTexture,
-            SurfaceData surface,
+            SurfaceCanvas surface,
             ReflectionRenderer renderer,
             ReflectionShaderBinder shaderBinder,
             ReflectionRenderScheduler scheduler,

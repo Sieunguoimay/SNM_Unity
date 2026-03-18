@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Snm.SurfaceInteraction;
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -7,17 +8,17 @@ namespace Snm.Runtime.GrassSystem
     {
         private readonly GrassTrampleBrushRegistry brushRegistry;
         private readonly float minOffset;
-        private readonly WorldCanvasChecker canvasChecker;
+        private readonly SurfaceCanvas canvas;
         private readonly Dictionary<GrassTrampleBrush, Vector3> previousPositions = new();
 
         public GrassTrampleBrushDirUpdater(
             GrassTrampleBrushRegistry brushRegistry,
             float minOffset,
-            WorldCanvasChecker canvasChecker)
+            SurfaceCanvas canvas)
         {
             this.brushRegistry = brushRegistry;
             this.minOffset = minOffset;
-            this.canvasChecker = canvasChecker;
+            this.canvas = canvas;
         }
 
         public void Update()
@@ -40,8 +41,8 @@ namespace Snm.Runtime.GrassSystem
 
         private bool IsValidBrush(GrassTrampleBrush brush)
         {
-            return canvasChecker.IsInWorldCanvas(brush.position)
-            || (previousPositions.TryGetValue(brush, out var prevPos) && canvasChecker.IsInWorldCanvas(prevPos));
+            return canvas.Contains(brush.position)
+            || (previousPositions.TryGetValue(brush, out var prevPos) && canvas.Contains(prevPos));
         }
 
         public Vector3 TryCalculateBrushDir(GrassTrampleBrush brush)

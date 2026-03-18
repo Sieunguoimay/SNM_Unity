@@ -67,7 +67,7 @@ namespace Snm.Tools.InspectorExtensions
                 var item = list[i];
                 if (item == null)
                 {
-                    allHistory.RemoveAt(i);
+                    l.RemoveAt(i);
                 }
             }
         }

@@ -1,3 +1,4 @@
+using Snm.SurfaceInteraction;
 using Snm.Visual.Layout3D;
 using UnityEngine;
 
@@ -12,9 +13,11 @@ namespace Snm.Runtime.GrassSystem
 
         private void OnDrawGizmos()
         {
-            var worldCanvas = GetWorldCanvas();
-            var size = worldCanvas.worldMax - worldCanvas.worldMin;
-            var center = (worldCanvas.worldMax + worldCanvas.worldMin) / 2f;
+            var canvas = GetSurfaceCanvas();
+            var min = canvas.WorldMin;
+            var max = canvas.WorldMax;
+            var size = max - min;
+            var center = (max + min) / 2f;
 
             var old = Gizmos.color;
             Gizmos.color = Color.green;
@@ -60,7 +63,7 @@ namespace Snm.Runtime.GrassSystem
             return matrices;
         }
 
-        public WorldCanvas GetWorldCanvas()
+        public SurfaceCanvas GetSurfaceCanvas()
         {
             var sizeX = gridLayout.GridSize.x;
             var sizeZ = gridLayout.GridSize.z;
@@ -68,24 +71,25 @@ namespace Snm.Runtime.GrassSystem
             var spacingX = gridLayout.CellSize.x;
             var spacingZ = gridLayout.CellSize.z;
 
-            // Local size of the grid
             var localSize = new Vector2(
                 (sizeX - 1) * spacingX,
                 (sizeZ - 1) * spacingZ
             );
 
-            // Local pivot offset (XZ plane)
             var localMin3D = gridLayout.GetPivotOffset();
             var localMax3D = localMin3D + new Vector3(localSize.x, 0f, localSize.y);
 
-            // Convert to world space
             var worldMin3D = transform.TransformPoint(localMin3D);
             var worldMax3D = transform.TransformPoint(localMax3D);
 
-            return new WorldCanvas
+            var center = (worldMin3D + worldMax3D) * 0.5f;
+            var worldSize = worldMax3D - worldMin3D;
+
+            return new SurfaceCanvas
             {
-                worldMin = new Vector2(worldMin3D.x, worldMin3D.z),
-                worldMax = new Vector2(worldMax3D.x, worldMax3D.z),
+                Position = center,
+                Rotation = Quaternion.identity,
+                Size = new Vector2(worldSize.x, worldSize.z)
             };
         }
 

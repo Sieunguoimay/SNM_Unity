@@ -10,15 +10,18 @@ namespace Snm.WaterSystem
 
         public RenderTexture ReflectionTexture { get; }
         public IWaveSimulation WaveSimulation { get; }
+        public WaveDisturberTracker DisturberTracker { get; }
 
         public WaterSystemHandle(
             IDisposable scope,
             RenderTexture reflectionTexture = null,
-            IWaveSimulation waveSimulation = null)
+            IWaveSimulation waveSimulation = null,
+            WaveDisturberTracker disturberTracker = null)
         {
             _scope = scope;
             ReflectionTexture = reflectionTexture;
             WaveSimulation = waveSimulation;
+            DisturberTracker = disturberTracker;
         }
 
         public void Dispose()

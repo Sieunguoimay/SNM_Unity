@@ -1,4 +1,5 @@
-using Snm.Runtime.Unity;
+using System.Collections.Generic;
+using Snm.SurfaceInteraction;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 
@@ -6,89 +7,54 @@ namespace Snm.Runtime.GrassSystem
 {
     public class GrassTrampleRenderer
     {
-        private readonly RenderTexture renderTexture;
-        private readonly WorldCanvas worldCanvas;
-        private readonly float fadeSpeed;
-        private readonly RenderTexture renderTexture2;
-        private readonly Material material;
+        private readonly SurfaceStampRenderer _renderer;
+        private readonly StampBuffer _stampBuffer;
+        private readonly float _fadeSpeed;
 
-        private bool _useAsSource;
-        private BrushRenderBatch[] _brushBatches;
+        private static readonly int ID_FadeAmount = Shader.PropertyToID("_FadeAmount");
+        private static readonly int ID_Brushes = Shader.PropertyToID("_Brushes");
+        private static readonly int ID_BrushCount = Shader.PropertyToID("_BrushCount");
+        private static readonly int ID_WorldCanvas = Shader.PropertyToID("_WorldCanvas");
 
         public GrassTrampleRenderer(
-            Shader brushShader,
-            RenderTexture renderTexture,
-            WorldCanvas worldCanvas,
+            SurfaceStampRenderer renderer,
+            StampBuffer stampBuffer,
+            SurfaceCanvas canvas,
             float fadeSpeed)
         {
-            var material = new Material(brushShader);
+            _renderer = renderer;
+            _stampBuffer = stampBuffer;
+            _fadeSpeed = fadeSpeed;
 
-            this.material = material;
-            this.renderTexture = renderTexture;
-            this.worldCanvas = worldCanvas;
-            this.fadeSpeed = fadeSpeed;
-
-            renderTexture2 = new RenderTexture(renderTexture.descriptor);
-            renderTexture2.Create();
-
-            UploadTexture();
+            var min = canvas.WorldMin;
+            var max = canvas.WorldMax;
+            var size = max - min;
+            _renderer.Material.SetVector(ID_WorldCanvas, new Vector4(min.x, min.y, size.x, size.y));
         }
 
-        public void Cleanup()
+        public void FillStamps(IReadOnlyList<GrassTrampleBrush> brushes)
         {
-            UnityEngineUtility.DestroyObject(material);
-            renderTexture2.Release();
-        }
+            for (int i = 0; i < brushes.Count; i++)
+            {
+                var brush = brushes[i];
+                if (!brush.isActive) continue;
 
-        private void UploadTexture()
-        {
-            var origin = worldCanvas.worldMin;
-            var size = worldCanvas.worldMax - worldCanvas.worldMin;
-            material.SetTexture("_MainTex", renderTexture);
-            material.SetVector("_WorldCanvas", new Vector4(origin.x, origin.y, size.x, size.y));
-        }
-
-        public void SetBrushBatches(BrushRenderBatch[] brushBatches)
-        {
-            _brushBatches = brushBatches;
+                float angle = Mathf.Atan2(brush.dir.z, brush.dir.x);
+                _stampBuffer.Add(new Vector4(brush.position.x, brush.position.z, angle, brush.radius));
+            }
         }
 
         public void Render(float deltaTime)
         {
-            if (_brushBatches == null) return;
-
-            var batchCount = _brushBatches.Length;
-
-            for (int i = 0; i < batchCount; i++)
-            {
-                if (i == batchCount - 1)
-                {
-                    material.SetFloat("_FadeAmount", deltaTime * fadeSpeed);
-                }
-                else
-                {
-                    material.SetFloat("_FadeAmount", 0f);
-                }
-                UploadBrushes(material, _brushBatches[i]);
-
-                var rtA = renderTexture;
-                var rtB = renderTexture2;
-
-                var src = _useAsSource ? rtA : rtB;
-                var dst = _useAsSource ? rtB : rtA;
-
-                Graphics.Blit(src, dst, material);
-
-                _useAsSource = !_useAsSource;
-            }
+            var mat = _renderer.Material;
+            mat.SetFloat(ID_FadeAmount, deltaTime * _fadeSpeed);
+            _stampBuffer.Upload(mat, ID_Brushes, ID_BrushCount);
+            _renderer.Render();
         }
 
-        private static void UploadBrushes(Material material, BrushRenderBatch brushBatch)
+        public void Cleanup()
         {
-            material.SetInt("_BrushCount", brushBatch.brushCount);
-            material.SetVectorArray("_Brush_PosDir", brushBatch.brushes_PosDir);
-            material.SetFloatArray("_Brush_Radius", brushBatch.brushes_Radius);
-            brushBatch.brushCount = 0;
+            _renderer.Dispose();
         }
 
         public static RenderTexture CreateRenderTexture(int size)
@@ -103,10 +69,6 @@ namespace Snm.Runtime.GrassSystem
             };
 
             var rt = RenderTexture.GetTemporary(desc);
-            // rt.filterMode = FilterMode.Point;
-            // rt.wrapMode = TextureWrapMode.Clamp;
-            // rt.useMipMap = false;
-            // rt.autoGenerateMips = false;
             return rt;
         }
 

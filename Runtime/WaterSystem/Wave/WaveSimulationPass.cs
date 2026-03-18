@@ -1,59 +1,58 @@
-using Snm.Runtime.Unity;
+using Snm.SurfaceInteraction;
 using UnityEngine;
 
 namespace Snm.WaterSystem.Wave
 {
     public class WaveSimulationPass : IWaveSimulationPass
     {
-        private readonly Material material;
-        private readonly PingPongTexture pingPong;
-        private readonly DisturbanceBuffer disturbanceBuffer;
+        private readonly SurfaceStampRenderer _renderer;
+        private readonly StampBuffer _stampBuffer;
 
         private readonly int ID_Damping = Shader.PropertyToID("_Damping");
         private readonly int ID_WaveSpeed = Shader.PropertyToID("_WaveSpeed");
         private readonly int ID_Disturbances = Shader.PropertyToID("_Disturbances");
         private readonly int ID_DisturbanceCount = Shader.PropertyToID("_DisturbanceCount");
 
-        public WaveSimulationPass(
-            Material material,
-            PingPongTexture pingPong,
-            DisturbanceBuffer disturbanceBuffer)
+        public WaveSimulationPass(SurfaceStampRenderer renderer, StampBuffer stampBuffer)
         {
-            this.material = material;
-            this.pingPong = pingPong;
-            this.disturbanceBuffer = disturbanceBuffer;
+            _renderer = renderer;
+            _stampBuffer = stampBuffer;
         }
 
         public void Execute(WaveSimulationConfig config)
         {
-            material.SetFloat(ID_Damping, config.damping);
+            var mat = _renderer.Material;
 
-            float stableWaveSpeed = Mathf.Min(config.waveSpeed, 0.5f);
-            int steps = Mathf.Max(1, Mathf.CeilToInt(config.waveSpreadSpeed));
-            if (config.maxIterations > 0)
-                steps = Mathf.Min(steps, config.maxIterations);
+            int steps = Mathf.Max(1, config.iterationsPerFrame);
 
-            disturbanceBuffer.Upload(material, ID_Disturbances, ID_DisturbanceCount);
+            // Damping is authored as per-frame. Convert to per-iteration
+            // so the visual decay rate stays the same regardless of step count.
+            float perIterationDamping = Mathf.Pow(config.damping, 1f / steps);
+            mat.SetFloat(ID_Damping, perIterationDamping);
+            mat.SetFloat(ID_WaveSpeed, Mathf.Min(config.waveSpeed, 0.5f));
 
-            for (int i = 0; i < steps; i++)
+            if (_stampBuffer.Count > 0)
             {
-                material.SetFloat(ID_WaveSpeed, stableWaveSpeed);
+                _stampBuffer.Upload(mat, ID_Disturbances, ID_DisturbanceCount);
+                _renderer.Render(1);
 
-                var (src, dst) = pingPong.GetPair();
-                Graphics.Blit(src, dst, material);
+                if (steps > 1)
+                {
+                    mat.SetFloat(ID_DisturbanceCount, 0);
+                    _renderer.Render(steps - 1);
+                }
+            }
+            else
+            {
+                mat.SetFloat(ID_DisturbanceCount, 0);
+                _renderer.Render(steps);
             }
         }
 
-        public RenderTexture GetResult() => pingPong.Current;
+        public RenderTexture GetResult() => _renderer.ResultTexture;
 
-        public void Clear() => pingPong.Clear();
+        public void Clear() => _renderer.Clear();
 
-        public void Dispose()
-        {
-            if (material != null)
-                UnityEngineUtility.DestroyObject(material);
-
-            pingPong?.Dispose();
-        }
+        public void Dispose() => _renderer.Dispose();
     }
 }

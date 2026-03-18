@@ -2,7 +2,7 @@ using System;
 using Snm.Runtime.Unity;
 using UnityEngine;
 
-namespace Snm.WaterSystem.Wave
+namespace Snm.SurfaceInteraction
 {
     public class PingPongTexture : IDisposable
     {

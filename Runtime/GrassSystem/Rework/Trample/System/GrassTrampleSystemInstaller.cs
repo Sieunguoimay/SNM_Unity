@@ -1,27 +1,30 @@
 using Snm.Runtime.Unity;
+using Snm.SurfaceInteraction;
 
 namespace Snm.Runtime.GrassSystem
 {
-
     public class GrassTrampleSystemInstaller
     {
         public GrassTrampleSystemHandle Install(
             GrassTrampleSystemConfig config,
             int textureSize,
-            WorldCanvas worldCanvas)
+            SurfaceCanvas canvas)
         {
             var renderTexture = GrassTrampleRenderer.CreateRenderTexture(textureSize);
-            var renderer = new GrassTrampleRenderer(config.shader, renderTexture, worldCanvas, config.fadeSpeed);
+
+            var pingPong = new PingPongTexture(renderTexture.descriptor);
+            var material = new UnityEngine.Material(config.shader);
+            var stampRenderer = new SurfaceStampRenderer(material, pingPong);
+            var stampBuffer = new StampBuffer(64);
+
+            var renderer = new GrassTrampleRenderer(stampRenderer, stampBuffer, canvas, config.fadeSpeed);
 
             var brushRegistry = new GrassTrampleBrushRegistry();
-            var brushBatchMaker = new BrushRenderBatchesMaker(renderer, brushRegistry, brushesPerBatch: 64);
-            var brushDirUpdater = new GrassTrampleBrushDirUpdater(brushRegistry, minOffset: config.brushMinOffset, new(worldCanvas));
+            var brushDirUpdater = new GrassTrampleBrushDirUpdater(brushRegistry, minOffset: config.brushMinOffset, canvas);
 
             var systemMB = UnityEngineUtility.CreateGameObjectWithComponent<GrassTrampleSystemUpdaterMB>();
 
-            systemMB.SetBrushDirUpdater(brushDirUpdater);
-            systemMB.SetBrushBatchMaker(brushBatchMaker);
-            systemMB.SetRenderer(renderer);
+            systemMB.Init(brushDirUpdater, brushRegistry, renderer);
 
             return new GrassTrampleSystemHandle(
                 renderTexture,
