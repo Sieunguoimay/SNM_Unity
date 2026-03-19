@@ -32,20 +32,18 @@ namespace Snm.Runtime.GrassSystem
             grassRenderer.SetWorldCanvas(canvas);
             grassRenderer.SetWorldBounds(grassField.GetWorldBounds(1, 1));
             grassRenderer.SetWindConfig(systemConfig.windConfig);
-            grassRenderer.SetTrampleConfig(trampleMap, systemConfig.trampleConfig);
+            grassRenderer.SetTrampleMap(trampleMap);
 
             var rendererMB = UnityEngineUtility.CreateGameObjectWithComponent<GrassFieldRendererMB>();
             rendererMB.SetRenderer(grassRenderer);
 
             var brushMBs = grassField.GetComponentsInChildren<GrassTrampleBrushMB>(true);
-            foreach (var brushMB in brushMBs) trampleSystemHandle.BrushRegistry.Register(brushMB.Brush);
+            foreach (var brushMB in brushMBs) trampleSystemHandle.RegisterLocal(brushMB);
 
             var manager = new GrassSystemHandle(
-                trampleSystemHandle.BrushRegistry,
+                trampleSystemHandle,
                 destroyCallback: () =>
                 {
-                    foreach (var brushMB in brushMBs) trampleSystemHandle.BrushRegistry.Unregister(brushMB.Brush);
-
                     trampleSystemHandle.Cleanup();
                     grassRenderer.Cleanup();
                     if (shouldDestroyGrassField) UnityEngineUtility.DestroyObject(grassField.gameObject);

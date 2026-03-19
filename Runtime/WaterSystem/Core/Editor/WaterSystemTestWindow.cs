@@ -214,8 +214,9 @@ namespace Snm.WaterSystem
             // Config summary
             var cfg = tracker.Config;
             var configLabel = new Label(
-                $"Entry scale: {cfg.entryStrengthScale:F2}  |  Max entry: {cfg.maxEntryStrength:F2}  |  " +
-                $"Wake: {cfg.wakeStrength:F3} |  Speed range: {cfg.wakeMinSpeed:F2}  {cfg.wakeMaxSpeed:F2}  |  Proximity: {cfg.wakeProximityTolerance:F2}")
+                $"Entry scale: {cfg.entryStrengthScale:F2}  |  Max entry: {cfg.entryMaxStrength:F2}  |  " +
+                $"Wake: {cfg.wakeStrength:F3}  |  Speed: {cfg.wakeMinSpeed:F2}-{cfg.wakeMaxSpeed:F2}  |  " +
+                $"Spacing: {cfg.wakeSpacingAtFullSpeed:F2}-{cfg.wakeSpacingAtMinSpeed:F2}  |  Proximity: {cfg.proximityTolerance:F2}")
             {
                 style = { fontSize = 10, color = new Color(0.7f, 0.7f, 0.7f), marginBottom = 4 }
             };

@@ -19,21 +19,20 @@ namespace Snm.Runtime.GrassSystem
 
             var renderer = new GrassTrampleRenderer(stampRenderer, stampBuffer, canvas, config.fadeSpeed);
 
-            var brushRegistry = new GrassTrampleBrushRegistry();
-            var brushDirUpdater = new GrassTrampleBrushDirUpdater(brushRegistry, minOffset: config.brushMinOffset, canvas);
+            var tracker = new GrassDisturberTracker(minOffset: config.brushMinOffset, canvas);
 
             var systemMB = UnityEngineUtility.CreateGameObjectWithComponent<GrassTrampleSystemUpdaterMB>();
-
-            systemMB.Init(brushDirUpdater, brushRegistry, renderer);
+            systemMB.Init(config, tracker, renderer);
 
             return new GrassTrampleSystemHandle(
                 renderTexture,
+                tracker,
                 cleanupCallback: () =>
                 {
                     UnityEngineUtility.DestroyObject(systemMB.gameObject);
-                    renderer.Cleanup();
+                    renderer.Dispose();
                     GrassTrampleRenderer.DestroyRenderTexture(renderTexture);
-                }, brushRegistry);
+                });
         }
     }
 }

@@ -5,25 +5,26 @@ namespace Snm.Runtime.GrassSystem
     [ExecuteInEditMode]
     public class GrassTrampleSystemUpdaterMB : MonoBehaviour
     {
+        private GrassTrampleSystemConfig _config;
+        private GrassDisturberTracker _tracker;
         private GrassTrampleRenderer _renderer;
-        private GrassTrampleBrushRegistry _brushRegistry;
-        private GrassTrampleBrushDirUpdater _driver;
 
         public void Init(
-            GrassTrampleBrushDirUpdater driver,
-            GrassTrampleBrushRegistry brushRegistry,
+            GrassTrampleSystemConfig config,
+            GrassDisturberTracker tracker,
             GrassTrampleRenderer renderer)
         {
-            _driver = driver;
-            _brushRegistry = brushRegistry;
+            _config = config;
+            _tracker = tracker;
             _renderer = renderer;
         }
 
         private void Update()
         {
-            _driver?.Update();
-            _renderer?.FillStamps(_brushRegistry?.GetBrushes());
-            _renderer?.Render(Time.deltaTime);
+            if (_config == null || !_config.enabled) return;
+
+            _tracker.Update(_renderer.StampBuffer);
+            _renderer.Render(Time.deltaTime);
         }
     }
 }

@@ -76,7 +76,7 @@ namespace Snm.Runtime.GrassSystem
             material.SetVector("_WorldCanvas", new Vector4(min.x, min.y, size.x, size.y));
         }
 
-        public void SetTrampleConfig(Texture trampleMap, TrampleConfig config)
+        public void SetTrampleMap(Texture trampleMap)
         {
             material.SetTexture("_TrampleMap", trampleMap);
         }

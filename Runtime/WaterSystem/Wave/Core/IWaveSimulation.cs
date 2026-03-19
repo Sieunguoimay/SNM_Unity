@@ -9,6 +9,6 @@ namespace Snm.WaterSystem.Wave
         RenderTexture GetDisplayTexture();
         RenderTexture GetSimulationTexture();
         void ClearSimulation();
-        WaveSimulationConfig Config { get; }
+        WaveConfig Config { get; }
     }
 }

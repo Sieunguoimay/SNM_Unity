@@ -1,23 +1,27 @@
 using System;
+using System.Collections.Generic;
 
 namespace Snm.Runtime.GrassSystem
 {
     public class GrassSystemHandle
     {
-        private readonly GrassTrampleBrushRegistry brushRegistry;
+        private readonly GrassTrampleSystemHandle trampleHandle;
         private readonly Action destroyCallback;
         private readonly Action openDebugToolCallback;
 
-        public GrassTrampleBrushRegistry BrushRegistry => brushRegistry;
-
         public GrassSystemHandle(
-            GrassTrampleBrushRegistry brushRegistry,
+            GrassTrampleSystemHandle trampleHandle,
             Action destroyCallback,
             Action openDebugToolCallback)
         {
-            this.brushRegistry = brushRegistry;
+            this.trampleHandle = trampleHandle;
             this.destroyCallback = destroyCallback;
             this.openDebugToolCallback = openDebugToolCallback;
+        }
+
+        public void SetDisturbers(IReadOnlyList<IGrassDisturber> disturbers)
+        {
+            trampleHandle.SetDisturbers(disturbers);
         }
 
         public void DestroySystem()

@@ -11,12 +11,12 @@ using Snm.SurfaceInteraction;
 using Snm.WaterSystem.Caustics;
 using Snm.WaterSystem.Depth;
 using Snm.WaterSystem.Foam;
-using Snm.WaterSystem.Rain;
 using Snm.WaterSystem.Reflection;
 using Snm.WaterSystem.ScrollNormal;
 using Snm.WaterSystem.Shoreline;
 using Snm.WaterSystem.Sparkle;
 using Snm.WaterSystem.Surface;
+using Snm.WaterSystem.Buoyancy;
 using Snm.WaterSystem.Wave;
 using UnityEngine;
 
@@ -26,13 +26,14 @@ namespace Snm.WaterSystem
     {
         /// <param name="disturbers">
         ///   Optional live enumerable of <see cref="IWaveDisturber"/> objects.
-        ///   When provided and <c>config.disturber.enabled</c> is true,
+        ///   When provided and <c>config.wave.disturber.enabled</c> is true,
         ///   the system will generate ripples whenever a disturber enters or moves through the water.
         /// </param>
         public static WaterSystemHandle Create(
             WaterConfig config,
             Camera sourceCamera,
             IEnumerable<IWaveDisturber> disturbers = null,
+            IEnumerable<IBuoyant> buoyants = null,
             Transform parent = null)
         {
             var updater = new GameObject("[WaterUpdater]").AddComponent<UpdateDispatcher>();
@@ -74,7 +75,7 @@ namespace Snm.WaterSystem
             if (config.wave.enabled)
             {
                 waveSim = WaveSimulationFactory.Create(
-                    config.waveSimulation,
+                    config.wave,
                     config.wave.textureSize,
                     config.wave.simulationShader,
                     config.wave.displayShader,
@@ -86,17 +87,24 @@ namespace Snm.WaterSystem
             if (config.shoreline.enabled) composite.Add(new ShorelineFeature(ctx.SurfaceMaterial, ctx.Config.shoreline));
             if (config.sparkle.enabled) composite.Add(new SparkleFeature(ctx.SurfaceMaterial, ctx.Config.sparkle));
             if (config.scrollNormal.enabled) composite.Add(new ScrollNormalFeature(ctx.SurfaceMaterial, ctx.Config.scrollNormal));
-            if (config.rain.enabled && config.wave.enabled) composite.Add(new RainFeature(waveSim, ctx.Config.rain));
 
             WaveDisturberTracker disturberTracker = null;
-            bool useDisturbers = config.disturber.enabled && config.wave.enabled && disturbers != null;
+            bool useDisturbers = config.wave.enabled && config.wave.disturber.enabled && disturbers != null;
             if (useDisturbers)
             {
-                disturberTracker = new WaveDisturberTracker(disturbers, canvas, waveSim, ctx.Config.disturber);
+                disturberTracker = new WaveDisturberTracker(disturbers, canvas, waveSim, config.wave.disturber);
                 composite.Add(new WaveDisturberFeature(disturberTracker));
             }
 
+            BuoyancyTracker buoyancyTracker = null;
+            if (config.buoyancy.enabled && buoyants != null)
+            {
+                buoyancyTracker = new BuoyancyTracker(buoyants, canvas, config.buoyancy);
+                composite.Add(new BuoyancyFeature(buoyancyTracker));
+            }
+
             updater.AddUpdateTarget(composite);
+            updater.AddFixedUpdateTarget(composite);
             updater.AddLateUpdateTarget(composite);
 
             // ── cleanup ───────────────────────────────────────────────────
@@ -112,7 +120,8 @@ namespace Snm.WaterSystem
                 cleanup,
                 reflection?.Texture,
                 waveSim,
-                disturberTracker);
+                disturberTracker,
+                buoyancyTracker);
         }
     }
 }

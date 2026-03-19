@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Snm.WaterSystem.Wave
 {
@@ -7,28 +8,47 @@ namespace Snm.WaterSystem.Wave
     {
         public bool enabled = true;
 
-        /// <summary>Scales entry velocity into wave strength. entrySpeed * scale -> strength.</summary>
+        [Header("Entry Splash")]
+        [Range(0f, 5f)]
+        [Tooltip("Multiplier applied to entry speed to compute splash strength.")]
         public float entryStrengthScale = 1.0f;
 
-        /// <summary>Maximum wave strength produced on water entry (clamped).</summary>
-        public float maxEntryStrength = 1.0f;
+        [Range(0f, 2f)]
+        [Tooltip("Maximum splash strength regardless of speed.")]
+        public float entryMaxStrength = 1.0f;
 
-        /// <summary>Maximum wake strength per frame while moving through water.</summary>
+        [Header("Wake")]
+        [Range(0f, 2f)]
+        [Tooltip("Maximum wake strength at full speed.")]
         public float wakeStrength = 1f;
 
-        /// <summary>Scales movement speed into wake strength. Higher = stronger wakes at lower speeds.</summary>
-        public float wakeMaxSpeed = 0.5f;
+        [Tooltip("Speed-to-strength curve. X = normalized speed (0..1), Y = strength multiplier (0..1).")]
+        public AnimationCurve wakeSpeedCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
 
-        /// <summary>Minimum speed (world units/s) required to produce a wake.</summary>
+        [Range(0.01f, 1f)]
+        [Tooltip("Spacing between wake stamps (world units) at full speed. Smaller = denser trail.")]
+        public float wakeSpacingAtFullSpeed = 0.05f;
+
+        [Range(0.01f, 1f)]
+        [Tooltip("Spacing between wake stamps (world units) at minimum speed. Larger = sparser trail.")]
+        public float wakeSpacingAtMinSpeed = 0.3f;
+
+        [Range(0f, 1f)]
+        [Tooltip("Minimum wake radius in world units. Ensures wake is always visible.")]
+        public float wakeMinRadiusWorld = 0.2f;
+
+        [Header("Speed Range")]
+        [Range(0f, 5f)]
+        [Tooltip("Below this speed, no wake is produced.")]
         public float wakeMinSpeed = 0.1f;
 
-        /// <summary>How far above the water surface (world units) the disturber can still produce a wake.</summary>
-        public float wakeProximityTolerance = 0.5f;
+        [Range(0f, 10f)]
+        [Tooltip("At or above this speed, wake is at full strength and densest spacing.")]
+        public float wakeMaxSpeed = 0.5f;
 
-        /// <summary>Minimum disturbance radius in UV space for wake. Prevents invisible zero-radius stamps.</summary>
-        public float wakeMinUVRadius = 0.015f;
-
-        /// <summary>Minimum UV distance between consecutive wake disturbances. Smaller = denser trail.</summary>
-        public float wakeUVStep = 0.001f;
+        [Header("Detection")]
+        [Range(0f, 2f)]
+        [Tooltip("How far above the surface (world units) a disturber can still produce wake.")]
+        public float proximityTolerance = 0.5f;
     }
 }

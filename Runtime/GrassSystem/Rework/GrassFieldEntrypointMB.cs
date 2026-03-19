@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
@@ -34,6 +35,11 @@ namespace Snm.Runtime.GrassSystem
             if (config == null) return;
 
             _manager ??= new GrassSystemInstaller().Install(config.systemConfig, grassField);
+        }
+
+        public void SetDisturbers(IReadOnlyList<IGrassDisturber> disturbers)
+        {
+            _manager?.SetDisturbers(disturbers);
         }
 
         private void OnValidate()

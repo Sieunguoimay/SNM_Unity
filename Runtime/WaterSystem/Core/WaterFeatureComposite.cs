@@ -7,7 +7,7 @@ namespace Snm.WaterSystem
     /// Single IUpdateTarget + ILateUpdateTarget that drives all IWaterFeature instances.
     /// Registered once with UpdateDispatcher — features never self-register.
     /// </summary>
-    public sealed class WaterFeatureComposite : IUpdateTarget, ILateUpdateTarget, IDisposable
+    public sealed class WaterFeatureComposite : IUpdateTarget, IFixedUpdateTarget, ILateUpdateTarget, IDisposable
     {
         private readonly List<IWaterFeature> _features = new();
 
@@ -17,6 +17,12 @@ namespace Snm.WaterSystem
         {
             foreach (var f in _features)
                 f.OnUpdate(deltaTime);
+        }
+
+        public void FixedUpdate(float fixedDeltaTime)
+        {
+            foreach (var f in _features)
+                f.OnFixedUpdate(fixedDeltaTime);
         }
 
         public void LateUpdate()

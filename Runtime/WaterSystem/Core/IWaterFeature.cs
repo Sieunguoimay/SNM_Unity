@@ -10,6 +10,7 @@ namespace Snm.WaterSystem
     public interface IWaterFeature : IDisposable
     {
         void OnUpdate(float deltaTime);
+        void OnFixedUpdate(float fixedDeltaTime) { }
         void OnLateUpdate() { }
     }
 }

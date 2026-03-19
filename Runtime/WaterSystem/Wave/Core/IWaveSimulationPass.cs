@@ -5,7 +5,7 @@ namespace Snm.WaterSystem.Wave
 {
     public interface IWaveSimulationPass : IDisposable
     {
-        void Execute(WaveSimulationConfig config);
+        void Execute(WaveConfig config);
         RenderTexture GetResult();
         void Clear();
     }

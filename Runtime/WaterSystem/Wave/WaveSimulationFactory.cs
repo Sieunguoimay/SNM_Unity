@@ -7,7 +7,7 @@ namespace Snm.WaterSystem.Wave
     public static class WaveSimulationFactory
     {
         public static WaveSimulationController Create(
-            WaveSimulationConfig config,
+            WaveConfig config,
             int textureSize,
             Shader simulationShader,
             Shader displayShader,
@@ -22,7 +22,7 @@ namespace Snm.WaterSystem.Wave
                 enableRandomWrite = false,
             };
 
-            var stampBuffer = new StampBuffer(32);
+            var stampBuffer = new StampTextureBuffer(32);
             var pingPong = new PingPongTexture(desc);
             var simMaterial = new Material(simulationShader);
             var stampRenderer = new SurfaceStampRenderer(simMaterial, pingPong);

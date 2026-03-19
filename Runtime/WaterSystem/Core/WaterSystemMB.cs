@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Snm.WaterSystem.Buoyancy;
 using Snm.WaterSystem.Wave;
 using UnityEngine;
 
@@ -11,6 +12,7 @@ namespace Snm.WaterSystem
 
         private WaterSystemHandle _handle;
         private IEnumerable<IWaveDisturber> _disturbers;
+        private IEnumerable<IBuoyant> _buoyants;
 
         /// <summary>
         /// The active water system handle. Available after <see cref="Start"/> has run.
@@ -28,6 +30,15 @@ namespace Snm.WaterSystem
             _disturbers = disturbers;
         }
 
+        /// <summary>
+        /// Provides a live buoyant source before Start() runs.
+        /// Same pattern as <see cref="SetDisturbers"/>.
+        /// </summary>
+        public void SetBuoyants(IEnumerable<IBuoyant> buoyants)
+        {
+            _buoyants = buoyants;
+        }
+
         private void Awake()
         {
             if (!isActiveAndEnabled) return;
@@ -43,7 +54,7 @@ namespace Snm.WaterSystem
             if (!isActiveAndEnabled) return;
             if (!ValidateConfig()) return;
 
-            _handle = WaterSystemFactory.Create(config, sourceCamera, _disturbers, transform);
+            _handle = WaterSystemFactory.Create(config, sourceCamera, _disturbers, _buoyants, transform);
         }
 
         [ContextMenu("Teardown")]

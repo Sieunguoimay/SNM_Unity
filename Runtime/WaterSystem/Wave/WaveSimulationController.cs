@@ -12,18 +12,18 @@ namespace Snm.WaterSystem.Wave
 
         private readonly IWaveSimulationPass simulation;
         private readonly IWaveDisplayPass display;
-        private readonly StampBuffer stampBuffer;
+        private readonly StampTextureBuffer stampBuffer;
         private readonly RenderTexture displayTexture;
         private readonly Material surfaceMaterial;
 
-        public WaveSimulationConfig Config { get; }
+        public WaveConfig Config { get; }
 
         public WaveSimulationController(
             IWaveSimulationPass simulation,
             IWaveDisplayPass display,
-            StampBuffer stampBuffer,
+            StampTextureBuffer stampBuffer,
             RenderTexture displayTexture,
-            WaveSimulationConfig config,
+            WaveConfig config,
             Material surfaceMaterial = null)
         {
             this.simulation = simulation;

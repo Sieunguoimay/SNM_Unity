@@ -13,7 +13,7 @@ namespace Snm.WaterSystem.Foam
         public float strength = 1f;
 
         [Range(0f, 5f)]
-        public float depthThreshold = 1f;
+        public float depthThreshold = .5f;
 
         [Range(0.01f, 2f)]
         public float scale = 0.5f;

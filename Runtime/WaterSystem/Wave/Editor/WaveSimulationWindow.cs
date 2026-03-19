@@ -10,7 +10,7 @@ namespace Snm.WaterSystem.Wave
 {
     public class WaveSimulationWindow : EditorWindow
     {
-        [SerializeField] private WaveSimulationConfig config;
+        [SerializeField] private WaveConfig config;
 
         private IWaveSimulation _simulation;
 

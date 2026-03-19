@@ -1,20 +1,22 @@
-using System.Collections.Generic;
+using System;
+using Snm.Runtime.Unity;
 using Snm.SurfaceInteraction;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 
 namespace Snm.Runtime.GrassSystem
 {
-    public class GrassTrampleRenderer
+    public class GrassTrampleRenderer : IDisposable
     {
         private readonly SurfaceStampRenderer _renderer;
-        private readonly StampBuffer _stampBuffer;
         private readonly float _fadeSpeed;
 
         private static readonly int ID_FadeAmount = Shader.PropertyToID("_FadeAmount");
         private static readonly int ID_Brushes = Shader.PropertyToID("_Brushes");
         private static readonly int ID_BrushCount = Shader.PropertyToID("_BrushCount");
         private static readonly int ID_WorldCanvas = Shader.PropertyToID("_WorldCanvas");
+
+        public StampBuffer StampBuffer { get; }
 
         public GrassTrampleRenderer(
             SurfaceStampRenderer renderer,
@@ -23,7 +25,7 @@ namespace Snm.Runtime.GrassSystem
             float fadeSpeed)
         {
             _renderer = renderer;
-            _stampBuffer = stampBuffer;
+            StampBuffer = stampBuffer;
             _fadeSpeed = fadeSpeed;
 
             var min = canvas.WorldMin;
@@ -32,27 +34,15 @@ namespace Snm.Runtime.GrassSystem
             _renderer.Material.SetVector(ID_WorldCanvas, new Vector4(min.x, min.y, size.x, size.y));
         }
 
-        public void FillStamps(IReadOnlyList<GrassTrampleBrush> brushes)
-        {
-            for (int i = 0; i < brushes.Count; i++)
-            {
-                var brush = brushes[i];
-                if (!brush.isActive) continue;
-
-                float angle = Mathf.Atan2(brush.dir.z, brush.dir.x);
-                _stampBuffer.Add(new Vector4(brush.position.x, brush.position.z, angle, brush.radius));
-            }
-        }
-
         public void Render(float deltaTime)
         {
             var mat = _renderer.Material;
             mat.SetFloat(ID_FadeAmount, deltaTime * _fadeSpeed);
-            _stampBuffer.Upload(mat, ID_Brushes, ID_BrushCount);
+            StampBuffer.Upload(mat, ID_Brushes, ID_BrushCount);
             _renderer.Render();
         }
 
-        public void Cleanup()
+        public void Dispose()
         {
             _renderer.Dispose();
         }
@@ -68,13 +58,21 @@ namespace Snm.Runtime.GrassSystem
                 enableRandomWrite = false,
             };
 
-            var rt = RenderTexture.GetTemporary(desc);
+            var rt = new RenderTexture(desc)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                useMipMap = false,
+                autoGenerateMips = false
+            };
+            rt.Create();
             return rt;
         }
 
         public static void DestroyRenderTexture(RenderTexture renderTexture)
         {
-            RenderTexture.ReleaseTemporary(renderTexture);
+            renderTexture.Release();
+            UnityEngineUtility.DestroyObject(renderTexture);
         }
     }
 }
