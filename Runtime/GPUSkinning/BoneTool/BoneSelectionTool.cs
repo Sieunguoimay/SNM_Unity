@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Snm.Runtime.GPUSkinning;
-using UnityEditor;
 
 namespace Snm.GPUSkinning.BoneWeightTool
 {

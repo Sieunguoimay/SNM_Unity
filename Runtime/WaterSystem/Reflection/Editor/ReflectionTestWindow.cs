@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using Snm.DependencyInjection;
 using Snm.Reactivity;
 using Snm.Runtime.Dispose;
@@ -281,3 +282,4 @@ namespace Snm.WaterSystem.Reflection
         }
     }
 }
+#endif

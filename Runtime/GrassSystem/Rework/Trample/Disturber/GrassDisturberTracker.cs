@@ -6,7 +6,14 @@ namespace Snm.Runtime.GrassSystem
 {
     public class GrassDisturberTracker
     {
-        private readonly List<IGrassDisturber> _localDisturbers = new();
+        public struct DisturberSnapshot
+        {
+            public Vector3 Position;
+            public Vector3 Direction;
+            public float Radius;
+            public bool IsInCanvas;
+        }
+
         private IReadOnlyList<IGrassDisturber> _externalDisturbers;
         private readonly float _minOffset;
         private readonly SurfaceCanvas _canvas;
@@ -14,6 +21,9 @@ namespace Snm.Runtime.GrassSystem
         private readonly Dictionary<IGrassDisturber, DisturberState> _states = new();
         private readonly HashSet<IGrassDisturber> _activeSet = new();
         private readonly List<IGrassDisturber> _toRemove = new();
+
+        public int ActiveCount => _states.Count;
+        public int ExternalCount => _externalDisturbers?.Count ?? 0;
 
         private class DisturberState
         {
@@ -30,11 +40,6 @@ namespace Snm.Runtime.GrassSystem
         public void SetExternalDisturbers(IReadOnlyList<IGrassDisturber> disturbers)
         {
             _externalDisturbers = disturbers;
-        }
-
-        public void RegisterLocal(IGrassDisturber disturber)
-        {
-            _localDisturbers.Add(disturber);
         }
 
         public void Update(StampBuffer stampBuffer)
@@ -66,14 +71,6 @@ namespace Snm.Runtime.GrassSystem
         {
             _activeSet.Clear();
 
-            for (int i = 0; i < _localDisturbers.Count; i++)
-            {
-                var d = _localDisturbers[i];
-                _activeSet.Add(d);
-                if (!_states.ContainsKey(d))
-                    _states[d] = new DisturberState { previousPosition = d.WorldPosition };
-            }
-
             if (_externalDisturbers != null)
             {
                 for (int i = 0; i < _externalDisturbers.Count; i++)
@@ -92,6 +89,22 @@ namespace Snm.Runtime.GrassSystem
                     _toRemove.Add(key);
             }
             foreach (var key in _toRemove) _states.Remove(key);
+        }
+
+        public List<DisturberSnapshot> GetSnapshots()
+        {
+            var snapshots = new List<DisturberSnapshot>(_states.Count);
+            foreach (var (disturber, state) in _states)
+            {
+                snapshots.Add(new DisturberSnapshot
+                {
+                    Position = disturber.WorldPosition,
+                    Direction = state.direction,
+                    Radius = disturber.GrassContactRadius,
+                    IsInCanvas = _canvas.Contains(disturber.WorldPosition)
+                });
+            }
+            return snapshots;
         }
     }
 }

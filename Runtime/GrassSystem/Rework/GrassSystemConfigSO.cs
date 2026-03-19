@@ -40,10 +40,5 @@ namespace Snm.Runtime.GrassSystem
             _manager = null;
         }
 
-        [ContextMenu("Open Debug Tool")]
-        private void OpenDebugTool()
-        {
-            _manager?.Editor_OpenDebugWindow();
-        }
     }
 }

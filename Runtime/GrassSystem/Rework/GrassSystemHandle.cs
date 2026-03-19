@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Snm.SurfaceInteraction;
+using UnityEngine;
 
 namespace Snm.Runtime.GrassSystem
 {
@@ -7,16 +9,32 @@ namespace Snm.Runtime.GrassSystem
     {
         private readonly GrassTrampleSystemHandle trampleHandle;
         private readonly Action destroyCallback;
-        private readonly Action openDebugToolCallback;
+
+        public GrassSystemConfig Config { get; }
+        public GrassField GrassField { get; }
+        public SurfaceCanvas Canvas { get; }
+        public GrassDisturberTracker DisturberTracker { get; }
+        public int InstanceCount { get; }
+
+        public Texture TrampleTexture => trampleHandle.GetTrampleTexture();
+        public Texture2D WindTexture => Config?.windConfig?.dudvMap;
 
         public GrassSystemHandle(
             GrassTrampleSystemHandle trampleHandle,
             Action destroyCallback,
-            Action openDebugToolCallback)
+            GrassSystemConfig config,
+            GrassField grassField,
+            SurfaceCanvas canvas,
+            GrassDisturberTracker tracker,
+            int instanceCount)
         {
             this.trampleHandle = trampleHandle;
             this.destroyCallback = destroyCallback;
-            this.openDebugToolCallback = openDebugToolCallback;
+            Config = config;
+            GrassField = grassField;
+            Canvas = canvas;
+            DisturberTracker = tracker;
+            InstanceCount = instanceCount;
         }
 
         public void SetDisturbers(IReadOnlyList<IGrassDisturber> disturbers)
@@ -28,7 +46,5 @@ namespace Snm.Runtime.GrassSystem
         {
             destroyCallback?.Invoke();
         }
-
-        public void Editor_OpenDebugWindow() => openDebugToolCallback();
     }
 }

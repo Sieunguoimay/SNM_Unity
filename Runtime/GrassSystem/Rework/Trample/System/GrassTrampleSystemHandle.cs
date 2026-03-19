@@ -7,8 +7,9 @@ namespace Snm.Runtime.GrassSystem
     public class GrassTrampleSystemHandle
     {
         private readonly Texture trampleTex;
-        private readonly GrassDisturberTracker tracker;
         private readonly Action cleanupCallback;
+
+        public GrassDisturberTracker Tracker { get; }
 
         public GrassTrampleSystemHandle(
             Texture trampleTex,
@@ -16,18 +17,13 @@ namespace Snm.Runtime.GrassSystem
             Action cleanupCallback)
         {
             this.trampleTex = trampleTex;
-            this.tracker = tracker;
+            Tracker = tracker;
             this.cleanupCallback = cleanupCallback;
         }
 
         public void SetDisturbers(IReadOnlyList<IGrassDisturber> disturbers)
         {
-            tracker.SetExternalDisturbers(disturbers);
-        }
-
-        public void RegisterLocal(IGrassDisturber disturber)
-        {
-            tracker.RegisterLocal(disturber);
+            Tracker.SetExternalDisturbers(disturbers);
         }
 
         public void Cleanup()

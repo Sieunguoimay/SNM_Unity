@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System;
 using Snm.Runtime.Dispose;
 using Snm.Runtime.Unity;
@@ -92,3 +93,4 @@ namespace Snm.WaterSystem.Wave
         }
     }
 }
+#endif

@@ -1,3 +1,16 @@
 {
-	"name": "Snm.Tools.GraphPresentation"
+	"name": "Snm.Tools.GraphPresentation",
+	"rootNamespace": "",
+	"references": [],
+	"includePlatforms": [
+		"Editor"
+	],
+	"excludePlatforms": [],
+	"allowUnsafeCode": false,
+	"overrideReferences": false,
+	"precompiledReferences": [],
+	"autoReferenced": true,
+	"defineConstraints": [],
+	"versionDefines": [],
+	"noEngineReferences": false
 }

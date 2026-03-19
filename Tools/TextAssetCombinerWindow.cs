@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
@@ -364,3 +365,4 @@ public class TextAssetCombinerWindow : EditorWindow
         return n;
     }
 }
+#endif
