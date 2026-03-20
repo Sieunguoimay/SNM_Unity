@@ -56,7 +56,6 @@ namespace Snm.GrassSystem
             if (_trample != null)
             {
                 _trample.Update(_disturbers, Time.deltaTime);
-                _renderer.SetTrampleMap(_trample.OutputTexture);
             }
 
             _renderer?.Render();

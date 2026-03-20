@@ -11,10 +11,10 @@ namespace Snm.WaterSystem.Buoyancy
         public float waterDensity = 2f;
 
         /// <summary>Rigidbody linear drag applied when fully submerged.</summary>
-        public float linearDragInWater = .5f;
+        public float linearDragInWater = 3f;
 
         /// <summary>Rigidbody angular drag applied when fully submerged.</summary>
-        public float angularDragInWater = .5f;
+        public float angularDragInWater = 0.5f;
 
         /// <summary>
         /// Opposes vertical velocity near the surface (submersion 0.2–0.8) to reduce oscillation.

@@ -104,6 +104,7 @@ Shader "Snm/InteractiveGrassV2"
                 float2 worldUV = saturate((worldOrigin.xz - _WorldCanvas.xy) / _WorldCanvas.zw);
 
                 // --- Trample ---
+                // Channel layout: xy = push direction, z = hold buffer, w = trample value
                 float4 trample = SAMPLE_TEXTURE2D_LOD(_TrampleMap, sampler_TrampleMap, worldUV, 0);
                 float trampleStrength = sin(trample.w * PI * 0.5); // ease_OutSine
                 float3 trampleDir = normalize(float3(

@@ -24,6 +24,7 @@ Shader "Hidden/GrassTrampleV2"
             float4 _Brushes[MAX_BRUSHES]; // xy = world pos, z = direction angle, w = radius
             float _BrushCount;
             float _FadeAmount;
+            float _HoldBuffer;
             float4 _WorldCanvas; // xy = origin, zw = size
 
             struct appdata
@@ -94,12 +95,15 @@ Shader "Hidden/GrassTrampleV2"
                 }
 
                 // No brushes touching this pixel — fade toward zero
+                // Channel layout: xy = push direction, z = hold buffer, w = trample value
                 if (totalWeight <= EPSILON)
                 {
-                    float t = 1.0 - prev.a;
-                    float fade = lerp(0.001, _FadeAmount, t * t * t * t * t); // ease_InQuint
-                    prev.a = max(0.0, prev.a - fade);
-                    return prev;
+                    // Drain hold buffer first, then fade trample
+                    float hold = max(0, prev.z - _FadeAmount);
+                    float trample = hold > EPSILON ? prev.w : max(0, prev.w - _FadeAmount);
+                    float visible = saturate(trample);
+
+                    return float4(prev.xy * visible, hold, trample);
                 }
 
                 // Compute push direction directly from brush movement
@@ -107,25 +111,12 @@ Shader "Hidden/GrassTrampleV2"
                 float  avgLen = length(avgDir);
                 float2 pushDir = avgLen > EPSILON ? avgDir / avgLen : prev.xy;
 
-                float4 stamp = float4(pushDir, 0, maxMask);
-
                 // Blend: keep previous if it's significantly stronger
-                float usePrev = step(stamp.a, prev.a * 1.25);
-                float3 outDir = lerp(stamp.xyz, prev.xyz, usePrev);
-                float outA = max(prev.a, stamp.a);
+                float2 outDir = lerp(pushDir, prev.xy, step(maxMask, prev.w * 1.25));
+                float outTrample = max(prev.w, maxMask);
+                float outHold = max(prev.z, _HoldBuffer * maxMask);
 
-                // Direction blend: when grass is already trampled, rotate gradually
-                // instead of snapping to the new direction
-                // float prevStrength = prev.a;
-                // float dirBlend = maxMask * saturate(1.0 - prevStrength * 0.8);
-                // float2 blendedDir2D = lerp(prev.xy, pushDir, dirBlend);
-                // float  blendedLen   = length(blendedDir2D);
-                // float3 outDir = blendedLen > EPSILON
-                //     ? float3(blendedDir2D / blendedLen, 0)
-                //     : stamp.xyz;
-                // float  outA   = max(prev.a, stamp.a);
-
-                return float4(outDir, outA);
+                return float4(outDir, outHold, outTrample);
             }
             ENDHLSL
         }

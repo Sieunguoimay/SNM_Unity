@@ -11,12 +11,14 @@ namespace Snm.GrassSystem
         static readonly int ID_Brushes = Shader.PropertyToID("_Brushes");
         static readonly int ID_BrushCount = Shader.PropertyToID("_BrushCount");
         static readonly int ID_FadeAmount = Shader.PropertyToID("_FadeAmount");
+        static readonly int ID_HoldBuffer = Shader.PropertyToID("_HoldBuffer");
         static readonly int ID_WorldCanvas = Shader.PropertyToID("_WorldCanvas");
 
         SurfaceStampRenderer _renderer;
         StampBuffer _stampBuffer;
         SurfaceCanvas _canvas;
         float _fadeSpeed;
+        float _holdTime;
         float _minOffset;
 
         struct TrackState
@@ -33,6 +35,7 @@ namespace Snm.GrassSystem
         public void Setup(GrassSystemV2Config config, SurfaceCanvas canvas)
         {
             _fadeSpeed = config.trampleFadeSpeed;
+            _holdTime = Mathf.Max(config.trampleHoldTime, 0.001f);
             _minOffset = config.disturbMinOffset;
             _canvas = canvas;
 
@@ -62,6 +65,7 @@ namespace Snm.GrassSystem
 
             var mat = _renderer.Material;
             mat.SetFloat(ID_FadeAmount, deltaTime * _fadeSpeed);
+            mat.SetFloat(ID_HoldBuffer, _fadeSpeed * _holdTime);
             _stampBuffer.Upload(mat, ID_Brushes, ID_BrushCount);
 
             _renderer.Render();

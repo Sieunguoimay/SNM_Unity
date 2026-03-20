@@ -24,6 +24,7 @@ namespace Snm.GrassSystem
         public bool trampleEnabled = true;
         public Shader trampleShader;
         public float trampleFadeSpeed = 0.1f;
+        public float trampleHoldTime = 0.5f;
         public float disturbMinOffset = 0.01f;
         public int trampleResolution = 256;
     }
