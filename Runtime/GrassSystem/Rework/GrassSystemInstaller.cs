@@ -21,7 +21,7 @@ namespace Snm.Runtime.GrassSystem
                 systemConfig.trampleSystemConfig,
                 grassField.Dimension.x,
                 canvas);
-            var trampleMap = trampleSystemHandle.GetTrampleTexture();
+            var trampleMap = trampleSystemHandle.GetPreviewTexture();
 
             var grassRenderer = new GrassFieldRenderer(systemConfig.grassMesh, systemConfig.grassMaterial);
             grassRenderer.SetMatrices(grassField.GetGrassMatrices());

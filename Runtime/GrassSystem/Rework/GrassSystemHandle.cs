@@ -16,7 +16,7 @@ namespace Snm.Runtime.GrassSystem
         public GrassDisturberTracker DisturberTracker { get; }
         public int InstanceCount { get; }
 
-        public Texture TrampleTexture => trampleHandle.GetTrampleTexture();
+        public Texture PreviewTrampleTexture => trampleHandle.GetPreviewTexture();
         public Texture2D WindTexture => Config?.windConfig?.dudvMap;
 
         public GrassSystemHandle(

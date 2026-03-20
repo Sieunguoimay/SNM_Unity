@@ -1,5 +1,7 @@
 using Snm.Runtime.Unity;
 using Snm.SurfaceInteraction;
+using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 
 namespace Snm.Runtime.GrassSystem
 {
@@ -10,9 +12,16 @@ namespace Snm.Runtime.GrassSystem
             int textureSize,
             SurfaceCanvas canvas)
         {
-            var renderTexture = GrassTrampleRenderer.CreateRenderTexture(textureSize);
-
-            var pingPong = new PingPongTexture(renderTexture.descriptor);
+            var desc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat,
+                depthBufferBits = 0,
+                msaaSamples = 1,
+                sRGB = false,
+                enableRandomWrite = false,
+            };
+            var pingPong = new PingPongTexture(desc);
+            var previewTexture = pingPong.A;
             var material = new UnityEngine.Material(config.shader);
             var stampRenderer = new SurfaceStampRenderer(material, pingPong);
             var stampBuffer = new StampBuffer(64);
@@ -25,13 +34,13 @@ namespace Snm.Runtime.GrassSystem
             systemMB.Init(config, tracker, renderer);
 
             return new GrassTrampleSystemHandle(
-                renderTexture,
+                previewTexture,
                 tracker,
                 cleanupCallback: () =>
                 {
                     UnityEngineUtility.DestroyObject(systemMB.gameObject);
                     renderer.Dispose();
-                    GrassTrampleRenderer.DestroyRenderTexture(renderTexture);
+                    // GrassTrampleRenderer.DestroyRenderTexture(renderTexture);
                 });
         }
     }

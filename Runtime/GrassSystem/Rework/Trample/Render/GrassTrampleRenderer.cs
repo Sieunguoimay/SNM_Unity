@@ -47,32 +47,32 @@ namespace Snm.Runtime.GrassSystem
             _renderer.Dispose();
         }
 
-        public static RenderTexture CreateRenderTexture(int size)
-        {
-            var desc = new RenderTextureDescriptor(size, size)
-            {
-                graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat,
-                depthBufferBits = 0,
-                msaaSamples = 1,
-                sRGB = false,
-                enableRandomWrite = false,
-            };
+        // public static RenderTexture CreateRenderTexture(int size)
+        // {
+        //     var desc = new RenderTextureDescriptor(size, size)
+        //     {
+        //         graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat,
+        //         depthBufferBits = 0,
+        //         msaaSamples = 1,
+        //         sRGB = false,
+        //         enableRandomWrite = false,
+        //     };
 
-            var rt = new RenderTexture(desc)
-            {
-                filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Clamp,
-                useMipMap = false,
-                autoGenerateMips = false
-            };
-            rt.Create();
-            return rt;
-        }
+        //     var rt = new RenderTexture(desc)
+        //     {
+        //         filterMode = FilterMode.Bilinear,
+        //         wrapMode = TextureWrapMode.Clamp,
+        //         useMipMap = false,
+        //         autoGenerateMips = false
+        //     };
+        //     rt.Create();
+        //     return rt;
+        // }
 
-        public static void DestroyRenderTexture(RenderTexture renderTexture)
-        {
-            renderTexture.Release();
-            UnityEngineUtility.DestroyObject(renderTexture);
-        }
+        // public static void DestroyRenderTexture(RenderTexture renderTexture)
+        // {
+        //     renderTexture.Release();
+        //     UnityEngineUtility.DestroyObject(renderTexture);
+        // }
     }
 }

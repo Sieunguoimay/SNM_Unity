@@ -9,7 +9,7 @@ namespace Snm.SurfaceInteraction
         public RenderTexture A { get; }
         public RenderTexture B { get; }
 
-        private bool toggle;
+        private bool _toggle;
 
         public PingPongTexture(RenderTextureDescriptor desc)
         {
@@ -34,21 +34,21 @@ namespace Snm.SurfaceInteraction
 
         public (RenderTexture src, RenderTexture dst) GetPair()
         {
-            var src = toggle ? A : B;
-            var dst = toggle ? B : A;
+            var src = _toggle ? A : B;
+            var dst = _toggle ? B : A;
 
-            toggle = !toggle;
+            _toggle = !_toggle;
 
             return (src, dst);
         }
 
-        public RenderTexture Current => toggle ? B : A;
+        public RenderTexture Current => _toggle ? A : B;
 
         public void Clear()
         {
             ClearRT(A);
             ClearRT(B);
-            toggle = false;
+            _toggle = false;
         }
 
         public void Dispose()

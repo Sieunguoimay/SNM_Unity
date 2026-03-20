@@ -18,11 +18,14 @@ namespace Snm.SurfaceInteraction
             _pingPong = pingPong;
         }
 
+        private static readonly int ID_MainTex = Shader.PropertyToID("_MainTex");
+
         public void Render(int iterations = 1)
         {
             for (int i = 0; i < iterations; i++)
             {
                 var (src, dst) = _pingPong.GetPair();
+                _material.SetTexture(ID_MainTex, src);
                 Graphics.Blit(src, dst, _material);
             }
         }

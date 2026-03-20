@@ -17,6 +17,7 @@ Shader "Hidden/GrassTrampleV2"
 
             #define MAX_BRUSHES 64
             #define EPSILON 1e-5
+            #define PRESENCE_SENTINEL 500.0
 
             sampler2D _MainTex;
 
@@ -25,24 +26,29 @@ Shader "Hidden/GrassTrampleV2"
             float _FadeAmount;
             float4 _WorldCanvas; // xy = origin, zw = size
 
+            struct appdata
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
             };
 
-            // Fullscreen triangle
-            Varyings vert(uint id : SV_VertexID)
+            // Blit quad
+            Varyings vert(appdata v)
             {
                 Varyings o;
-                o.uv = float2((id << 1) & 2, id & 2);
-                o.positionCS = float4(o.uv * 2.0 - 1.0, 0, 1);
+                o.positionCS = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
                 return o;
             }
 
             float2 UVToWorld(float2 uv)
             {
-                uv.y = 1.0 - uv.y;
                 return uv * _WorldCanvas.zw + _WorldCanvas.xy;
             }
 
@@ -51,7 +57,7 @@ Shader "Hidden/GrassTrampleV2"
                 float2 worldPos = UVToWorld(i.uv);
 
                 // Previous frame
-                float4 prev = tex2D(_MainTex, float2(i.uv.x, 1.0 - i.uv.y));
+                float4 prev = tex2D(_MainTex, i.uv);
 
                 // Accumulate brush influence
                 int count = (int)min(_BrushCount, (float)MAX_BRUSHES);
@@ -67,7 +73,20 @@ Shader "Hidden/GrassTrampleV2"
                     if (dist > brush.w) continue;
 
                     float mask = saturate(1.0 - dist / brush.w);
-                    float2 dir = float2(cos(brush.z), sin(brush.z));
+
+                    // Presence stamp: push radially away from brush center
+                    // Movement stamp: use the encoded direction angle
+                    float2 dir;
+                    if (brush.z > PRESENCE_SENTINEL)
+                    {
+                        float2 offset = worldPos - brush.xy;
+                        float  offLen = length(offset);
+                        dir = offLen > EPSILON ? offset / offLen : float2(0, 0);
+                    }
+                    else
+                    {
+                        dir = float2(cos(brush.z), sin(brush.z));
+                    }
 
                     accumDir += dir * mask;
                     totalWeight += mask;
@@ -83,11 +102,10 @@ Shader "Hidden/GrassTrampleV2"
                     return prev;
                 }
 
-                // Compute push direction: outward from canvas center + brush direction
-                float2 brushDir = normalize(accumDir / totalWeight);
-                float2 canvasCenter = _WorldCanvas.xy + _WorldCanvas.zw * 0.5;
-                float2 fragDir = normalize(worldPos - canvasCenter);
-                float2 pushDir = normalize(fragDir + brushDir * 10.0);
+                // Compute push direction directly from brush movement
+                float2 avgDir = accumDir / totalWeight;
+                float  avgLen = length(avgDir);
+                float2 pushDir = avgLen > EPSILON ? avgDir / avgLen : prev.xy;
 
                 float4 stamp = float4(pushDir, 0, maxMask);
 
@@ -95,6 +113,17 @@ Shader "Hidden/GrassTrampleV2"
                 float usePrev = step(stamp.a, prev.a * 1.25);
                 float3 outDir = lerp(stamp.xyz, prev.xyz, usePrev);
                 float outA = max(prev.a, stamp.a);
+
+                // Direction blend: when grass is already trampled, rotate gradually
+                // instead of snapping to the new direction
+                // float prevStrength = prev.a;
+                // float dirBlend = maxMask * saturate(1.0 - prevStrength * 0.8);
+                // float2 blendedDir2D = lerp(prev.xy, pushDir, dirBlend);
+                // float  blendedLen   = length(blendedDir2D);
+                // float3 outDir = blendedLen > EPSILON
+                //     ? float3(blendedDir2D / blendedLen, 0)
+                //     : stamp.xyz;
+                // float  outA   = max(prev.a, stamp.a);
 
                 return float4(outDir, outA);
             }

@@ -30,6 +30,13 @@ namespace Snm.SurfaceInteraction
                 && Mathf.Abs(local.z) <= Size.y * 0.5f;
         }
 
+        public bool Overlaps(Vector3 worldPos, float radius)
+        {
+            Vector3 local = Quaternion.Inverse(Rotation) * (worldPos - Position);
+            return Mathf.Abs(local.x) <= Size.x * 0.5f + radius
+                && Mathf.Abs(local.z) <= Size.y * 0.5f + radius;
+        }
+
         public Vector2 WorldMin => new(Position.x - Size.x * 0.5f, Position.z - Size.y * 0.5f);
         public Vector2 WorldMax => new(Position.x + Size.x * 0.5f, Position.z + Size.y * 0.5f);
     }

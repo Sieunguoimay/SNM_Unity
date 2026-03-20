@@ -58,8 +58,9 @@ namespace Snm.Runtime.GrassSystem
                     state.previousPosition = currPos;
                 }
 
-                // Check canvas bounds
-                bool isValid = _canvas.Contains(currPos) || _canvas.Contains(state.previousPosition);
+                // Check canvas bounds with radius consideration
+                float radius = disturber.GrassContactRadius;
+                bool isValid = _canvas.Overlaps(currPos, radius) || _canvas.Overlaps(state.previousPosition, radius);
                 if (!isValid) continue;
 
                 float angle = Mathf.Atan2(state.direction.z, state.direction.x);

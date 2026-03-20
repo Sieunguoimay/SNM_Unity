@@ -6,17 +6,17 @@ namespace Snm.Runtime.GrassSystem
 {
     public class GrassTrampleSystemHandle
     {
-        private readonly Texture trampleTex;
+        private readonly Texture _previewTexture;
         private readonly Action cleanupCallback;
 
         public GrassDisturberTracker Tracker { get; }
 
         public GrassTrampleSystemHandle(
-            Texture trampleTex,
+            Texture previewTexture,
             GrassDisturberTracker tracker,
             Action cleanupCallback)
         {
-            this.trampleTex = trampleTex;
+            _previewTexture = previewTexture;
             Tracker = tracker;
             this.cleanupCallback = cleanupCallback;
         }
@@ -31,9 +31,13 @@ namespace Snm.Runtime.GrassSystem
             cleanupCallback();
         }
 
-        public Texture GetTrampleTexture()
+        /// <summary>
+        /// Returns one side of the ping-pong buffer for preview/debug only.
+        /// May be up to one frame behind the actual result.
+        /// </summary>
+        public Texture GetPreviewTexture()
         {
-            return trampleTex;
+            return _previewTexture;
         }
     }
 }

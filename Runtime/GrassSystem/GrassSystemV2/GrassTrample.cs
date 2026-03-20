@@ -37,7 +37,14 @@ namespace Snm.GrassSystem
             _canvas = canvas;
 
             int res = config.trampleResolution;
-            var desc = new RenderTextureDescriptor(res, res, GraphicsFormat.R16G16B16A16_SFloat, 0);
+            var desc = new RenderTextureDescriptor(res, res)
+            {
+                graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat,
+                depthBufferBits = 0,
+                msaaSamples = 1,
+                sRGB = false,
+                enableRandomWrite = false,
+            };
             var pingPong = new PingPongTexture(desc);
             var material = new Material(config.trampleShader);
 
@@ -88,9 +95,13 @@ namespace Snm.GrassSystem
 
                 bool inCanvas = _canvas.Contains(pos) || _canvas.Contains(state.PreviousPosition);
 
-                if (inCanvas && state.Direction.sqrMagnitude > 0.001f)
+                if (inCanvas)
                 {
-                    float angle = Mathf.Atan2(state.Direction.z, state.Direction.x);
+                    // Use movement direction if available, otherwise signal radial presence
+                    const float presenceSentinel = 1000f;
+                    float angle = state.Direction.sqrMagnitude > 0.001f
+                        ? Mathf.Atan2(state.Direction.z, state.Direction.x)
+                        : presenceSentinel;
                     _stampBuffer.Add(new Vector4(pos.x, pos.z, angle, d.GrassContactRadius));
                 }
             }

@@ -179,7 +179,7 @@ namespace Snm.Runtime.GrassSystem
         private void BuildTrampleSection()
         {
             var trampleConfig = _handle.Config?.trampleSystemConfig;
-            var trampleTex = _handle.TrampleTexture;
+            var trampleTex = _handle.PreviewTrampleTexture;
 
             var foldout = new Foldout { text = "Trample System", value = true };
 
