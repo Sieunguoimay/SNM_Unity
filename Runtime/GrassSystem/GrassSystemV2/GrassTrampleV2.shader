@@ -17,7 +17,6 @@ Shader "Hidden/GrassTrampleV2"
 
             #define MAX_BRUSHES 64
             #define EPSILON 1e-5
-            #define PRESENCE_SENTINEL 500.0
 
             sampler2D _MainTex;
 
@@ -53,6 +52,13 @@ Shader "Hidden/GrassTrampleV2"
                 return uv * _WorldCanvas.zw + _WorldCanvas.xy;
             }
 
+            float2 CombineVector(float2 a, float2 b)
+            {
+                float alignment = dot(a, b);
+                float weight = clamp(0, 1, alignment);
+                return a + b * weight;
+            }
+
             float4 frag(Varyings i) : SV_Target
             {
                 float2 worldPos = UVToWorld(i.uv);
@@ -62,59 +68,45 @@ Shader "Hidden/GrassTrampleV2"
 
                 // Accumulate brush influence
                 int count = (int)min(_BrushCount, (float)MAX_BRUSHES);
-                float2 accumDir = 0;
-                float totalWeight = 0;
-                float maxMask = 0;
+                float2 inputDir = prev.xy;
+                float maxTrample = 0;
 
                 [loop]
                 for (int b = 0; b < count; b++)
                 {
                     float4 brush = _Brushes[b];
-                    float dist = distance(worldPos, brush.xy);
-                    if (dist > brush.w) continue;
+                    float2 diff = worldPos - brush.xy;
+                    float distSqr = dot(diff, diff);
 
-                    float mask = saturate(1.0 - dist / brush.w);
+                    if (distSqr > brush.w * brush.w) continue;
 
-                    // Presence stamp: push radially away from brush center
-                    // Movement stamp: use the encoded direction angle
-                    float2 dir;
-                    if (brush.z > PRESENCE_SENTINEL)
+                    float dist = sqrt(distSqr);
+                    float trample = saturate(1.0 - dist / brush.w);
+                    float2 dir = float2(cos(brush.z), sin(brush.z));
+
+                    if(trample > maxTrample)
                     {
-                        float2 offset = worldPos - brush.xy;
-                        float  offLen = length(offset);
-                        dir = offLen > EPSILON ? offset / offLen : float2(0, 0);
+                        maxTrample = trample;
+                        inputDir = CombineVector(diff / dist, dir * 2.0);
                     }
-                    else
-                    {
-                        dir = float2(cos(brush.z), sin(brush.z));
-                    }
-
-                    accumDir += dir * mask;
-                    totalWeight += mask;
-                    maxMask = max(maxMask, mask);
                 }
 
                 // No brushes touching this pixel — fade toward zero
-                // Channel layout: xy = push direction, z = hold buffer, w = trample value
-                if (totalWeight <= EPSILON)
+                if (maxTrample <= EPSILON)
                 {
                     // Drain hold buffer first, then fade trample
                     float hold = max(0, prev.z - _FadeAmount);
                     float trample = hold > EPSILON ? prev.w : max(0, prev.w - _FadeAmount);
                     float visible = saturate(trample);
-
-                    return float4(prev.xy * visible, hold, trample);
+                    
+                    // Channel layout: xy = push direction, z = hold buffer, w = trample value
+                    return float4(prev.xy, hold, trample);
                 }
 
-                // Compute push direction directly from brush movement
-                float2 avgDir = accumDir / totalWeight;
-                float  avgLen = length(avgDir);
-                float2 pushDir = avgLen > EPSILON ? avgDir / avgLen : prev.xy;
-
                 // Blend: keep previous if it's significantly stronger
-                float2 outDir = lerp(pushDir, prev.xy, step(maxMask, prev.w * 1.25));
-                float outTrample = max(prev.w, maxMask);
-                float outHold = max(prev.z, _HoldBuffer * maxMask);
+                float2 outDir = lerp(inputDir, prev.xy, step(maxTrample, prev.w * 1.25));
+                float outHold = max(prev.z, _HoldBuffer);
+                float outTrample = max(prev.w, maxTrample);
 
                 return float4(outDir, outHold, outTrample);
             }

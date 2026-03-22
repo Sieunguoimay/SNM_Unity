@@ -86,7 +86,7 @@ namespace Snm.GrassSystem
                 {
                     state = new TrackState { PreviousPosition = pos, Direction = Vector3.zero };
                     _states[d] = state;
-                    continue;
+                    // continue;
                 }
 
                 var movement = pos - state.PreviousPosition;
@@ -97,15 +97,14 @@ namespace Snm.GrassSystem
                     _states[d] = state;
                 }
 
-                bool inCanvas = _canvas.Contains(pos) || _canvas.Contains(state.PreviousPosition);
+                bool inCanvas = _canvas.Overlaps(pos, d.GrassContactRadius) || _canvas.Overlaps(state.PreviousPosition, d.GrassContactRadius);
 
                 if (inCanvas)
                 {
                     // Use movement direction if available, otherwise signal radial presence
-                    const float presenceSentinel = 1000f;
                     float angle = state.Direction.sqrMagnitude > 0.001f
                         ? Mathf.Atan2(state.Direction.z, state.Direction.x)
-                        : presenceSentinel;
+                        : 0f;
                     _stampBuffer.Add(new Vector4(pos.x, pos.z, angle, d.GrassContactRadius));
                 }
             }

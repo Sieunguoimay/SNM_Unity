@@ -87,6 +87,12 @@ Shader "Snm/InteractiveGrassV2"
                 return v + 2.0 * t2 / dot(float4(axis, qw), float4(axis, qw));
             }
 
+            float ease_OutCubic(float x)
+            {
+                float inv = 1.0 - x;
+                return 1.0 - inv * inv * inv;
+            }
+
             Varyings vert(Attributes input, uint instanceID : SV_InstanceID)
             {
                 Varyings output;
@@ -106,11 +112,15 @@ Shader "Snm/InteractiveGrassV2"
                 // --- Trample ---
                 // Channel layout: xy = push direction, z = hold buffer, w = trample value
                 float4 trample = SAMPLE_TEXTURE2D_LOD(_TrampleMap, sampler_TrampleMap, worldUV, 0);
-                float trampleStrength = sin(trample.w * PI * 0.5); // ease_OutSine
-                float3 trampleDir = normalize(float3(
-                    trample.x * trampleStrength,
-                    1.0 - trampleStrength,
-                    trample.y * trampleStrength));
+                float trampleStrength = ease_OutCubic(trample.w); // ease_OutSine
+                // float3 trampleDir = normalize(float3(
+                //     trample.x * trampleStrength,
+                //     1.0 - trampleStrength,
+                //     trample.y * trampleStrength));
+                float2 trampleDir = trample.xy * trampleStrength;
+
+                // float trampleStrength = trample.w; // remove sin()
+                // float2 trampleOffset = trample.xy * trampleStrength;
 
                 // --- Wind ---
                 float windStrength = _WindParams.x;
@@ -118,16 +128,20 @@ Shader "Snm/InteractiveGrassV2"
                 float2 windScale = _WindParams.zw;
 
                 float2 windUV = worldUV / windScale + _Time.y * windSpeed;
-                float2 wind = SAMPLE_TEXTURE2D_LOD(_WindMap, sampler_WindMap, windUV, 0).xy * 2.0 - 1.0 + 0.5;
-                float3 windDir = float3(wind.x * windStrength, 1.0, wind.y * windStrength);
+                float2 wind = SAMPLE_TEXTURE2D_LOD(_WindMap, sampler_WindMap, windUV, 0).xy * 2.0 - 1.0;// + 0.5;
+                // float3 windDir = float3(wind.x * windStrength, 1.0, wind.y * windStrength);
+                float2 windDir = wind * windStrength;
+                // float2 windOffset = wind * windStrength;
 
                 // --- Combine ---
-                float3 combined = windDir + trampleDir;
-                combined.y = max(0.0, min(windDir.y, trampleDir.y));
-                combined = normalize(combined);
+                float3 combined = float3(0, 1, 0);
+                combined.xz = windDir + trampleDir;
+                combined.y = max(0.0, 1.0 - trampleStrength);
+                // combined = normalize(combined);
 
                 float3 grassDir = normalize(lerp(float3(0, 1, 0), combined, bendFactor));
                 float3 localPos = RotateFromTo(input.positionOS.xyz, float3(0, 1, 0), grassDir);
+                
                 float3 worldPos = mul(localToWorld, float4(localPos, 1)).xyz;
 
                 output.positionWS = worldPos;
