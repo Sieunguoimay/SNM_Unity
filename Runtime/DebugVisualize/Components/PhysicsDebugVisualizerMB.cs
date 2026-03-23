@@ -9,7 +9,6 @@ namespace Snm.Runtime.DebugVisualize
         [SerializeField] private bool showSpeed = true;
         [SerializeField] private bool showMass = true;
 
-#if UNITY_DEBUG || DEVELOPMENT_BUILD
         private Rigidbody _rigidbody;
         private DebugStatEntry _speedStat;
         private DebugStatEntry _massStat;
@@ -46,6 +45,5 @@ namespace Snm.Runtime.DebugVisualize
                 }
             }
         }
-#endif
     }
 }

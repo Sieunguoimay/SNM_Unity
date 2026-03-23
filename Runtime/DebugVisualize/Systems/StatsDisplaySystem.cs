@@ -4,7 +4,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-#if UNITY_DEBUG || DEVELOPMENT_BUILD
 namespace Snm.Runtime.DebugVisualize
 {
     public class DebugStatEntry : IDisposable
@@ -355,4 +354,3 @@ namespace Snm.Runtime.DebugVisualize
         }
     }
 }
-#endif

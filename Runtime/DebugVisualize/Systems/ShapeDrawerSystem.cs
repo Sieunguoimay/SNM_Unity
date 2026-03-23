@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-#if UNITY_DEBUG || DEVELOPMENT_BUILD
 namespace Snm.Runtime.DebugVisualize
 {
     public class DebugShapeEntry : IDisposable
@@ -506,4 +505,3 @@ namespace Snm.Runtime.DebugVisualize
         }
     }
 }
-#endif

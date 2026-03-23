@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-#if UNITY_DEBUG || DEVELOPMENT_BUILD
 namespace Snm.Runtime.DebugVisualize
 {
     public class ObjectPool<T> where T : class
@@ -145,4 +144,3 @@ namespace Snm.Runtime.DebugVisualize
         }
     }
 }
-#endif

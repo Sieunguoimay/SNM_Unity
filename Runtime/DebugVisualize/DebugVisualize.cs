@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 
-#if UNITY_DEBUG || DEVELOPMENT_BUILD
 namespace Snm.Runtime.DebugVisualize
 {
     public static class DebugVisualize
@@ -135,32 +134,3 @@ namespace Snm.Runtime.DebugVisualize
         }
     }
 }
-#else
-namespace Snm.Runtime.DebugVisualize
-{
-    public class DebugStatEntry { }
-
-    public static class DebugVisualize
-    {
-        public static bool Enabled { get; set; } = false;
-        public static void ShowText(string text, Transform target, Vector3 offset = default, Color? color = null, float fontSize = 0, float duration = 0) { }
-        public static void ShowText(string text, Vector3 position, Color? color = null, float fontSize = 0, float duration = 0) { }
-        public static DebugStatEntry ShowStat(string label, Func<float> currentGetter, Func<float> maxGetter = null, bool showBar = false, bool autoUpdate = true, Transform target = null, Vector3 offset = default, Color? color = null, float duration = 0) => null;
-        public static DebugStatEntry ShowStat(string label, float current, float max, bool showBar = true, Transform target = null, Vector3 offset = default, Color? color = null, float duration = 0) => null;
-        public static DebugStatEntry ShowStat(string label, float value, Transform target = null, Vector3 offset = default, Color? color = null, float duration = 0) => null;
-
-        public static class Draw
-        {
-            public static void Line(Vector3 start, Vector3 end, Color? color = null, float width = 0, float duration = 0) { }
-            public static void Ray(Vector3 origin, Vector3 direction, Color? color = null, float width = 0, float duration = 0) { }
-            public static void Arrow(Vector3 origin, Vector3 direction, Color? color = null, float width = 0, float duration = 0, float headLength = 0.2f, float headWidth = 0.1f) { }
-            public static void Sphere(Vector3 center, float radius, Color? color = null, float duration = 0) { }
-            public static void Box(Vector3 center, Vector3 size, Color? color = null, float duration = 0) { }
-            public static void Box(Bounds bounds, Color? color = null, float duration = 0) { }
-            public static void Circle(Vector3 center, Vector3 normal, float radius, Color? color = null, int segments = 32, float duration = 0) { }
-            public static void Cone(Vector3 origin, Vector3 direction, float angle, float length, Color? color = null, int segments = 16, float duration = 0) { }
-            public static void Frustum(Camera camera, Color? color = null, float duration = 0) { }
-        }
-    }
-}
-#endif

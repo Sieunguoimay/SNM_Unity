@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 
-#if UNITY_DEBUG || DEVELOPMENT_BUILD
 namespace Snm.Runtime.DebugVisualize
 {
     public class DebugVisualizeManager : MonoBehaviour
@@ -94,8 +93,8 @@ namespace Snm.Runtime.DebugVisualize
             {
                 var go = new GameObject("DebugVisualizeManager");
                 go.hideFlags = HideFlags.HideAndDontSave;
+                go.AddComponent<DebugVisualizeManager>();
             }
         }
     }
 }
-#endif

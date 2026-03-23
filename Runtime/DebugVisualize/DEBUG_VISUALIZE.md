@@ -41,7 +41,6 @@ DebugVisualizeManager (Singleton)
 ### Technical
 - Pool-based (500 pre-warmed)
 - Persists across scenes (DontDestroyOnLoad)
-- Release build stripped (#if UNITY_DEBUG || DEVELOPMENT_BUILD)
 - Runtime toggle enabled/disabled
 
 ## Usage
