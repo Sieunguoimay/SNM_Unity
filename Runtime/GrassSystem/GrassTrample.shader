@@ -1,4 +1,4 @@
-Shader "Hidden/GrassTrampleV2"
+Shader "Hidden/GrassTrample"
 {
     SubShader
     {

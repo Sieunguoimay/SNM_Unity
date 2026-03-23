@@ -1,4 +1,4 @@
-Shader "Snm/InteractiveGrassV2"
+Shader "Snm/InteractiveGrass"
 {
     Properties
     {

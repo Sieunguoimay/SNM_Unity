@@ -4,9 +4,9 @@ using UnityEngine;
 
 namespace Snm.GrassSystem
 {
-    public class GrassSystemV2 : MonoBehaviour
+    public class GrassSystem : MonoBehaviour
     {
-        [SerializeField] GrassSystemV2Config config = new();
+        [SerializeField] GrassSystemConfig config = new();
 
         GrassRenderer _renderer;
         GrassTrample _trample;
@@ -16,7 +16,7 @@ namespace Snm.GrassSystem
         SurfaceCanvas _canvas;
         Bounds _worldBounds;
 
-        public GrassSystemV2Config Config => config;
+        public GrassSystemConfig Config => config;
         public GrassRenderer Renderer => _renderer;
         public GrassTrample Trample => _trample;
         public int InstanceCount => _matrices?.Length ?? 0;

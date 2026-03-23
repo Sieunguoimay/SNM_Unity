@@ -32,7 +32,7 @@ namespace Snm.GrassSystem
 
         public RenderTexture OutputTexture => _renderer.ResultTexture;
 
-        public void Setup(GrassSystemV2Config config, SurfaceCanvas canvas)
+        public void Setup(GrassSystemConfig config, SurfaceCanvas canvas)
         {
             _fadeSpeed = config.trampleFadeSpeed;
             _holdTime = Mathf.Max(config.trampleHoldTime, 0.001f);

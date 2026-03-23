@@ -4,14 +4,14 @@ using UnityEngine;
 
 namespace Snm.GrassSystem.Editor
 {
-    public class GrassSystemV2Window : EditorWindow
+    public class GrassSystemWindow : EditorWindow
     {
-        GrassSystemV2 _system;
+        GrassSystem _system;
         Vector2 _scroll;
         bool _showDisturbers = true;
 
-        [MenuItem("Tools/Snm/Grass System V2")]
-        static void Open() => GetWindow<GrassSystemV2Window>("Grass System V2");
+        [MenuItem("Tools/Snm/Grass System")]
+        static void Open() => GetWindow<GrassSystemWindow>("Grass System");
 
         void OnEnable()
         {
@@ -29,7 +29,7 @@ namespace Snm.GrassSystem.Editor
 
             if (_system == null)
             {
-                EditorGUILayout.HelpBox("No GrassSystemV2 found in scene.", MessageType.Info);
+                EditorGUILayout.HelpBox("No GrassSystem found in scene.", MessageType.Info);
                 return;
             }
 
@@ -134,9 +134,9 @@ namespace Snm.GrassSystem.Editor
             EditorGUI.indentLevel--;
         }
 
-        static GrassSystemV2 FindSystem()
+        static GrassSystem FindSystem()
         {
-            return Object.FindAnyObjectByType<GrassSystemV2>();
+            return Object.FindAnyObjectByType<GrassSystem>();
         }
     }
 }

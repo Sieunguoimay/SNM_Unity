@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Snm.GrassSystem
 {
     [Serializable]
-    public class GrassSystemV2Config
+    public class GrassSystemConfig
     {
         [Header("Grid")]
         public Vector2Int gridSize = new(50, 50);
