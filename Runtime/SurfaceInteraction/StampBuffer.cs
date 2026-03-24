@@ -29,12 +29,27 @@ namespace Snm.SurfaceInteraction
 
         public void Upload(Material material, int arrayId, int countId)
         {
-            for (int i = _count; i < Capacity; i++)
-                _stamps[i] = Vector4.zero;
-
+            Pad();
             material.SetVectorArray(arrayId, _stamps);
             material.SetFloat(countId, _count);
+        }
+
+        public void UploadTo(Material material, int arrayId, int countId)
+        {
+            Pad();
+            material.SetVectorArray(arrayId, _stamps);
+            material.SetFloat(countId, _count);
+        }
+
+        public void Clear()
+        {
             _count = 0;
+        }
+
+        void Pad()
+        {
+            for (int i = _count; i < Capacity; i++)
+                _stamps[i] = Vector4.zero;
         }
     }
 }

@@ -16,6 +16,7 @@ namespace Snm.GrassSystem
 
         SurfaceStampRenderer _renderer;
         StampBuffer _stampBuffer;
+        StampBuffer _smoothBuffer;
         SurfaceCanvas _canvas;
         float _fadeSpeed;
         float _holdTime;
@@ -60,6 +61,7 @@ namespace Snm.GrassSystem
 
             _renderer = new SurfaceStampRenderer(material, pingPong);
             _stampBuffer = new StampBuffer(64);
+            _smoothBuffer = new StampBuffer(8);
         }
 
         public void Update(IReadOnlyList<IGrassDisturber> disturbers, float deltaTime)
@@ -97,7 +99,11 @@ namespace Snm.GrassSystem
                     float angle = state.Direction.sqrMagnitude > 0.001f
                         ? Mathf.Atan2(state.Direction.z, state.Direction.x)
                         : 0f;
-                    _stampBuffer.Add(new Vector4(pos.x, pos.z, angle, contactRadius));
+                    var stamp = new Vector4(pos.x, pos.z, angle, contactRadius);
+                    _stampBuffer.Add(stamp);
+
+                    if (d.SmoothTrample)
+                        _smoothBuffer.Add(stamp);
                 }
             }
 
@@ -107,6 +113,17 @@ namespace Snm.GrassSystem
             _stampBuffer.Upload(mat, ID_Brushes, ID_BrushCount);
 
             _renderer.Render();
+        }
+
+        public void UploadSmoothBrushesTo(Material material)
+        {
+            _smoothBuffer.UploadTo(material, ID_Brushes, ID_BrushCount);
+        }
+
+        public void ClearBrushes()
+        {
+            _stampBuffer.Clear();
+            _smoothBuffer.Clear();
         }
 
         bool IsWithinProximity(IGrassDisturber disturber, float grassTopY)

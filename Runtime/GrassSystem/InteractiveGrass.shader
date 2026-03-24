@@ -35,9 +35,14 @@ Shader "Snm/InteractiveGrass"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
+            #define MAX_BRUSHES 64
+
             TEXTURE2D(_MainTex);    SAMPLER(sampler_MainTex);
             TEXTURE2D(_TrampleMap); SAMPLER(sampler_TrampleMap);
             TEXTURE2D(_WindMap);    SAMPLER(sampler_WindMap);
+
+            float4 _Brushes[MAX_BRUSHES]; // xy = world pos, z = direction angle, w = radius
+            float _BrushCount;
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _MainTex_ST;
@@ -109,18 +114,43 @@ Shader "Snm/InteractiveGrass"
                 // World UV for sampling trample/wind maps
                 float2 worldUV = saturate((worldOrigin.xz - _WorldCanvas.xy) / _WorldCanvas.zw);
 
-                // --- Trample ---
+                // --- Trample (persistent map) ---
                 // Channel layout: xy = push direction, z = hold buffer, w = trample value
                 float4 trample = SAMPLE_TEXTURE2D_LOD(_TrampleMap, sampler_TrampleMap, worldUV, 0);
-                float trampleStrength = ease_OutCubic(trample.w); // ease_OutSine
-                // float3 trampleDir = normalize(float3(
-                //     trample.x * trampleStrength,
-                //     1.0 - trampleStrength,
-                //     trample.y * trampleStrength));
-                float2 trampleDir = trample.xy * trampleStrength;
+                float trampleStrength = ease_OutCubic(trample.w);
+                float2 trampleDir = trample.xy;// * trampleStrength;
 
-                // float trampleStrength = trample.w; // remove sin()
-                // float2 trampleOffset = trample.xy * trampleStrength;
+                // --- Live brushes (per-frame, smooth) ---
+                int brushCount = (int)min(_BrushCount, (float)MAX_BRUSHES);
+                float liveBest = 0;
+                float2 liveDir = float2(0, 0);
+
+                [loop]
+                for (int b = 0; b < brushCount; b++)
+                {
+                    float4 brush = _Brushes[b];
+                    float2 diff = worldOrigin.xz - brush.xy;
+                    float distSqr = dot(diff, diff);
+                    if (distSqr > brush.w * brush.w) continue;
+
+                    float dist = sqrt(distSqr);
+                    float strength = saturate(1.0 - dist / brush.w);
+                    if (strength > liveBest)
+                    {
+                        liveBest = strength;
+                        liveDir = diff / max(dist, 1e-5);
+                    }
+                }
+
+                // Live brush wins when stronger than persistent map
+                float liveStrength = ease_OutCubic(liveBest);
+
+                if(liveBest > 0)
+                {
+                    float dotValue = max(0, dot(trampleDir, liveDir));
+                    trampleDir = normalize(trampleDir + liveDir * dotValue);
+                    trampleStrength = max(trampleStrength, liveStrength);
+                }
 
                 // --- Wind ---
                 float windStrength = _WindParams.x;
@@ -129,13 +159,11 @@ Shader "Snm/InteractiveGrass"
 
                 float2 windUV = worldUV / windScale + _Time.y * windSpeed;
                 float2 wind = SAMPLE_TEXTURE2D_LOD(_WindMap, sampler_WindMap, windUV, 0).xy * 2.0 - 1.0;// + 0.5;
-                // float3 windDir = float3(wind.x * windStrength, 1.0, wind.y * windStrength);
                 float2 windDir = wind * windStrength;
-                // float2 windOffset = wind * windStrength;
 
                 // --- Combine in world space, then transform to local ---
                 float3 combinedWS = float3(0, 1, 0);
-                combinedWS.xz = windDir + trampleDir;
+                combinedWS.xz = windDir + trampleDir * trampleStrength;
                 combinedWS.y = max(0.0, 1.0 - trampleStrength);
 
                 // Transform bend direction from world space to blade-local space

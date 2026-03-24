@@ -56,6 +56,11 @@ namespace Snm.GrassSystem
             if (_trample != null)
             {
                 _trample.Update(_disturbers, Time.deltaTime);
+
+                if (_renderer != null)
+                    _trample.UploadSmoothBrushesTo(_renderer.Material);
+
+                _trample.ClearBrushes();
             }
 
             _renderer?.Render();

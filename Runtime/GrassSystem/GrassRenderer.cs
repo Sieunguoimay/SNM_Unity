@@ -12,6 +12,8 @@ namespace Snm.GrassSystem
         static readonly int ID_WorldCanvas = Shader.PropertyToID("_WorldCanvas");
         static readonly int ID_TrampleMap = Shader.PropertyToID("_TrampleMap");
 
+        public Material Material => _material;
+
         GraphicsBuffer _instanceBuffer;
         GraphicsBuffer _argsBuffer;
         Material _material;
