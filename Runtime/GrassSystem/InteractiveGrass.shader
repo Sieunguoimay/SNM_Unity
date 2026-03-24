@@ -133,15 +133,18 @@ Shader "Snm/InteractiveGrass"
                 float2 windDir = wind * windStrength;
                 // float2 windOffset = wind * windStrength;
 
-                // --- Combine ---
-                float3 combined = float3(0, 1, 0);
-                combined.xz = windDir + trampleDir;
-                combined.y = max(0.0, 1.0 - trampleStrength);
-                // combined = normalize(combined);
+                // --- Combine in world space, then transform to local ---
+                float3 combinedWS = float3(0, 1, 0);
+                combinedWS.xz = windDir + trampleDir;
+                combinedWS.y = max(0.0, 1.0 - trampleStrength);
 
-                float3 grassDir = normalize(lerp(float3(0, 1, 0), combined, bendFactor));
+                // Transform bend direction from world space to blade-local space
+                float3x3 worldToLocal = (float3x3)transpose((float3x3)localToWorld);
+                float3 combinedLS = mul(worldToLocal, combinedWS);
+
+                float3 grassDir = normalize(lerp(float3(0, 1, 0), combinedLS, bendFactor));
                 float3 localPos = RotateFromTo(input.positionOS.xyz, float3(0, 1, 0), grassDir);
-                
+
                 float3 worldPos = mul(localToWorld, float4(localPos, 1)).xyz;
 
                 output.positionWS = worldPos;

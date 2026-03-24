@@ -91,7 +91,13 @@ namespace Snm.GrassSystem
                 {
                     var localPos = new Vector3(x * spacingX, 0f, z * spacingZ) + pivotOffset;
                     var worldPos = transform.TransformPoint(localPos);
-                    _matrices[index++] = Matrix4x4.TRS(worldPos, transform.rotation, Vector3.one);
+
+                    // Deterministic random rotation per blade
+                    uint hash = (uint)(x * 73856093 ^ z * 19349663);
+                    float yaw = (hash % 3600) / 10f; // 0–360 degrees
+                    var rot = transform.rotation * Quaternion.Euler(0f, yaw, 0f);
+
+                    _matrices[index++] = Matrix4x4.TRS(worldPos, rot, Vector3.one);
                 }
             }
 

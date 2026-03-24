@@ -87,7 +87,7 @@ Shader "Hidden/GrassTrample"
                     if(trample > maxTrample)
                     {
                         maxTrample = trample;
-                        inputDir = CombineVector(diff / dist, dir * 2.0);
+                        inputDir = dir;//diff / dist;//CombineVector(diff / dist, dir * 2.0);
                     }
                 }
 

@@ -1,12 +1,9 @@
-using UnityEngine;
+using Snm.SurfaceInteraction;
 
 namespace Snm.WaterSystem.Wave
 {
-    public interface IWaveDisturber
+    public interface IWaveDisturber : ISurfaceDisturber
     {
-        Vector3 WorldPosition { get; }
-        Vector3 WorldVelocity { get; }
-        bool    IsTouchingWater(float waterY);
-        float   GetContactRadius(float waterY);
+        float GetContactRadius(float surfaceY);
     }
 }

@@ -27,10 +27,8 @@ namespace Snm.WaterSystem.Wave
         private readonly IWaveSimulation _waveSimulation;
         private readonly WaveDisturberConfig _config;
 
-        private readonly Dictionary<IWaveDisturber, DisturberState> _states = new();
+        private readonly SurfaceDisturberTracker<IWaveDisturber, DisturberState> _tracker = new();
         private readonly List<DisturberInfo> _infoSnapshot = new();
-        private readonly HashSet<IWaveDisturber> _activeSet = new();
-        private readonly List<IWaveDisturber> _toRemove = new();
 
         public IReadOnlyList<DisturberInfo> Snapshot => _infoSnapshot;
         public WaveDisturberConfig Config => _config;
@@ -59,15 +57,18 @@ namespace Snm.WaterSystem.Wave
         {
             if (!_config.enabled) return;
 
-            SyncStates();
+            _tracker.Sync(_source, (d, state) =>
+            {
+                state.lastPosition = d.WorldPosition;
+            });
 
             float waterY = _canvas.Position.y;
 
             _infoSnapshot.Clear();
 
-            foreach (var (disturber, state) in _states)
+            foreach (var (disturber, state) in _tracker.States)
             {
-                bool isInWater = disturber.IsTouchingWater(waterY);
+                bool isInWater = disturber.IsTouchingSurface(waterY);
                 float contactRadius = disturber.GetContactRadius(waterY);
 
                 // Relaxed proximity check: allow wake when slightly above water surface
@@ -130,26 +131,6 @@ namespace Snm.WaterSystem.Wave
             if (_config.proximityTolerance <= 0f) return false;
             float bottomY = disturber.WorldPosition.y;
             return bottomY - waterY < _config.proximityTolerance && bottomY >= waterY;
-        }
-
-        private void SyncStates()
-        {
-            _activeSet.Clear();
-
-            foreach (var disturber in _source)
-            {
-                _activeSet.Add(disturber);
-                if (!_states.ContainsKey(disturber))
-                    _states[disturber] = new DisturberState { lastPosition = disturber.WorldPosition };
-            }
-
-            _toRemove.Clear();
-            foreach (var key in _states.Keys)
-            {
-                if (!_activeSet.Contains(key))
-                    _toRemove.Add(key);
-            }
-            foreach (var key in _toRemove) _states.Remove(key);
         }
 
         private void AddDisturbance(Vector3 worldPos, float worldRadius, float strength)

@@ -20,12 +20,20 @@ namespace Snm.GrassSystem
         public float windScrollSpeed = 0.01f;
         public float windStrength = 1f;
 
+        [Header("Grass Height")]
+        [Range(0.05f, 3f)]
+        [Tooltip("Height of the grass blades in world units. Determines the vertical range where disturbers interact.")]
+        public float grassHeight = 1f;
+
         [Header("Trample")]
         public bool trampleEnabled = true;
         public Shader trampleShader;
         public float trampleFadeSpeed = 0.1f;
         public float trampleHoldTime = 0.5f;
         public float disturbMinOffset = 0.01f;
+        [Range(0f, 2f)]
+        [Tooltip("How far above the grass surface (world units) a disturber can still bend grass.")]
+        public float proximityTolerance = 0.5f;
         public int trampleResolution = 256;
     }
 }

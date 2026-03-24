@@ -1,5 +1,6 @@
 using Snm.Runtime.App.Composition;
 using Snm.DependencyInjection;
+using Snm.Runtime.App.Lifecycle;
 
 namespace Snm.Runtime.App.Hosting
 {
@@ -9,21 +10,15 @@ namespace Snm.Runtime.App.Hosting
         {
             var builder = new ContainerBuilder();
 
-            ConfigureModules(builder, modules);
-
-            var container = builder.Build();
-
-            return new AppHost(container);
-        }
-
-        private static void ConfigureModules(
-            ContainerBuilder builder,
-            IAppModule[] modules)
-        {
             foreach (var module in modules)
             {
                 module.Configure(builder);
             }
+            
+            var container = builder.Build();
+            var lifecycle = container.Resolve<LifecycleService>();
+
+            return new AppHost(lifecycle, container);
         }
     }
 }

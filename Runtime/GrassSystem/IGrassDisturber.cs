@@ -1,10 +1,9 @@
-using UnityEngine;
+using Snm.SurfaceInteraction;
 
 namespace Snm.GrassSystem
 {
-    public interface IGrassDisturber
+    public interface IGrassDisturber : ISurfaceDisturber
     {
-        Vector3 WorldPosition { get; }
-        float GrassContactRadius { get; }
+        float GetContactRadius(float surfaceY);
     }
 }

@@ -7,23 +7,23 @@ namespace Snm.Runtime.App.Hosting
     public sealed class AppHost
     {
         private readonly RuntimeContainer container;
-        private LifecycleService _lifecycle;
+        private readonly LifecycleService lifecycle;
 
-        public AppHost(RuntimeContainer container)
+        public AppHost(LifecycleService lifecycle, RuntimeContainer container)
         {
+            this.lifecycle = lifecycle;
             this.container = container;
         }
 
         public void Start()
         {
-            _lifecycle = container.Resolve<LifecycleService>();
-            _lifecycle.Initialize();
-            _lifecycle.Start();
+            lifecycle.Initialize();
+            lifecycle.Start();
         }
 
         public void Stop()
         {
-            _lifecycle.Stop();
+            lifecycle.Stop();
             container.Dispose();
         }
     }

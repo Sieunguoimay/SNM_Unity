@@ -20,15 +20,16 @@ namespace Snm.GrassSystem
         float _fadeSpeed;
         float _holdTime;
         float _minOffset;
+        float _proximityTolerance;
+        float _grassHeight;
 
-        struct TrackState
+        class TrackState
         {
             public Vector3 PreviousPosition;
             public Vector3 Direction;
         }
 
-        readonly Dictionary<IGrassDisturber, TrackState> _states = new();
-        readonly HashSet<IGrassDisturber> _seen = new();
+        readonly SurfaceDisturberTracker<IGrassDisturber, TrackState> _tracker = new();
 
         public RenderTexture OutputTexture => _renderer.ResultTexture;
 
@@ -37,6 +38,8 @@ namespace Snm.GrassSystem
             _fadeSpeed = config.trampleFadeSpeed;
             _holdTime = Mathf.Max(config.trampleHoldTime, 0.001f);
             _minOffset = config.disturbMinOffset;
+            _proximityTolerance = config.proximityTolerance;
+            _grassHeight = config.grassHeight;
             _canvas = canvas;
 
             int res = config.trampleResolution;
@@ -61,7 +64,42 @@ namespace Snm.GrassSystem
 
         public void Update(IReadOnlyList<IGrassDisturber> disturbers, float deltaTime)
         {
-            SyncAndTrack(disturbers);
+            float grassTopY = _canvas.Position.y + _grassHeight;
+
+            _tracker.Sync(disturbers, (d, state) =>
+            {
+                state.PreviousPosition = d.WorldPosition;
+            });
+
+            foreach (var (d, state) in _tracker.States)
+            {
+                var pos = d.WorldPosition;
+
+                bool isTouching = d.IsTouchingSurface(grassTopY);
+                bool isNear = !isTouching && IsWithinProximity(d, grassTopY);
+                if (!isTouching && !isNear) continue;
+
+                float contactRadius = d.GetContactRadius(grassTopY);
+                if (contactRadius <= 0f) continue;
+
+                var movement = pos - state.PreviousPosition;
+                if (movement.sqrMagnitude > _minOffset * _minOffset)
+                {
+                    state.Direction = movement.normalized;
+                    state.PreviousPosition = pos;
+                }
+
+                bool inCanvas = _canvas.Overlaps(pos, contactRadius)
+                             || _canvas.Overlaps(state.PreviousPosition, contactRadius);
+
+                if (inCanvas)
+                {
+                    float angle = state.Direction.sqrMagnitude > 0.001f
+                        ? Mathf.Atan2(state.Direction.z, state.Direction.x)
+                        : 0f;
+                    _stampBuffer.Add(new Vector4(pos.x, pos.z, angle, contactRadius));
+                }
+            }
 
             var mat = _renderer.Material;
             mat.SetFloat(ID_FadeAmount, deltaTime * _fadeSpeed);
@@ -71,68 +109,26 @@ namespace Snm.GrassSystem
             _renderer.Render();
         }
 
-        void SyncAndTrack(IReadOnlyList<IGrassDisturber> disturbers)
+        bool IsWithinProximity(IGrassDisturber disturber, float grassTopY)
         {
-            _seen.Clear();
-
-            for (int i = 0; i < disturbers.Count; i++)
-            {
-                var d = disturbers[i];
-                _seen.Add(d);
-
-                var pos = d.WorldPosition;
-
-                if (!_states.TryGetValue(d, out var state))
-                {
-                    state = new TrackState { PreviousPosition = pos, Direction = Vector3.zero };
-                    _states[d] = state;
-                    // continue;
-                }
-
-                var movement = pos - state.PreviousPosition;
-                if (movement.sqrMagnitude > _minOffset * _minOffset)
-                {
-                    state.Direction = movement.normalized;
-                    state.PreviousPosition = pos;
-                    _states[d] = state;
-                }
-
-                bool inCanvas = _canvas.Overlaps(pos, d.GrassContactRadius) || _canvas.Overlaps(state.PreviousPosition, d.GrassContactRadius);
-
-                if (inCanvas)
-                {
-                    // Use movement direction if available, otherwise signal radial presence
-                    float angle = state.Direction.sqrMagnitude > 0.001f
-                        ? Mathf.Atan2(state.Direction.z, state.Direction.x)
-                        : 0f;
-                    _stampBuffer.Add(new Vector4(pos.x, pos.z, angle, d.GrassContactRadius));
-                }
-            }
-
-            // Remove stale disturbers
-            var toRemove = new List<IGrassDisturber>();
-            foreach (var kvp in _states)
-            {
-                if (!_seen.Contains(kvp.Key))
-                    toRemove.Add(kvp.Key);
-            }
-            for (int i = 0; i < toRemove.Count; i++)
-                _states.Remove(toRemove[i]);
+            if (_proximityTolerance <= 0f) return false;
+            float bottomY = disturber.WorldPosition.y;
+            return bottomY - grassTopY < _proximityTolerance && bottomY >= grassTopY;
         }
 
         public DisturberSnapshot[] GetDisturberSnapshots()
         {
-            var snapshots = new DisturberSnapshot[_states.Count];
+            float grassTopY = _canvas.Position.y + _grassHeight;
+            var states = _tracker.States;
+            var snapshots = new DisturberSnapshot[states.Count];
             int i = 0;
-            foreach (var kvp in _states)
+            foreach (var (d, s) in states)
             {
-                var d = kvp.Key;
-                var s = kvp.Value;
                 snapshots[i++] = new DisturberSnapshot
                 {
                     Position = d.WorldPosition,
                     Direction = s.Direction,
-                    Radius = d.GrassContactRadius,
+                    Radius = d.GetContactRadius(grassTopY),
                     InCanvas = _canvas.Contains(d.WorldPosition)
                 };
             }
@@ -143,7 +139,7 @@ namespace Snm.GrassSystem
         {
             _renderer?.Dispose();
             _renderer = null;
-            _states.Clear();
+            _tracker.Clear();
         }
 
         public struct DisturberSnapshot

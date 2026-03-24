@@ -23,7 +23,9 @@ namespace Snm.Runtime.App.Unity
 
             try
             {
-                var allModules = GetModuleProviders().SelectMany(p => p.GetModules()).ToArray();
+                var allModules = new IAppModuleProvider[] { new CoreModuleProvider(), modules }
+                    .SelectMany(p => p.GetModules())
+                    .ToArray();
 
                 _appHost = AppComposition.Compose(allModules);
                 _appHost.Start();
@@ -38,12 +40,7 @@ namespace Snm.Runtime.App.Unity
         private void OnDestroy()
         {
             _appHost?.Stop();
-        }
-
-        private IEnumerable<IAppModuleProvider> GetModuleProviders()
-        {
-            yield return new CoreModuleProvider();
-            yield return modules;
+            _appHost = null;
         }
     }
 }
