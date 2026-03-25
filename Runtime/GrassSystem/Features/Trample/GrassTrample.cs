@@ -74,6 +74,15 @@ namespace Snm.GrassSystem
             _disturbers = disturbers ?? new List<IGrassDisturber>();
         }
 
+        public void ApplyConfig(TrampleConfig config, float interactionHeight)
+        {
+            _fadeSpeed = config.trampleFadeSpeed;
+            _holdTime = Mathf.Max(config.trampleHoldTime, 0.001f);
+            _minOffset = config.disturbMinOffset;
+            _proximityTolerance = config.proximityTolerance;
+            _grassHeight = interactionHeight;
+        }
+
         public void Update(float deltaTime)
         {
             float grassTopY = _canvas.Position.y + _grassHeight;
