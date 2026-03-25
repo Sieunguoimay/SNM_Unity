@@ -1,4 +1,5 @@
 using System;
+using Snm.Runtime.Unity;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,29 +12,34 @@ namespace Snm.Runtime.DebugDraw
     /// </summary>
     public sealed class LabelHandle : IDisposable
     {
+        private readonly GameObject rootGo;
+
         // Unity objects owned by LabelDrawer, reused via pool
-        internal readonly Canvas        Canvas;
+
+        internal readonly Canvas Canvas;
         internal readonly RectTransform Rect;
-        private  readonly TextMeshPro   _tmp;
-        private  readonly RectTransform _barBg;
-        private  readonly Image         _barFill;
+        private readonly TextMeshPro _tmp;
+        private readonly RectTransform _barBg;
+        private readonly Image _barFill;
 
         // Per-activation state
-        private Transform    _target;     // null → use fixed world position
-        private Vector3      _fixedPos;
-        private Vector3      _offset;
+        private Transform _target;     // null → use fixed world position
+        private Vector3 _fixedPos;
+        private Vector3 _offset;
         private Func<string> _textGetter;
-        private Func<float>  _barCurrent;
-        private Func<float>  _barMax;
-        private bool         _autoUpdate;
-        private bool         _autoHide;
-        private Camera       _cam;
-        private Action       _onReturn;
+        private Func<float> _barCurrent;
+        private Func<float> _barMax;
+        private bool _autoUpdate;
+        private bool _autoHide;
+        private Camera _cam;
+        private Action _onReturn;
 
         internal bool IsActive;
 
-        internal LabelHandle(Canvas canvas, RectTransform rect, TextMeshPro tmp, RectTransform barBg, Image barFill)
+        internal LabelHandle(GameObject root, Canvas canvas, RectTransform rect, TextMeshPro tmp, RectTransform barBg, Image barFill)
         {
+            this.rootGo = root;
+
             Canvas = canvas; Rect = rect; _tmp = tmp; _barBg = barBg; _barFill = barFill;
         }
 
@@ -41,31 +47,31 @@ namespace Snm.Runtime.DebugDraw
 
         internal void Activate(
             Func<string> textGetter,
-            Transform    target,
-            Vector3      fixedPos,
-            Vector3      offset,
-            Color        color,
-            float        fontSize,
-            bool         autoUpdate,
-            bool         showBar,
-            Func<float>  barCurrent,
-            Func<float>  barMax,
-            bool         autoHide,
-            Action       onReturn)
+            Transform target,
+            Vector3 fixedPos,
+            Vector3 offset,
+            Color color,
+            float fontSize,
+            bool autoUpdate,
+            bool showBar,
+            Func<float> barCurrent,
+            Func<float> barMax,
+            bool autoHide,
+            Action onReturn)
         {
             _textGetter = textGetter;
-            _target     = target;
-            _fixedPos   = fixedPos;
-            _offset     = offset;
+            _target = target;
+            _fixedPos = fixedPos;
+            _offset = offset;
             _autoUpdate = autoUpdate;
-            _autoHide   = autoHide;
+            _autoHide = autoHide;
             _barCurrent = barCurrent;
-            _barMax     = barMax;
-            _cam        = Camera.main;
-            _onReturn   = onReturn;
-            IsActive    = true;
+            _barMax = barMax;
+            _cam = Camera.main;
+            _onReturn = onReturn;
+            IsActive = true;
 
-            _tmp.color    = color;
+            _tmp.color = color;
             _tmp.fontSize = fontSize;
             _barBg.gameObject.SetActive(showBar);
             Canvas.enabled = true;
@@ -77,6 +83,10 @@ namespace Snm.Runtime.DebugDraw
 
         internal void Tick()
         {
+            // Auto-dispose if the tracked Transform was destroyed externally
+            // ReferenceEquals checks the C# ref is set; Unity's == null detects destroyed objects
+            if (!ReferenceEquals(_target, null) && _target == null) { Dispose(); return; }
+
             var worldPos = _target != null
                 ? _target.position + _offset
                 : _fixedPos + _offset;
@@ -88,7 +98,7 @@ namespace Snm.Runtime.DebugDraw
 
             if (_autoHide && _cam != null)
             {
-                var  sp  = _cam.WorldToScreenPoint(worldPos);
+                var sp = _cam.WorldToScreenPoint(worldPos);
                 bool vis = sp.z > 0 && sp.x >= 0 && sp.x <= Screen.width && sp.y >= 0 && sp.y <= Screen.height;
                 if (Canvas.enabled != vis) Canvas.enabled = vis;
             }
@@ -121,13 +131,18 @@ namespace Snm.Runtime.DebugDraw
 
         public void Dispose()
         {
-            if (!IsActive) return;
-            IsActive       = false;
-            Canvas.enabled = false;
-            _tmp.text      = string.Empty;
-            _target        = null;
+            IsActive = false;
+            if (Canvas) Canvas.enabled = false;
+            _tmp.text = string.Empty;
+            _target = null;
+            _textGetter = null;
+            _barCurrent = null;
+            _barMax = null;
             var ret = _onReturn;
             _onReturn = null;
+
+            if (rootGo) UnityEngineUtility.DestroyObject(rootGo);
+
             ret?.Invoke();
         }
     }

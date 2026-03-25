@@ -4,6 +4,27 @@ using UnityEngine;
 namespace Snm.GrassSystem
 {
     [Serializable]
+    public class GrassSystemConfig
+    {
+        [Header("Grid")]
+        public Vector2Int gridSize = new(50, 50);
+        public Vector2 cellSpacing = new(0.5f, 0.5f);
+
+        [Header("Rendering")]
+        public Mesh grassMesh;
+        public Material grassMaterial;
+
+        [Tooltip("Height of the grass blade mesh in world units. Used by the shader to normalize vertex height for bending. Auto-derived from mesh bounds.")]
+        public float bladeHeight = 1f;
+
+        [Tooltip("Height of the grass surface for interaction detection (trample, proximity). Can differ from blade height to fine-tune when disturbers trigger bending.")]
+        public float interactionHeight = 1f;
+
+        public WindConfig wind = new();
+        public TrampleConfig trample = new();
+    }
+
+    [Serializable]
     public class TrampleConfig
     {
         public bool enabled = true;
@@ -14,11 +35,6 @@ namespace Snm.GrassSystem
         [Range(0f, 2f)]
         [Tooltip("How far above the grass surface (world units) a disturber can still bend grass.")]
         public float proximityTolerance = 0.5f;
-        public int trampleResolution = 256;
-
-        [Range(0.05f, 3f)]
-        [Tooltip("Height of the grass blades in world units. Determines the vertical range where disturbers interact.")]
-        public float grassHeight = 1f;
     }
 
     [Serializable]
@@ -31,18 +47,4 @@ namespace Snm.GrassSystem
         public float windStrength = 1f;
     }
 
-    [Serializable]
-    public class GrassSystemConfig
-    {
-        [Header("Grid")]
-        public Vector2Int gridSize = new(50, 50);
-        public Vector2 cellSpacing = new(0.5f, 0.5f);
-
-        [Header("Rendering")]
-        public Mesh grassMesh;
-        public Material grassMaterial;
-
-        public WindConfig wind = new();
-        public TrampleConfig trample = new();
-    }
 }

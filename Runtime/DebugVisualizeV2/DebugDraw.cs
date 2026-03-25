@@ -134,6 +134,7 @@ namespace Snm.Runtime.DebugDraw
         /// </summary>
         public static StatPanel Panel(Transform target, Vector3? baseOffset = null, float spacing = 0.5f)
         {
+            if (!DebugDrawManager.Enabled) return null;
             _ = DebugDrawManager.Instance;
             return DebugDrawManager.Labels.CreatePanel(target, baseOffset ?? DebugDrawManager.Config.labelOffset, spacing);
         }

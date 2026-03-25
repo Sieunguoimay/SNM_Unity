@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Snm.Runtime.Unity;
 using UnityEngine;
 
 namespace Snm.Runtime.DebugDraw
@@ -22,12 +23,13 @@ namespace Snm.Runtime.DebugDraw
 
         // ── Init ─────────────────────────────────────────────────────────────
 
-        internal ShapeDrawer(DebugDrawConfig cfg)
+        internal ShapeDrawer(DebugDrawConfig cfg, Transform parent)
         {
             _cfg  = cfg;
-            _root = new GameObject("[DebugDraw] Shapes") { hideFlags = HideFlags.DontSave };
+            _root = new GameObject("[DebugDraw] Shapes") {  };
+            _root.transform.SetParent(parent, false);
 
-            _mat = new Material(Shader.Find("Hidden/Internal-Colored")) { hideFlags = HideFlags.DontSave };
+            _mat = new Material(Shader.Find("Hidden/Internal-Colored")) {  };
             _mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
             _mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             _mat.SetInt("_Cull",     (int)UnityEngine.Rendering.CullMode.Off);
@@ -190,7 +192,7 @@ namespace Snm.Runtime.DebugDraw
 
         private LineRenderer MakeLine()
         {
-            var go = new GameObject { hideFlags = HideFlags.DontSave };
+            var go = new GameObject {  };
             go.transform.SetParent(_root.transform, false);
             go.SetActive(false);
             var lr = go.AddComponent<LineRenderer>();
@@ -204,12 +206,12 @@ namespace Snm.Runtime.DebugDraw
 
         private MeshSlot MakeMeshSlot()
         {
-            var go = new GameObject { hideFlags = HideFlags.DontSave };
+            var go = new GameObject {  };
             go.transform.SetParent(_root.transform, false);
             go.SetActive(false);
             var f = go.AddComponent<MeshFilter>();
             var r = go.AddComponent<MeshRenderer>();
-            r.material          = new Material(_mat) { hideFlags = HideFlags.DontSave };
+            r.material          = new Material(_mat) {  };
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             r.receiveShadows    = false;
             return new MeshSlot(go, f, r);
@@ -259,7 +261,7 @@ namespace Snm.Runtime.DebugDraw
         {
             var verts = new Vector3[segs + 1];
             var norms = new Vector3[segs + 1];
-            var tris  = new int[(segs - 1) * 3];
+            var tris  = new int[segs * 3];
             for (int i = 0; i < segs; i++)
             {
                 float a  = i * Mathf.PI * 2f / segs;
@@ -267,24 +269,23 @@ namespace Snm.Runtime.DebugDraw
                 norms[i] = Vector3.forward;
             }
             verts[segs] = Vector3.zero; norms[segs] = Vector3.forward;
-            for (int i = 0; i < segs - 1; i++) { tris[i*3] = segs; tris[i*3+1] = i; tris[i*3+2] = i+1; }
+            for (int i = 0; i < segs; i++) { tris[i*3] = segs; tris[i*3+1] = i; tris[i*3+2] = (i+1) % segs; }
             return new Mesh { name = "DbgCircle", vertices = verts, normals = norms, triangles = tris };
         }
 
         private static Mesh BuildCone(int segs)
         {
-            var verts = new Vector3[segs + 2];
-            var norms = new Vector3[segs + 2];
-            var tris  = new int[(segs - 1) * 3];
+            var verts = new Vector3[segs + 1];
+            var norms = new Vector3[segs + 1];
+            var tris  = new int[segs * 3];
             verts[0] = Vector3.zero; norms[0] = Vector3.back;
             for (int i = 0; i < segs; i++)
             {
-                float a      = (float)i / (segs - 1) * Mathf.PI * 2f;
+                float a      = (float)i / segs * Mathf.PI * 2f;
                 verts[i + 1] = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 1f);
                 norms[i + 1] = Vector3.forward;
             }
-            verts[segs + 1] = new Vector3(0, 0, 1f); norms[segs + 1] = Vector3.forward;
-            for (int i = 0; i < segs - 1; i++) { tris[i*3] = 0; tris[i*3+1] = i+1; tris[i*3+2] = i+2; }
+            for (int i = 0; i < segs; i++) { tris[i*3] = 0; tris[i*3+1] = i+1; tris[i*3+2] = (i+1) % segs + 1; }
             return new Mesh { name = "DbgCone", vertices = verts, normals = norms, triangles = tris };
         }
 
@@ -311,10 +312,23 @@ namespace Snm.Runtime.DebugDraw
 
         public void Dispose()
         {
-            if (_root) UnityEngine.Object.Destroy(_root);
-            if (_mat)  UnityEngine.Object.Destroy(_mat);
+            // Destroy per-slot instance materials (use sharedMaterial to avoid
+            // creating a new instance — .material leaks in edit mode)
+            while (_meshPool.Count > 0)
+            {
+                var slot = _meshPool.Dequeue();
+                if (slot.Renderer)
+                {
+                    var mat = slot.Renderer.sharedMaterial;
+                    slot.Renderer.sharedMaterial = null;
+                    UnityEngineUtility.DestroyObject(mat);
+                }
+            }
+
+            if (_root) UnityEngineUtility.DestroyObject(_root);
+            if (_mat)  UnityEngineUtility.DestroyObject(_mat);
             foreach (var mesh in new[] { _sphere, _box, _circle, _cone, _ring })
-                if (mesh) UnityEngine.Object.Destroy(mesh);
+                if (mesh) UnityEngineUtility.DestroyObject(mesh);
         }
 
         // ── Nested ───────────────────────────────────────────────────────────

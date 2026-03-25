@@ -1,3 +1,5 @@
+using Snm.Runtime.Unity;
+using UnityEditor;
 using UnityEngine;
 
 namespace Snm.Runtime.DebugDraw
@@ -7,9 +9,9 @@ namespace Snm.Runtime.DebugDraw
         private static DebugDrawManager _instance;
         private bool _isQuitting;
 
-        internal static ShapeDrawer      Shapes { get; private set; }
-        internal static LabelDrawer      Labels { get; private set; }
-        internal static DebugDrawConfig  Config { get; private set; }
+        internal static ShapeDrawer Shapes { get; private set; }
+        internal static LabelDrawer Labels { get; private set; }
+        internal static DebugDrawConfig Config { get; private set; }
 
         public static bool Enabled { get; set; } = true;
 
@@ -22,9 +24,15 @@ namespace Snm.Runtime.DebugDraw
             }
         }
 
+        [MenuItem("Tools/Snm/Toggle Debug Draw Manager")]
+        private static void CreateMenuItem()
+        {
+            Enabled = !Enabled;
+        }
+
         private void Awake()
         {
-            if (_instance != null && _instance != this) { Destroy(gameObject); return; }
+            if (_instance != null && _instance != this) { UnityEngineUtility.DestroyObject(gameObject); return; }
             _instance = this;
             DontDestroyOnLoad(gameObject);
             Init();
@@ -32,10 +40,10 @@ namespace Snm.Runtime.DebugDraw
 
         private void Init()
         {
-            Config  = Resources.Load<DebugDrawConfig>("DebugDrawConfig") ?? ScriptableObject.CreateInstance<DebugDrawConfig>();
+            Config = Resources.Load<DebugDrawConfig>("DebugDrawConfig") ?? ScriptableObject.CreateInstance<DebugDrawConfig>();
             Enabled = Config.enabled;
-            Shapes  = new ShapeDrawer(Config);
-            Labels  = new LabelDrawer(Config);
+            Shapes = new ShapeDrawer(Config, transform);
+            Labels = new LabelDrawer(Config, transform);
         }
 
         private void Update()
@@ -56,7 +64,7 @@ namespace Snm.Runtime.DebugDraw
 
         private static void Boot()
         {
-            var go = new GameObject("[DebugDraw] Manager") { hideFlags = HideFlags.DontSave };
+            var go = new GameObject("[DebugDraw] Manager") {  };
             go.AddComponent<DebugDrawManager>();
         }
     }

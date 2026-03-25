@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Snm.Runtime.Unity;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -16,10 +17,11 @@ namespace Snm.Runtime.DebugDraw
 
         // ── Init ─────────────────────────────────────────────────────────────
 
-        internal LabelDrawer(DebugDrawConfig cfg)
+        internal LabelDrawer(DebugDrawConfig cfg, Transform parent)
         {
             _cfg  = cfg;
-            _root = new GameObject("[DebugDraw] Labels") { hideFlags = HideFlags.DontSave };
+            _root = new GameObject("[DebugDraw] Labels") {  };
+            _root.transform.SetParent(parent, false);
             for (int i = 0; i < cfg.labelPoolSize; i++) _pool.Enqueue(MakeHandle());
         }
 
@@ -116,23 +118,23 @@ namespace Snm.Runtime.DebugDraw
 
         private LabelHandle MakeHandle()
         {
-            var root = new GameObject("[DebugDraw] Label") { hideFlags = HideFlags.DontSave };
-            root.transform.SetParent(_root.transform, false);
+            var rootGo = new GameObject("[DebugDraw] Label") {  };
+            rootGo.transform.SetParent(_root.transform, false);
 
             // Canvas
-            var canvas = root.AddComponent<Canvas>();
+            var canvas = rootGo.AddComponent<Canvas>();
             canvas.renderMode      = RenderMode.WorldSpace;
             canvas.overrideSorting = true;
             canvas.sortingOrder    = 32767;
             canvas.enabled         = false;
 
-            var rect = root.GetComponent<RectTransform>();
+            var rect = rootGo.GetComponent<RectTransform>();
             rect.sizeDelta          = new Vector2(2, 1);
             rect.anchoredPosition3D = Vector3.zero;
 
             // Text
-            var textGo   = new GameObject("Text") { hideFlags = HideFlags.DontSave };
-            textGo.transform.SetParent(root.transform, false);
+            var textGo   = new GameObject("Text") {  };
+            textGo.transform.SetParent(rootGo.transform, false);
             var textRect = textGo.AddComponent<RectTransform>();
             textRect.anchorMin        = new Vector2(0.5f, 0.5f);
             textRect.anchorMax        = new Vector2(0.5f, 0.5f);
@@ -151,8 +153,8 @@ namespace Snm.Runtime.DebugDraw
             }
 
             // Progress bar background
-            var barBgGo   = new GameObject("BarBg") { hideFlags = HideFlags.DontSave };
-            barBgGo.transform.SetParent(root.transform, false);
+            var barBgGo   = new GameObject("BarBg") {  };
+            barBgGo.transform.SetParent(rootGo.transform, false);
             var barBgRect = barBgGo.AddComponent<RectTransform>();
             barBgRect.anchorMin        = new Vector2(0, 0);
             barBgRect.anchorMax        = new Vector2(1, 0);
@@ -162,7 +164,7 @@ namespace Snm.Runtime.DebugDraw
             barBgGo.AddComponent<Image>().color = _cfg.barBgColor;
 
             // Progress bar fill
-            var barFillGo   = new GameObject("BarFill") { hideFlags = HideFlags.DontSave };
+            var barFillGo   = new GameObject("BarFill") {  };
             barFillGo.transform.SetParent(barBgGo.transform, false);
             var barFillRect = barFillGo.AddComponent<RectTransform>();
             barFillRect.anchorMin        = Vector2.zero;
@@ -178,7 +180,7 @@ namespace Snm.Runtime.DebugDraw
 
             barBgGo.SetActive(false);
 
-            return new LabelHandle(canvas, rect, tmp, barBgRect, fill);
+            return new LabelHandle(rootGo, canvas, rect, tmp, barBgRect, fill);
         }
 
         private TMP_FontAsset ResolveFont()
@@ -193,9 +195,14 @@ namespace Snm.Runtime.DebugDraw
 
         public void Dispose()
         {
-            foreach (var h in _active) h.Canvas.enabled = false;
+            foreach (var h in _active)
+            {
+                h.IsActive = false;
+                if (h.Canvas) h.Canvas.enabled = false;
+            }
             _active.Clear();
-            if (_root) UnityEngine.Object.Destroy(_root);
+            _pool.Clear();
+            if (_root) UnityEngineUtility.DestroyObject(_root);
         }
     }
 }

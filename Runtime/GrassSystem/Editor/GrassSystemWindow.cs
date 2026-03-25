@@ -92,7 +92,7 @@ namespace Snm.GrassSystem.Editor
             var cfg = _system.Config.trample;
             EditorGUILayout.LabelField("Enabled", cfg.enabled.ToString());
             EditorGUILayout.LabelField("Fade Speed", cfg.trampleFadeSpeed.ToString("F2"));
-            EditorGUILayout.LabelField("Resolution", cfg.trampleResolution.ToString());
+            EditorGUILayout.LabelField("Resolution", $"{_system.Config.gridSize.x} x {_system.Config.gridSize.y}");
 
             if (Application.isPlaying && _system.Trample != null)
             {
@@ -101,7 +101,7 @@ namespace Snm.GrassSystem.Editor
                 {
                     EditorGUILayout.LabelField("Live Trample RT");
                     var rect = GUILayoutUtility.GetRect(128, 128, GUILayout.ExpandWidth(false));
-                    EditorGUI.DrawPreviewTexture(rect, rt);
+                    EditorGUI.DrawTextureTransparent(rect, rt);
                 }
             }
 

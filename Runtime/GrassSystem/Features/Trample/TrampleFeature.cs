@@ -17,7 +17,7 @@ namespace Snm.GrassSystem
             _grassMaterial = grassMaterial;
 
             _trample = new GrassTrample();
-            _trample.Setup(ctx.Config.trample, ctx.Canvas);
+            _trample.Setup(ctx.Config, ctx.Canvas);
 
             grassMaterial.SetTexture(ShaderIDs.TrampleMap, _trample.OutputTexture);
         }
@@ -26,7 +26,6 @@ namespace Snm.GrassSystem
         public void OnUpdate(float deltaTime)
         {
             _trample.Update(deltaTime);
-            _trample.UploadSmoothBrushesTo(_grassMaterial);
             _trample.ClearBrushes();
         }
 

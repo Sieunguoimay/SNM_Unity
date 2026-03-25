@@ -1,3 +1,6 @@
+// GPU-instanced grass shader with wind animation and trample interaction.
+// Each blade is positioned via a StructuredBuffer of per-instance matrices,
+// then bent by wind (scrolling noise map) and trample (persistent RT written by interactors).
 Shader "Snm/InteractiveGrass"
 {
     Properties
@@ -17,9 +20,12 @@ Shader "Snm/InteractiveGrass"
             "RenderPipeline" = "UniversalPipeline"
         }
 
-        Cull Off
+        Cull Off   // Grass blades are visible from both sides
         ZWrite On
 
+        // =====================================================================
+        // Forward Lit Pass — renders grass with lighting, wind, and trample
+        // =====================================================================
         Pass
         {
             Name "ForwardLit"
@@ -35,24 +41,22 @@ Shader "Snm/InteractiveGrass"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-            #define MAX_BRUSHES 64
-
             TEXTURE2D(_MainTex);    SAMPLER(sampler_MainTex);
-            TEXTURE2D(_TrampleMap); SAMPLER(sampler_TrampleMap);
-            TEXTURE2D(_WindMap);    SAMPLER(sampler_WindMap);
+            TEXTURE2D(_TrampleMap); SAMPLER(sampler_TrampleMap); // RT written by EnvironmentInteractionSystem
+            TEXTURE2D(_WindMap);    SAMPLER(sampler_WindMap);     // Scrolling noise texture for wind
 
-            float4 _Brushes[MAX_BRUSHES]; // xy = world pos, z = direction angle, w = radius
-            float _BrushCount;
+            float _BladeHeight; // Set globally from C#; used to normalize vertex height
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _MainTex_ST;
-                float4 _WorldCanvas;   // xy = origin, zw = size
-                float4 _WindParams;    // x = strength, y = speed, zw = map scale
+                float4 _WorldCanvas;   // xy = world-space origin, zw = world-space size of the grass area
+                float4 _WindParams;    // x = strength, y = scroll speed, zw = UV tiling scale
                 float _Cutoff;
                 half4 _TopColor;
                 half4 _BottomColor;
             CBUFFER_END
 
+            // Per-instance transform matrices uploaded from C# (one per grass blade)
             StructuredBuffer<float4x4> _LocalToWorldMatrices;
 
             struct Attributes
@@ -69,33 +73,42 @@ Shader "Snm/InteractiveGrass"
                 float2 uv : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
                 float3 positionWS : TEXCOORD2;
-                float heightFactor : TEXCOORD3;
+                float heightFactor : TEXCOORD3; // 0 at root, 1 at tip
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
-            // Rotate vector `v` from direction `from` toward direction `to` using quaternion math.
+            // Rotates vector `v` so that direction `from` maps to direction `to`.
+            // Uses a quaternion constructed from the half-angle between the two directions.
             float3 RotateFromTo(float3 v, float3 from, float3 to)
             {
                 float3 axis = cross(from, to);
                 float cosA = dot(from, to);
                 float qw = 1.0 + cosA;
 
-                // Near-opposite: pick arbitrary perpendicular axis
+                // Near-opposite directions: pick an arbitrary perpendicular axis
                 if (qw < 1e-4)
                 {
                     axis = abs(from.y) < 0.999 ? cross(from, float3(0,1,0)) : cross(from, float3(1,0,0));
                     qw = 0.0;
                 }
 
+                // Apply quaternion rotation: v + 2 * cross(q.xyz, cross(q.xyz, v) + q.w * v) / |q|^2
                 float3 t1 = cross(axis, v);
                 float3 t2 = cross(axis, t1 + qw * v);
                 return v + 2.0 * t2 / dot(float4(axis, qw), float4(axis, qw));
             }
 
+            // Easing: fast start, decelerating end — used for trample strength falloff
             float ease_OutCubic(float x)
             {
                 float inv = 1.0 - x;
                 return 1.0 - inv * inv * inv;
+            }
+
+            // Easing: slow start, accelerating — used for height-based bend factor
+            float ease_InCubic(float x)
+            {
+                return x * x * x;
             }
 
             Varyings vert(Attributes input, uint instanceID : SV_InstanceID)
@@ -107,70 +120,39 @@ Shader "Snm/InteractiveGrass"
                 float4x4 localToWorld = _LocalToWorldMatrices[instanceID];
                 float3 worldOrigin = mul(localToWorld, float4(0, 0, 0, 1)).xyz;
 
-                // Height-based bend factor: stronger at tip, zero at root
-                float height01 = saturate(input.positionOS.y);
-                float bendFactor = 1.0 - pow(1.0 - height01, 3.0); // ease_OutCubic
+                // Normalized height along the blade (0 = root, 1 = tip).
+                // bendFactor uses cubic easing so the base stays stiff and the tip bends most.
+                float height01 = saturate(input.positionOS.y / _BladeHeight);
+                float bendFactor = ease_InCubic(height01);
 
-                // World UV for sampling trample/wind maps
+                // Map blade world position to [0,1] UV within the grass canvas
                 float2 worldUV = saturate((worldOrigin.xz - _WorldCanvas.xy) / _WorldCanvas.zw);
 
-                // --- Trample (persistent map) ---
-                // Channel layout: xy = push direction, z = hold buffer, w = trample value
+                // --- Trample ---
+                // _TrampleMap channel layout: xy = push direction, z = hold buffer, w = trample intensity
                 float4 trample = SAMPLE_TEXTURE2D_LOD(_TrampleMap, sampler_TrampleMap, worldUV, 0);
                 float trampleStrength = ease_OutCubic(trample.w);
-                float2 trampleDir = trample.xy;// * trampleStrength;
-
-                // --- Live brushes (per-frame, smooth) ---
-                int brushCount = (int)min(_BrushCount, (float)MAX_BRUSHES);
-                float liveBest = 0;
-                float2 liveDir = float2(0, 0);
-
-                [loop]
-                for (int b = 0; b < brushCount; b++)
-                {
-                    float4 brush = _Brushes[b];
-                    float2 diff = worldOrigin.xz - brush.xy;
-                    float distSqr = dot(diff, diff);
-                    if (distSqr > brush.w * brush.w) continue;
-
-                    float dist = sqrt(distSqr);
-                    float strength = saturate(1.0 - dist / brush.w);
-                    if (strength > liveBest)
-                    {
-                        liveBest = strength;
-                        liveDir = diff / max(dist, 1e-5);
-                    }
-                }
-
-                // Live brush wins when stronger than persistent map
-                float liveStrength = ease_OutCubic(liveBest);
-
-                if(liveBest > 0)
-                {
-                    float dotValue = max(0, dot(trampleDir, liveDir));
-                    trampleDir = normalize(trampleDir + liveDir * dotValue);
-                    trampleStrength = max(trampleStrength, liveStrength);
-                }
+                float2 trampleDir = trample.xy;
 
                 // --- Wind ---
-                float windStrength = _WindParams.x;
-                float windSpeed = _WindParams.y;
-                float2 windScale = _WindParams.zw;
+                float2 windUV = worldUV / _WindParams.zw + _Time.y * _WindParams.y;
+                float2 wind = SAMPLE_TEXTURE2D_LOD(_WindMap, sampler_WindMap, windUV, 0).xy * 2.0 - 1.0;
+                float2 windDir = wind * _WindParams.x;
 
-                float2 windUV = worldUV / windScale + _Time.y * windSpeed;
-                float2 wind = SAMPLE_TEXTURE2D_LOD(_WindMap, sampler_WindMap, windUV, 0).xy * 2.0 - 1.0;// + 0.5;
-                float2 windDir = wind * windStrength;
-
-                // --- Combine in world space, then transform to local ---
+                // --- Combine bend directions in world space ---
+                // The blade direction starts upright (0,1,0). Wind and trample push it sideways (xz).
+                // Under heavy trample, y collapses toward 0 so the blade flattens to the ground.
                 float3 combinedWS = float3(0, 1, 0);
                 combinedWS.xz = windDir + trampleDir * trampleStrength;
                 combinedWS.y = max(0.0, 1.0 - trampleStrength);
 
-                // Transform bend direction from world space to blade-local space
+                // Convert combined bend direction from world space into blade-local space
                 float3x3 worldToLocal = (float3x3)transpose((float3x3)localToWorld);
                 float3 combinedLS = mul(worldToLocal, combinedWS);
 
-                float3 grassDir = normalize(lerp(float3(0, 1, 0), combinedLS, bendFactor));
+                // Blend between the combined bend and straight-up based on how high up the blade we are.
+                // When trampled, the entire blade bends (bendFactor is overridden toward 0).
+                float3 grassDir = normalize(lerp(combinedLS, float3(0, 1, 0), lerp(bendFactor, 0.0, trampleStrength)));
                 float3 localPos = RotateFromTo(input.positionOS.xyz, float3(0, 1, 0), grassDir);
 
                 float3 worldPos = mul(localToWorld, float4(localPos, 1)).xyz;
@@ -184,18 +166,22 @@ Shader "Snm/InteractiveGrass"
                 return output;
             }
 
-            half4 frag(Varyings input) : SV_Target
+            half4 frag(Varyings input, bool facing : SV_IsFrontFace) : SV_Target
             {
                 UNITY_SETUP_INSTANCE_ID(input);
 
                 half4 albedo = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
-                clip(albedo.a - _Cutoff);
+                clip(albedo.a - _Cutoff); // Alpha test cutout
 
-                // Height-based color gradient
+                // Flip normal for back faces so both sides receive correct lighting
+                float3 normal = facing ? input.normalWS : -input.normalWS;
+
+                // Gradient tint from root (_BottomColor) to tip (_TopColor)
                 half3 tint = lerp(_BottomColor.rgb, _TopColor.rgb, input.heightFactor);
 
+                // Simple N dot L lighting with 0.2 ambient floor
                 Light mainLight = GetMainLight();
-                float ndl = max(0, dot(input.normalWS, mainLight.direction));
+                float ndl = max(0, dot(normal, mainLight.direction));
                 half3 lit = albedo.rgb * tint * (0.2 + ndl * 0.8);
 
                 return half4(lit, albedo.a);
@@ -203,7 +189,10 @@ Shader "Snm/InteractiveGrass"
             ENDHLSL
         }
 
-        // Shadow caster pass for correct shadow casting
+        // =====================================================================
+        // Shadow Caster Pass — writes depth only, no bending applied
+        // (shadows stay at blade origin for perf; visually acceptable for small grass)
+        // =====================================================================
         Pass
         {
             Name "ShadowCaster"

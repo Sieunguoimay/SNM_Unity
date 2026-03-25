@@ -11,6 +11,7 @@ namespace Snm.GrassSystem
         static readonly int ID_WindParams = Shader.PropertyToID("_WindParams");
         static readonly int ID_WorldCanvas = Shader.PropertyToID("_WorldCanvas");
         static readonly int ID_TrampleMap = Shader.PropertyToID("_TrampleMap");
+        static readonly int ID_BladeHeight = Shader.PropertyToID("_BladeHeight");
 
         public Material Material => _material;
 
@@ -65,6 +66,11 @@ namespace Snm.GrassSystem
         public void SetTrampleMap(Texture texture)
         {
             _material.SetTexture(ID_TrampleMap, texture);
+        }
+
+        public void SetBladeHeight(float height)
+        {
+            _material.SetFloat(ID_BladeHeight, height);
         }
 
         public void Render()

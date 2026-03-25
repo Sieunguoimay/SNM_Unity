@@ -19,7 +19,7 @@ namespace Snm.GrassSystem
         StampBuffer _smoothBuffer;
         SurfaceCanvas _canvas;
         IReadOnlyList<IGrassDisturber> _disturbers = new List<IGrassDisturber>();
-        
+
         float _fadeSpeed;
         float _holdTime;
         float _minOffset;
@@ -29,24 +29,25 @@ namespace Snm.GrassSystem
         class TrackState
         {
             public Vector3 PreviousPosition;
-            public Vector3 Direction;
+            public Vector3 Direction = Vector3.forward;
         }
 
         readonly SurfaceDisturberTracker<IGrassDisturber, TrackState> _tracker = new();
 
         public RenderTexture OutputTexture => _renderer.ResultTexture;
 
-        public void Setup(TrampleConfig config, SurfaceCanvas canvas)
+        public void Setup(GrassSystemConfig grassConfig, SurfaceCanvas canvas)
         {
+            var config = grassConfig.trample;
             _fadeSpeed = config.trampleFadeSpeed;
             _holdTime = Mathf.Max(config.trampleHoldTime, 0.001f);
             _minOffset = config.disturbMinOffset;
             _proximityTolerance = config.proximityTolerance;
-            _grassHeight = config.grassHeight;
+            _grassHeight = grassConfig.interactionHeight;
             _canvas = canvas;
 
-            int res = config.trampleResolution;
-            var desc = new RenderTextureDescriptor(res, res)
+            var res = grassConfig.gridSize;
+            var desc = new RenderTextureDescriptor(res.x, res.y)
             {
                 graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat,
                 depthBufferBits = 0,
@@ -99,12 +100,14 @@ namespace Snm.GrassSystem
                 }
 
                 bool inCanvas = _canvas.Overlaps(pos, contactRadius)
-                             || _canvas.Overlaps(state.PreviousPosition, contactRadius);
+                            || _canvas.Overlaps(state.PreviousPosition, contactRadius);
 
                 if (inCanvas)
                 {
-                    float angle = state.Direction.sqrMagnitude > 0.001f
-                        ? Mathf.Atan2(state.Direction.z, state.Direction.x)
+                    var dirX = state.Direction.x;
+                    var dirZ = state.Direction.z;
+                    float angle = Vector2.SqrMagnitude(new Vector2(dirX, dirZ)) > 0.001f
+                        ? Mathf.Atan2(dirZ, dirX)
                         : 0f;
                     var stamp = new Vector4(pos.x, pos.z, angle, contactRadius);
                     _stampBuffer.Add(stamp);

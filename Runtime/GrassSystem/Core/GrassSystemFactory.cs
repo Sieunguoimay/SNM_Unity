@@ -22,6 +22,7 @@ namespace Snm.GrassSystem
             var renderer = new GrassRenderer();
             renderer.Setup(config.grassMesh, config.grassMaterial, matrices, worldBounds);
             renderer.SetWorldCanvas(canvasVec);
+            renderer.SetBladeHeight(config.bladeHeight);
 
             // --- context ---
             var ctx = new GrassFeatureContext(config, canvas, renderer.Material);

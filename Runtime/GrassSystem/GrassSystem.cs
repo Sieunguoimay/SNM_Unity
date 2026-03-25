@@ -9,7 +9,6 @@ namespace Snm.GrassSystem
         [SerializeField] GrassSystemConfig config = new();
 
         GrassSystemHandle _handle;
-        // IReadOnlyList<IGrassDisturber> _disturbers = new List<IGrassDisturber>();
 
         Matrix4x4[] _matrices;
         SurfaceCanvas _canvas;
@@ -19,12 +18,17 @@ namespace Snm.GrassSystem
         public GrassRenderer Renderer => _handle?.Renderer;
         public GrassTrample Trample => _handle?.Trample;
         public int InstanceCount => _matrices?.Length ?? 0;
+        public Matrix4x4[] Matrices => _matrices;
         public SurfaceCanvas Canvas => _handle?.Canvas;
 
         public void SetDisturbers(IReadOnlyList<IGrassDisturber> disturbers)
         {
-            // _disturbers = disturbers ?? new List<IGrassDisturber>();
             _handle?.Trample?.SetDisturbers(disturbers);
+        }
+
+        void OnValidate()
+        {
+            UpdateGrassHeightFromMesh();
         }
 
         void OnEnable()
@@ -40,6 +44,14 @@ namespace Snm.GrassSystem
         {
             _handle?.Dispose();
             _handle = null;
+        }
+
+        public void UpdateGrassHeightFromMesh()
+        {
+            if (config.grassMesh != null)
+            {
+                config.bladeHeight = config.grassMesh.bounds.size.y;
+            }
         }
 
         void BuildGrid()

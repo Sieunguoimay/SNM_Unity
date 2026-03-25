@@ -82,7 +82,9 @@ Shader "Hidden/GrassTrample"
 
                     float dist = sqrt(distSqr);
                     float trample = saturate(1.0 - dist / brush.w);
-                    float2 dir = float2(cos(brush.z), sin(brush.z));
+                    float2 dir = brush.z > 999.0
+                        ? normalize(diff)  // no horizontal movement: push outward radially
+                        : float2(cos(brush.z), sin(brush.z));
 
                     if(trample > maxTrample)
                     {
@@ -103,8 +105,12 @@ Shader "Hidden/GrassTrample"
                     return float4(prev.xy, hold, trample);
                 }
 
-                // Blend: keep previous if it's significantly stronger
-                float2 outDir = lerp(inputDir, prev.xy, step(maxTrample, prev.w * 1.25));
+                // Blend: keep previous direction if it's significantly stronger,
+                // but only when prev actually has a valid direction
+                bool prevHasDir = dot(prev.xy, prev.xy) > EPSILON;
+                float keepPrev = prevHasDir * step(maxTrample, prev.w * 1.25);
+                float2 outDir = lerp(inputDir, prev.xy, keepPrev);
+
                 float outHold = max(prev.z, _HoldBuffer);
                 float outTrample = max(prev.w, maxTrample);
 

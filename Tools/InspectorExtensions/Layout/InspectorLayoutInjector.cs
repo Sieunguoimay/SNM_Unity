@@ -107,7 +107,11 @@ namespace Snm.Tools.InspectorExtensions
             public void Cleanup()
             {
                 vertical.RemoveFromHierarchy();
-                parent.Insert(index, center);
+                try
+                {
+                    parent.Insert(index, center);
+                }
+                catch { /* ignored */ }
             }
         }
 
