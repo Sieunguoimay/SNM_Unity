@@ -46,7 +46,9 @@ namespace Snm.GrassSystem
             _grassHeight = grassConfig.interactionHeight;
             _canvas = canvas;
 
-            var res = grassConfig.gridSize;
+            var res = grassConfig.placementMap != null
+                ? new Vector2Int(grassConfig.placementMap.width, grassConfig.placementMap.height)
+                : grassConfig.gridSize;
             var desc = new RenderTextureDescriptor(res.x, res.y)
             {
                 graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat,

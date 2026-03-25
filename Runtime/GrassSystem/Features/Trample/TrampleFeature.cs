@@ -6,20 +6,17 @@ namespace Snm.GrassSystem
     public class TrampleFeature : IGrassFeature
     {
         private readonly GrassTrample _trample;
-        private readonly Material _grassMaterial;
 
         public GrassTrample Trample => _trample;
 
         public TrampleFeature(
-            GrassFeatureContext ctx,
-            Material grassMaterial)
+            GrassFeatureContext ctx)
         {
-            _grassMaterial = grassMaterial;
-
             _trample = new GrassTrample();
             _trample.Setup(ctx.Config, ctx.Canvas);
 
-            grassMaterial.SetTexture(ShaderIDs.TrampleMap, _trample.OutputTexture);
+            foreach (var mat in ctx.AllMaterials)
+                mat.SetTexture(ShaderIDs.TrampleMap, _trample.OutputTexture);
         }
 
 

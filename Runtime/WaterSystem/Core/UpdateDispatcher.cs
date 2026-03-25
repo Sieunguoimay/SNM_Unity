@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Snm.WaterSystem
+namespace Snm.Runtime.Unity
 {
     public interface ILateUpdateTarget
     {
@@ -16,7 +16,7 @@ namespace Snm.WaterSystem
         void FixedUpdate(float fixedDeltaTime);
     }
 
-    internal interface IUpdateService
+    public interface IUpdateService
     {
         void AddUpdateTarget(IUpdateTarget target);
         void AddLateUpdateTarget(ILateUpdateTarget target);

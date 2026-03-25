@@ -7,14 +7,17 @@ namespace Snm.GrassSystem
         public WindFeature(GrassFeatureContext ctx)
         {
             var config = ctx.Config.wind;
-            var mat = ctx.GrassMaterial;
-
-            mat.SetTexture(ShaderIDs.WindMap, config.windMap);
-            mat.SetVector(ShaderIDs.WindParams, new Vector4(
+            var windParams = new Vector4(
                 config.windStrength,
                 config.windScrollSpeed,
                 config.windMapScale.x,
-                config.windMapScale.y));
+                config.windMapScale.y);
+
+            foreach (var mat in ctx.AllMaterials)
+            {
+                mat.SetTexture(ShaderIDs.WindMap, config.windMap);
+                mat.SetVector(ShaderIDs.WindParams, windParams);
+            }
         }
 
         public void OnUpdate(float deltaTime) { }
