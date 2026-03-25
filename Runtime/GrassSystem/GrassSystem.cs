@@ -8,23 +8,23 @@ namespace Snm.GrassSystem
     {
         [SerializeField] GrassSystemConfig config = new();
 
-        GrassRenderer _renderer;
-        GrassTrample _trample;
-        IReadOnlyList<IGrassDisturber> _disturbers = new List<IGrassDisturber>();
+        GrassSystemHandle _handle;
+        // IReadOnlyList<IGrassDisturber> _disturbers = new List<IGrassDisturber>();
 
         Matrix4x4[] _matrices;
         SurfaceCanvas _canvas;
         Bounds _worldBounds;
 
         public GrassSystemConfig Config => config;
-        public GrassRenderer Renderer => _renderer;
-        public GrassTrample Trample => _trample;
+        public GrassRenderer Renderer => _handle?.Renderer;
+        public GrassTrample Trample => _handle?.Trample;
         public int InstanceCount => _matrices?.Length ?? 0;
-        public SurfaceCanvas Canvas => _canvas;
+        public SurfaceCanvas Canvas => _handle?.Canvas;
 
         public void SetDisturbers(IReadOnlyList<IGrassDisturber> disturbers)
         {
-            _disturbers = disturbers ?? new List<IGrassDisturber>();
+            // _disturbers = disturbers ?? new List<IGrassDisturber>();
+            _handle?.Trample?.SetDisturbers(disturbers);
         }
 
         void OnEnable()
@@ -33,45 +33,13 @@ namespace Snm.GrassSystem
 
             BuildGrid();
 
-            var worldMin = _canvas.WorldMin;
-            var canvasVec = new Vector4(worldMin.x, worldMin.y, _canvas.Size.x, _canvas.Size.y);
-
-            _renderer = new GrassRenderer();
-            _renderer.Setup(config.grassMesh, config.grassMaterial, _matrices, _worldBounds);
-            _renderer.SetWorldCanvas(canvasVec);
-
-            if (config.windMap != null)
-                _renderer.SetWind(config.windMap, config.windStrength, config.windScrollSpeed, config.windMapScale);
-
-            if (config.trampleEnabled && config.trampleShader != null)
-            {
-                _trample = new GrassTrample();
-                _trample.Setup(config, _canvas);
-                _renderer.SetTrampleMap(_trample.OutputTexture);
-            }
-        }
-
-        void Update()
-        {
-            if (_trample != null)
-            {
-                _trample.Update(_disturbers, Time.deltaTime);
-
-                if (_renderer != null)
-                    _trample.UploadSmoothBrushesTo(_renderer.Material);
-
-                _trample.ClearBrushes();
-            }
-
-            _renderer?.Render();
+            _handle = GrassSystemFactory.Create(config, _matrices, _canvas, _worldBounds);
         }
 
         void OnDisable()
         {
-            _renderer?.Dispose();
-            _renderer = null;
-            _trample?.Dispose();
-            _trample = null;
+            _handle?.Dispose();
+            _handle = null;
         }
 
         void BuildGrid()

@@ -70,7 +70,8 @@ namespace Snm.GrassSystem.Editor
         void DrawWindInfo()
         {
             EditorGUILayout.LabelField("Wind", EditorStyles.boldLabel);
-            var cfg = _system.Config;
+            var cfg = _system.Config.wind;
+            EditorGUILayout.LabelField("Enabled", cfg.enabled.ToString());
             EditorGUILayout.LabelField("Strength", cfg.windStrength.ToString("F2"));
             EditorGUILayout.LabelField("Scroll Speed", cfg.windScrollSpeed.ToString("F3"));
             EditorGUILayout.LabelField("Map Scale", $"{cfg.windMapScale.x} x {cfg.windMapScale.y}");
@@ -88,8 +89,8 @@ namespace Snm.GrassSystem.Editor
         void DrawTrampleInfo()
         {
             EditorGUILayout.LabelField("Trample", EditorStyles.boldLabel);
-            var cfg = _system.Config;
-            EditorGUILayout.LabelField("Enabled", cfg.trampleEnabled.ToString());
+            var cfg = _system.Config.trample;
+            EditorGUILayout.LabelField("Enabled", cfg.enabled.ToString());
             EditorGUILayout.LabelField("Fade Speed", cfg.trampleFadeSpeed.ToString("F2"));
             EditorGUILayout.LabelField("Resolution", cfg.trampleResolution.ToString());
 
