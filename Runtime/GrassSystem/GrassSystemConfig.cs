@@ -4,6 +4,34 @@ using UnityEngine;
 namespace Snm.GrassSystem
 {
     [Serializable]
+    public class TrampleConfig
+    {
+        public bool enabled = true;
+        public Shader trampleShader;
+        public float trampleFadeSpeed = 0.1f;
+        public float trampleHoldTime = 0.5f;
+        public float disturbMinOffset = 0.01f;
+        [Range(0f, 2f)]
+        [Tooltip("How far above the grass surface (world units) a disturber can still bend grass.")]
+        public float proximityTolerance = 0.5f;
+        public int trampleResolution = 256;
+
+        [Range(0.05f, 3f)]
+        [Tooltip("Height of the grass blades in world units. Determines the vertical range where disturbers interact.")]
+        public float grassHeight = 1f;
+    }
+
+    [Serializable]
+    public class WindConfig
+    {
+        public bool enabled = false;
+        public Texture2D windMap;
+        public Vector2 windMapScale = new(10, 10);
+        public float windScrollSpeed = 0.01f;
+        public float windStrength = 1f;
+    }
+
+    [Serializable]
     public class GrassSystemConfig
     {
         [Header("Grid")]
@@ -14,26 +42,7 @@ namespace Snm.GrassSystem
         public Mesh grassMesh;
         public Material grassMaterial;
 
-        [Header("Wind")]
-        public Texture2D windMap;
-        public Vector2 windMapScale = new(10, 10);
-        public float windScrollSpeed = 0.01f;
-        public float windStrength = 1f;
-
-        [Header("Grass Height")]
-        [Range(0.05f, 3f)]
-        [Tooltip("Height of the grass blades in world units. Determines the vertical range where disturbers interact.")]
-        public float grassHeight = 1f;
-
-        [Header("Trample")]
-        public bool trampleEnabled = true;
-        public Shader trampleShader;
-        public float trampleFadeSpeed = 0.1f;
-        public float trampleHoldTime = 0.5f;
-        public float disturbMinOffset = 0.01f;
-        [Range(0f, 2f)]
-        [Tooltip("How far above the grass surface (world units) a disturber can still bend grass.")]
-        public float proximityTolerance = 0.5f;
-        public int trampleResolution = 256;
+        public WindConfig wind = new();
+        public TrampleConfig trample = new();
     }
 }

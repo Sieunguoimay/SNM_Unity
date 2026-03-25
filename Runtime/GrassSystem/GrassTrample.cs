@@ -18,6 +18,8 @@ namespace Snm.GrassSystem
         StampBuffer _stampBuffer;
         StampBuffer _smoothBuffer;
         SurfaceCanvas _canvas;
+        IReadOnlyList<IGrassDisturber> _disturbers = new List<IGrassDisturber>();
+        
         float _fadeSpeed;
         float _holdTime;
         float _minOffset;
@@ -34,7 +36,7 @@ namespace Snm.GrassSystem
 
         public RenderTexture OutputTexture => _renderer.ResultTexture;
 
-        public void Setup(GrassSystemConfig config, SurfaceCanvas canvas)
+        public void Setup(TrampleConfig config, SurfaceCanvas canvas)
         {
             _fadeSpeed = config.trampleFadeSpeed;
             _holdTime = Mathf.Max(config.trampleHoldTime, 0.001f);
@@ -64,11 +66,16 @@ namespace Snm.GrassSystem
             _smoothBuffer = new StampBuffer(8);
         }
 
-        public void Update(IReadOnlyList<IGrassDisturber> disturbers, float deltaTime)
+        public void SetDisturbers(IReadOnlyList<IGrassDisturber> disturbers)
+        {
+            _disturbers = disturbers ?? new List<IGrassDisturber>();
+        }
+
+        public void Update(float deltaTime)
         {
             float grassTopY = _canvas.Position.y + _grassHeight;
 
-            _tracker.Sync(disturbers, (d, state) =>
+            _tracker.Sync(_disturbers, (d, state) =>
             {
                 state.PreviousPosition = d.WorldPosition;
             });
