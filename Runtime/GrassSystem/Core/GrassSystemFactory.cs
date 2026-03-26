@@ -60,8 +60,16 @@ namespace Snm.GrassSystem
             // --- features ---
             var composite = new GrassFeatureComposite();
 
+            if (config.ambientOcclusion.enabled)
+                composite.Add(new AmbientOcclusionFeature(ctx));
+
+            if (config.colorVariation.enabled)
+                composite.Add(new ColorVariationFeature(ctx));
+
             if (config.wind.enabled)
                 composite.Add(new WindFeature(ctx));
+            else
+                WindFeature.ClearWindProperties(ctx.AllMaterials);
 
             TrampleFeature trampleFeature = null;
             if (config.trample.enabled)
@@ -69,6 +77,12 @@ namespace Snm.GrassSystem
                 trampleFeature = new TrampleFeature(ctx);
                 composite.Add(trampleFeature);
             }
+
+            if (config.trample.enabled && config.trample.springEnabled)
+                composite.Add(new RecoverySpringFeature(ctx));
+
+            if (config.frustumCulling.enabled)
+                composite.Add(new FrustumCullingFeature(renderers, config.frustumCulling.margin));
 
             // Render must be last — all features update before draw
             foreach (var r in renderers)

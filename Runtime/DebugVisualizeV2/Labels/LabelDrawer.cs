@@ -191,6 +191,8 @@ namespace Snm.Runtime.DebugDraw
             return found.Length > 0 ? found[0] : null;
         }
 
+        internal void SetVisible(bool visible) => _root.SetActive(visible);
+
         // ── Cleanup ───────────────────────────────────────────────────────────
 
         public void Dispose()

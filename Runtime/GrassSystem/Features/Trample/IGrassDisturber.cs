@@ -4,6 +4,7 @@ namespace Snm.GrassSystem
 {
     public interface IGrassDisturber : ISurfaceDisturber
     {
+        float MaxContactRadius { get; }
         float GetContactRadius(float surfaceY);
 
         /// <summary>

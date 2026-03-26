@@ -13,7 +13,17 @@ namespace Snm.Runtime.DebugDraw
         internal static LabelDrawer Labels { get; private set; }
         internal static DebugDrawConfig Config { get; private set; }
 
-        public static bool Enabled { get; set; } = true;
+        private static bool _enabled = true;
+        public static bool Enabled
+        {
+            get => _enabled;
+            set
+            {
+                _enabled = value;
+                Shapes?.SetVisible(value);
+                Labels?.SetVisible(value);
+            }
+        }
 
         public static DebugDrawManager Instance
         {
@@ -41,9 +51,9 @@ namespace Snm.Runtime.DebugDraw
         private void Init()
         {
             Config = Resources.Load<DebugDrawConfig>("DebugDrawConfig") ?? ScriptableObject.CreateInstance<DebugDrawConfig>();
-            Enabled = Config.enabled;
             Shapes = new ShapeDrawer(Config, transform);
             Labels = new LabelDrawer(Config, transform);
+            Enabled = Config.enabled;
         }
 
         private void Update()

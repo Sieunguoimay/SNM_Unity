@@ -51,6 +51,14 @@ Shader "Snm/InteractiveGrass"
                 float4 _MainTex_ST;
                 float4 _WorldCanvas;   // xy = world-space origin, zw = world-space size of the grass area
                 float4 _WindParams;    // x = strength, y = scroll speed, zw = UV tiling scale
+                float4 _WindParams2;   // x = sway variation, y = amplitude variation
+                half4 _ColorVariationA;
+                half4 _ColorVariationB;
+                float _AOStrength;
+                float _AOPower;
+                float _SpringFrequency;
+                float _SpringDamping;
+                float _SpringAmplitude;
                 float _Cutoff;
                 half4 _TopColor;
                 half4 _BottomColor;
@@ -74,6 +82,8 @@ Shader "Snm/InteractiveGrass"
                 float3 normalWS : TEXCOORD1;
                 float3 positionWS : TEXCOORD2;
                 float heightFactor : TEXCOORD3; // 0 at root, 1 at tip
+                float instanceRand : TEXCOORD4; // per-instance random [0,1]
+                float trampleStrength : TEXCOORD5;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -132,28 +142,47 @@ Shader "Snm/InteractiveGrass"
                 // _TrampleMap channel layout: xy = push direction, z = hold buffer, w = trample intensity
                 float4 trample = SAMPLE_TEXTURE2D_LOD(_TrampleMap, sampler_TrampleMap, worldUV, 0);
                 float trampleStrength = ease_OutCubic(trample.w);
+
+                // --- Recovery Spring ---
+                // When hold buffer (z) is depleted but strength (w) is still fading,
+                // the blade is recovering — add damped sinusoidal overshoot.
+                float isRecovering = step(trample.z, 0.001) * step(0.01, trample.w);
+                float recoveryProgress = 1.0 - trample.w;
+                float springOsc = exp(-recoveryProgress * _SpringDamping)
+                                * sin(recoveryProgress * _SpringFrequency * 6.283);
+                trampleStrength += springOsc * _SpringAmplitude * isRecovering;
+                trampleStrength = clamp(trampleStrength, -0.1, 1.0);
+
                 float2 trampleDir = trample.xy;
 
                 // --- Wind ---
-                float2 windUV = worldUV / _WindParams.zw + _Time.y * _WindParams.y;
-                float2 wind = SAMPLE_TEXTURE2D_LOD(_WindMap, sampler_WindMap, windUV, 0).xy * 2.0 - 1.0;
-                float2 windDir = wind * _WindParams.x;
+                float phaseOffset = frac(worldOrigin.x * 12.9898 + worldOrigin.z * 78.233);
+                float2 windUV = worldUV / _WindParams.zw + _Time.y * _WindParams.y + phaseOffset * _WindParams2.x;
+                float3 windDir = SAMPLE_TEXTURE2D_LOD(_WindMap, sampler_WindMap, windUV, 0).xyz * 2.0 - 1.0;
+                float ampVar = lerp(1.0, 0.7 + frac(worldOrigin.x * 45.164 + worldOrigin.z * 37.912) * 0.6, _WindParams2.y);
+                windDir *= ampVar;
+                float windStrength = _WindParams.x;
+                float3 windMaxBendDir = float3(windDir.x, 0, windDir.y); // Wind only bends in xz plane
+                float3 windBendDirWS = normalize(lerp(float3(0, 1, 0), windMaxBendDir, lerp(0.0, bendFactor, windStrength)));
 
                 // --- Combine bend directions in world space ---
                 // The blade direction starts upright (0,1,0). Wind and trample push it sideways (xz).
                 // Under heavy trample, y collapses toward 0 so the blade flattens to the ground.
-                float3 combinedWS = float3(0, 1, 0);
-                combinedWS.xz = windDir + trampleDir * trampleStrength;
-                combinedWS.y = max(0.0, 1.0 - trampleStrength);
+                float3 trampleDirWS = float3(0, 1, 0);
+                trampleDirWS.xz = trampleDir * trampleStrength;
+                trampleDirWS.y = max(0.0, 1.0 - trampleStrength);
+                float3 trampleBendDirWS = normalize(lerp(trampleDirWS, float3(0, 1, 0), lerp(bendFactor, 0.0, trampleStrength)));
 
                 // Convert combined bend direction from world space into blade-local space
                 float3x3 worldToLocal = (float3x3)transpose((float3x3)localToWorld);
-                float3 combinedLS = mul(worldToLocal, combinedWS);
+                float3 trampleBendDirLS = mul(worldToLocal, trampleBendDirWS);
+                float3 windBendDirLS = mul(worldToLocal, windBendDirWS);
+
+                float3 finalBendDirLS = normalize(lerp(windBendDirLS, trampleBendDirLS, trampleStrength));
 
                 // Blend between the combined bend and straight-up based on how high up the blade we are.
                 // When trampled, the entire blade bends (bendFactor is overridden toward 0).
-                float3 grassDir = normalize(lerp(combinedLS, float3(0, 1, 0), lerp(bendFactor, 0.0, trampleStrength)));
-                float3 localPos = RotateFromTo(input.positionOS.xyz, float3(0, 1, 0), grassDir);
+                float3 localPos = RotateFromTo(input.positionOS.xyz, float3(0, 1, 0), finalBendDirLS);
 
                 float3 worldPos = mul(localToWorld, float4(localPos, 1)).xyz;
 
@@ -162,6 +191,9 @@ Shader "Snm/InteractiveGrass"
                 output.uv = TRANSFORM_TEX(input.uv, _MainTex);
                 output.normalWS = normalize(mul((float3x3)localToWorld, input.normalOS));
                 output.heightFactor = height01;
+                output.trampleStrength = trampleStrength;
+                uint hash = instanceID * 2654435761u;
+                output.instanceRand = frac(float(hash) * (1.0 / 4294967296.0));
 
                 return output;
             }
@@ -179,83 +211,30 @@ Shader "Snm/InteractiveGrass"
                 // Gradient tint from root (_BottomColor) to tip (_TopColor)
                 half3 tint = lerp(_BottomColor.rgb, _TopColor.rgb, input.heightFactor);
 
-                // Simple N dot L lighting with 0.2 ambient floor
-                Light mainLight = GetMainLight();
-                float ndl = max(0, dot(normal, mainLight.direction));
-                half3 lit = albedo.rgb * tint * (0.2 + ndl * 0.8);
+                // Per-instance color variation
+                half3 variation = lerp(_ColorVariationA.rgb, _ColorVariationB.rgb, input.instanceRand);
+                tint *= variation;
 
-                return half4(lit, albedo.a);
+                half3 unlit = albedo.rgb * tint ;
+
+                // Ambient occlusion — darker near root, intensified when trampled
+                float aoExtra = _AOStrength * input.trampleStrength * 0.5;
+                float ao = lerp(1.0 - _AOStrength - aoExtra, 1.0, pow(input.heightFactor, _AOPower));
+                unlit *= ao;
+
+                // ----------------------
+                // Shadows
+                // ----------------------
+                #if defined(_MAIN_LIGHT_SHADOWS) || defined(_MAIN_LIGHT_SHADOWS_CASCADE)
+                float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
+                Light mainLight = GetMainLight(shadowCoord);
+                unlit *= clamp(mainLight.shadowAttenuation, 0.5, 1.0);
+                #endif
+
+                return half4(unlit, albedo.a);
             }
             ENDHLSL
         }
 
-        // =====================================================================
-        // Shadow Caster Pass — writes depth only, no bending applied
-        // (shadows stay at blade origin for perf; visually acceptable for small grass)
-        // =====================================================================
-        Pass
-        {
-            Name "ShadowCaster"
-            Tags { "LightMode" = "ShadowCaster" }
-
-            ZWrite On
-            ZTest LEqual
-            ColorMask 0
-            Cull Off
-
-            HLSLPROGRAM
-            #pragma vertex vertShadow
-            #pragma fragment fragShadow
-            #pragma multi_compile_instancing
-
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-
-            TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
-
-            CBUFFER_START(UnityPerMaterial)
-                float4 _MainTex_ST;
-                float4 _WorldCanvas;
-                float4 _WindParams;
-                float _Cutoff;
-                half4 _TopColor;
-                half4 _BottomColor;
-            CBUFFER_END
-
-            StructuredBuffer<float4x4> _LocalToWorldMatrices;
-
-            struct Attributes
-            {
-                float4 positionOS : POSITION;
-                float2 uv : TEXCOORD0;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
-            };
-
-            struct Varyings
-            {
-                float4 positionCS : SV_POSITION;
-                float2 uv : TEXCOORD0;
-            };
-
-            Varyings vertShadow(Attributes input, uint instanceID : SV_InstanceID)
-            {
-                Varyings output;
-                UNITY_SETUP_INSTANCE_ID(input);
-
-                float4x4 localToWorld = _LocalToWorldMatrices[instanceID];
-                float3 worldPos = mul(localToWorld, float4(input.positionOS.xyz, 1)).xyz;
-
-                output.positionCS = TransformWorldToHClip(worldPos);
-                output.uv = TRANSFORM_TEX(input.uv, _MainTex);
-                return output;
-            }
-
-            half4 fragShadow(Varyings input) : SV_Target
-            {
-                half4 albedo = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
-                clip(albedo.a - _Cutoff);
-                return 0;
-            }
-            ENDHLSL
-        }
     }
 }

@@ -20,6 +20,8 @@ namespace Snm.GrassSystem
         Material _material;
         Mesh _mesh;
         Bounds _worldBounds;
+        Matrix4x4[] _allMatrices;
+        uint _indexCountPerInstance;
 
         public void Setup(Mesh mesh, Material material, Matrix4x4[] matrices, Bounds worldBounds)
         {
@@ -28,6 +30,7 @@ namespace Snm.GrassSystem
             _worldBounds = worldBounds;
 
             int count = matrices.Length;
+            _allMatrices = matrices;
 
             _instanceBuffer = new GraphicsBuffer(
                 GraphicsBuffer.Target.Structured,
@@ -36,9 +39,10 @@ namespace Snm.GrassSystem
             _instanceBuffer.SetData(matrices);
             _material.SetBuffer(ID_LocalToWorldMatrices, _instanceBuffer);
 
+            _indexCountPerInstance = mesh.GetIndexCount(0);
             var args = new GraphicsBuffer.IndirectDrawIndexedArgs
             {
-                indexCountPerInstance = mesh.GetIndexCount(0),
+                indexCountPerInstance = _indexCountPerInstance,
                 instanceCount = (uint)count,
                 startIndex = mesh.GetIndexStart(0),
                 baseVertexIndex = mesh.GetBaseVertex(0),
@@ -71,6 +75,24 @@ namespace Snm.GrassSystem
         public void SetBladeHeight(float height)
         {
             _material.SetFloat(ID_BladeHeight, height);
+        }
+
+        public Matrix4x4[] AllMatrices => _allMatrices;
+
+        public void UpdateVisibleInstances(Matrix4x4[] matrices, int count)
+        {
+            if (_instanceBuffer == null || count == 0) return;
+            _instanceBuffer.SetData(matrices, 0, 0, count);
+
+            var args = new GraphicsBuffer.IndirectDrawIndexedArgs
+            {
+                indexCountPerInstance = _indexCountPerInstance,
+                instanceCount = (uint)count,
+                startIndex = _mesh.GetIndexStart(0),
+                baseVertexIndex = _mesh.GetBaseVertex(0),
+                startInstance = 0
+            };
+            _argsBuffer.SetData(new[] { args });
         }
 
         public void Render()

@@ -36,6 +36,7 @@ namespace Snm.GrassSystem.Editor
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
             DrawSystemInfo();
+            DrawVisualizer();
             DrawWindInfo();
             DrawTrampleInfo();
             DrawDisturbers();
@@ -103,6 +104,63 @@ namespace Snm.GrassSystem.Editor
                     var rect = GUILayoutUtility.GetRect(128, 128, GUILayout.ExpandWidth(false));
                     EditorGUI.DrawTextureTransparent(rect, rt);
                 }
+            }
+
+            EditorGUILayout.Space();
+        }
+
+        void DrawVisualizer()
+        {
+            EditorGUILayout.LabelField("Scene Visualizer", EditorStyles.boldLabel);
+
+            var vis = _system.GetComponent<GrassMapVisualizer>();
+
+            if (vis == null)
+            {
+                if (GUILayout.Button("Add Visualizer"))
+                {
+                    Undo.AddComponent<GrassMapVisualizer>(_system.gameObject);
+                }
+                EditorGUILayout.Space();
+                return;
+            }
+
+            EditorGUI.BeginChangeCheck();
+
+            // Gizmos
+            EditorGUILayout.LabelField("Gizmos", EditorStyles.miniLabel);
+            vis.showBounds = EditorGUILayout.Toggle("Bounds", vis.showBounds);
+            vis.showHeightPlanes = EditorGUILayout.Toggle("Height Planes", vis.showHeightPlanes);
+            vis.showBladeMesh = EditorGUILayout.Toggle("Blade Mesh", vis.showBladeMesh);
+            vis.showBladePositions = EditorGUILayout.Toggle("Blade Positions", vis.showBladePositions);
+
+            EditorGUILayout.Space(4);
+
+            // Map overlays
+            EditorGUILayout.LabelField("Map Overlays", EditorStyles.miniLabel);
+            vis.showTrampleMap = EditorGUILayout.Toggle("Trample Map", vis.showTrampleMap);
+            if (vis.showTrampleMap)
+            {
+                EditorGUI.indentLevel++;
+                vis.trampleChannel = (GrassMapVisualizer.MapChannel)EditorGUILayout.EnumPopup("Channel", vis.trampleChannel);
+                EditorGUI.indentLevel--;
+            }
+
+            vis.showWindMap = EditorGUILayout.Toggle("Wind Map", vis.showWindMap);
+            if (vis.showWindMap)
+            {
+                EditorGUI.indentLevel++;
+                vis.windChannel = (GrassMapVisualizer.MapChannel)EditorGUILayout.EnumPopup("Channel", vis.windChannel);
+                EditorGUI.indentLevel--;
+            }
+
+            vis.opacity = EditorGUILayout.Slider("Opacity", vis.opacity, 0.05f, 1f);
+            vis.heightOffset = EditorGUILayout.FloatField("Height Offset", vis.heightOffset);
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                EditorUtility.SetDirty(vis);
+                SceneView.RepaintAll();
             }
 
             EditorGUILayout.Space();

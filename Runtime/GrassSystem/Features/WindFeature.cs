@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Snm.GrassSystem
@@ -28,10 +29,26 @@ namespace Snm.GrassSystem
                 config.windMapScale.x,
                 config.windMapScale.y);
 
+            var windParams2 = new Vector4(
+                config.swayVariation,
+                config.amplitudeVariation,
+                0, 0);
+
             foreach (var mat in _ctx.AllMaterials)
             {
                 mat.SetTexture(ShaderIDs.WindMap, config.windMap);
                 mat.SetVector(ShaderIDs.WindParams, windParams);
+                mat.SetVector(ShaderIDs.WindParams2, windParams2);
+            }
+        }
+
+        public static void ClearWindProperties(IEnumerable<Material> materials)
+        {
+            foreach (var mat in materials)
+            {
+                mat.SetTexture(ShaderIDs.WindMap, null);
+                mat.SetVector(ShaderIDs.WindParams, Vector4.zero);
+                mat.SetVector(ShaderIDs.WindParams2, Vector4.zero);
             }
         }
 
@@ -39,6 +56,7 @@ namespace Snm.GrassSystem
         {
             public static readonly int WindMap = Shader.PropertyToID("_WindMap");
             public static readonly int WindParams = Shader.PropertyToID("_WindParams");
+            public static readonly int WindParams2 = Shader.PropertyToID("_WindParams2");
         }
     }
 }

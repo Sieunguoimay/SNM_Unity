@@ -308,6 +308,8 @@ namespace Snm.Runtime.DebugDraw
             return new Mesh { name = "DbgRing", vertices = verts, normals = norms, triangles = tris };
         }
 
+        internal void SetVisible(bool visible) => _root.SetActive(visible);
+
         // ── Cleanup ───────────────────────────────────────────────────────────
 
         public void Dispose()
