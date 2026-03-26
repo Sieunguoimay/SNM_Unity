@@ -61,14 +61,14 @@ Shader "Custom/WaterSurface"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile _ _SHADOWS_SOFT
 
-            #pragma shader_feature_local _CAUSTICS_ON
-            #pragma shader_feature_local _CAUSTICS_CHROMATIC
-            #pragma shader_feature_local _REFLECTION_ON
-            #pragma shader_feature_local _SPECULAR_ON
-            #pragma shader_feature_local _FOAM_ON
-            #pragma shader_feature_local _SHORELINE_ON
-            #pragma shader_feature_local _SPARKLE_ON
-            #pragma shader_feature_local _SCROLL_NORMAL_ON
+            #pragma multi_compile_local _ _CAUSTICS_ON
+            #pragma multi_compile_local _ _CAUSTICS_CHROMATIC
+            #pragma multi_compile_local _ _REFLECTION_ON
+            #pragma multi_compile_local _ _SPECULAR_ON
+            #pragma multi_compile_local _ _FOAM_ON
+            #pragma multi_compile_local _ _SHORELINE_ON
+            #pragma multi_compile_local _ _SPARKLE_ON
+            #pragma multi_compile_local _ _SCROLL_NORMAL_ON
 
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"

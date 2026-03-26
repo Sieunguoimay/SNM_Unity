@@ -2,98 +2,284 @@ Shader "Custom/GpuSkin"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
-        _Color ("Color Tint", Color) = (1,1,1,1)
+        _BaseMap ("Texture", 2D) = "white" {}
+        _BaseColor ("Color", Color) = (1,1,1,1)
     }
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" "Queue"="Geometry" }
+        Tags
+        {
+            "RenderType" = "Opaque"
+            "RenderPipeline" = "UniversalPipeline"
+            "Queue" = "Geometry"
+        }
         LOD 200
 
+        // =============================================
+        // Forward Lit Pass
+        // =============================================
         Pass
         {
-            Tags { "LightMode"="ForwardBase" }
+            Name "ForwardLit"
+            Tags { "LightMode" = "UniversalForward" }
 
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile_fwdbase
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ _SHADOWS_SOFT
+            #pragma multi_compile_fog
             #pragma multi_compile_instancing
             #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
 
-            #include "UnityCG.cginc"
-            #include "UnifiedSkinning.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "UnifiedSkinning.hlsl"
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-            fixed4 _Color;
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST;
+                half4 _BaseColor;
+            CBUFFER_END
 
-            struct appdata
+            TEXTURE2D(_BaseMap);
+            SAMPLER(sampler_BaseMap);
+
+            struct Attributes
             {
-                float4 vertex : POSITION;
-                float3 normal : NORMAL;
-                float3 tangent : TANGENT;
-                float2 uv : TEXCOORD0;
-
+                float4 positionOS : POSITION;
+                float3 normalOS   : NORMAL;
+                float4 tangentOS  : TANGENT;
+                float2 uv         : TEXCOORD0;
                 SKINNING_VERTEX_INPUT
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 pos : SV_POSITION;
-                float2 uv : TEXCOORD0;
-                float3 normal : TEXCOORD1;
-
+                float4 positionCS  : SV_POSITION;
+                float2 uv          : TEXCOORD0;
+                float3 normalWS    : TEXCOORD1;
+                float3 positionWS  : TEXCOORD2;
+                float  fogFactor   : TEXCOORD3;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
-            v2f vert(appdata v)
+            Varyings vert(Attributes v)
             {
                 UNITY_SETUP_INSTANCE_ID(v);
 
-                v2f o;
-                UNITY_INITIALIZE_OUTPUT(v2f, o);
+                Varyings o = (Varyings)0;
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
-                float4 worldPos;
-                float3 worldNormal;
+                float3 posWS;
+                float3 normWS;
 
                 #if defined(GPU_SKINNING_ON)
-                if (!SKIN(v, worldPos, worldNormal))
-                {
-                    worldPos = mul(unity_ObjectToWorld, v.vertex);
-                    worldNormal = UnityObjectToWorldNormal(v.normal);
-                }
+                    float4 skinnedPos;
+                    float3 skinnedNorm;
+                    if (SkinLive(v.positionOS, v.normalOS, v.boneWeights, v.boneIndices, skinnedPos, skinnedNorm))
+                    {
+                        posWS = skinnedPos.xyz;
+                        normWS = skinnedNorm;
+                    }
+                    else
+                    {
+                        posWS = TransformObjectToWorld(v.positionOS.xyz);
+                        normWS = TransformObjectToWorldNormal(v.normalOS);
+                    }
                 #elif defined(BAKED_SKINNING_ON)
-                v.vertex = SKIN_BAKED(v);
-                worldPos = mul(unity_ObjectToWorld, v.vertex);
-                worldNormal = UnityObjectToWorldNormal(v.normal);
+                    v.positionOS = SkinBaked(v.positionOS, v.normalOS, v.tangentOS.xyz, v.boneWeights, v.boneIndices);
+                    posWS = TransformObjectToWorld(v.positionOS.xyz);
+                    normWS = TransformObjectToWorldNormal(v.normalOS);
                 #else
-                worldPos = mul(unity_ObjectToWorld, v.vertex);
-                worldNormal = UnityObjectToWorldNormal(v.normal);
+                    posWS = TransformObjectToWorld(v.positionOS.xyz);
+                    normWS = TransformObjectToWorldNormal(v.normalOS);
                 #endif
 
-                o.pos = UnityWorldToClipPos(worldPos);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                o.normal = worldNormal;
+                o.positionCS = TransformWorldToHClip(posWS);
+                o.positionWS = posWS;
+                o.normalWS = normWS;
+                o.uv = TRANSFORM_TEX(v.uv, _BaseMap);
+                o.fogFactor = ComputeFogFactor(o.positionCS.z);
 
                 return o;
             }
 
-            fixed4 frag(v2f i) : SV_Target
+            half4 frag(Varyings i) : SV_Target
             {
-                fixed4 col = tex2D(_MainTex, i.uv) * _Color;
+                half4 baseColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv) * _BaseColor;
 
-                float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
-                float ndl = max(0, dot(i.normal, lightDir));
+                float3 normalWS = normalize(i.normalWS);
+                Light mainLight = GetMainLight();
+                half ndl = saturate(dot(normalWS, mainLight.direction));
+                half3 lighting = mainLight.color * ndl + half3(0.2, 0.2, 0.2);
 
-                return col * (0.2 + ndl * 0.8);
+                half4 color = half4(baseColor.rgb * lighting, baseColor.a);
+                color.rgb = MixFog(color.rgb, i.fogFactor);
+                return color;
             }
-            ENDCG
+            ENDHLSL
+        }
+
+        // =============================================
+        // Shadow Caster Pass
+        // =============================================
+        Pass
+        {
+            Name "ShadowCaster"
+            Tags { "LightMode" = "ShadowCaster" }
+
+            ZWrite On
+            ZTest LEqual
+            ColorMask 0
+
+            HLSLPROGRAM
+            #pragma vertex vertShadow
+            #pragma fragment fragShadow
+            #pragma multi_compile_instancing
+            #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
+            #include "UnifiedSkinning.hlsl"
+
+            float3 _LightDirection;
+
+            struct ShadowAttributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS   : NORMAL;
+                float4 tangentOS  : TANGENT;
+                SKINNING_VERTEX_INPUT
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct ShadowVaryings
+            {
+                float4 positionCS : SV_POSITION;
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
+
+            ShadowVaryings vertShadow(ShadowAttributes v)
+            {
+                UNITY_SETUP_INSTANCE_ID(v);
+
+                ShadowVaryings o = (ShadowVaryings)0;
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+
+                float3 posWS;
+                float3 normWS;
+
+                #if defined(GPU_SKINNING_ON)
+                    float4 skinnedPos;
+                    float3 skinnedNorm;
+                    if (SkinLive(v.positionOS, v.normalOS, v.boneWeights, v.boneIndices, skinnedPos, skinnedNorm))
+                    {
+                        posWS = skinnedPos.xyz;
+                        normWS = skinnedNorm;
+                    }
+                    else
+                    {
+                        posWS = TransformObjectToWorld(v.positionOS.xyz);
+                        normWS = TransformObjectToWorldNormal(v.normalOS);
+                    }
+                #elif defined(BAKED_SKINNING_ON)
+                    v.positionOS = SkinBakedShadow(v.positionOS, v.boneWeights, v.boneIndices);
+                    posWS = TransformObjectToWorld(v.positionOS.xyz);
+                    normWS = TransformObjectToWorldNormal(v.normalOS);
+                #else
+                    posWS = TransformObjectToWorld(v.positionOS.xyz);
+                    normWS = TransformObjectToWorldNormal(v.normalOS);
+                #endif
+
+                o.positionCS = TransformWorldToHClip(ApplyShadowBias(posWS, normWS, _LightDirection));
+
+                #if UNITY_REVERSED_Z
+                    o.positionCS.z = min(o.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+                #else
+                    o.positionCS.z = max(o.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+                #endif
+
+                return o;
+            }
+
+            half4 fragShadow(ShadowVaryings i) : SV_Target
+            {
+                return 0;
+            }
+            ENDHLSL
+        }
+
+        // =============================================
+        // Depth Only Pass
+        // =============================================
+        Pass
+        {
+            Name "DepthOnly"
+            Tags { "LightMode" = "DepthOnly" }
+
+            ZWrite On
+            ColorMask R
+
+            HLSLPROGRAM
+            #pragma vertex vertDepth
+            #pragma fragment fragDepth
+            #pragma multi_compile_instancing
+            #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "UnifiedSkinning.hlsl"
+
+            struct DepthAttributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS   : NORMAL;
+                float4 tangentOS  : TANGENT;
+                SKINNING_VERTEX_INPUT
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct DepthVaryings
+            {
+                float4 positionCS : SV_POSITION;
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
+
+            DepthVaryings vertDepth(DepthAttributes v)
+            {
+                UNITY_SETUP_INSTANCE_ID(v);
+                DepthVaryings o = (DepthVaryings)0;
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+
+                float3 posWS;
+
+                #if defined(GPU_SKINNING_ON)
+                    float4 skinnedPos;
+                    float3 skinnedNorm;
+                    if (SkinLive(v.positionOS, v.normalOS, v.boneWeights, v.boneIndices, skinnedPos, skinnedNorm))
+                        posWS = skinnedPos.xyz;
+                    else
+                        posWS = TransformObjectToWorld(v.positionOS.xyz);
+                #elif defined(BAKED_SKINNING_ON)
+                    v.positionOS = SkinBakedShadow(v.positionOS, v.boneWeights, v.boneIndices);
+                    posWS = TransformObjectToWorld(v.positionOS.xyz);
+                #else
+                    posWS = TransformObjectToWorld(v.positionOS.xyz);
+                #endif
+
+                o.positionCS = TransformWorldToHClip(posWS);
+                return o;
+            }
+
+            half4 fragDepth(DepthVaryings i) : SV_Target
+            {
+                return 0;
+            }
+            ENDHLSL
         }
     }
 
-    FallBack "Diffuse"
+    FallBack "Universal Render Pipeline/Lit"
 }
