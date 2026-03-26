@@ -10,8 +10,8 @@ SubShader {
 	LOD 200
 
 CGPROGRAM
+#pragma multi_compile _ BAKED_SKINNING_ON
 #include "AnimationInstancingBase.cginc"
-
 
 #pragma surface surf Lambert vertex:vert addshadow
 #pragma multi_compile_instancing

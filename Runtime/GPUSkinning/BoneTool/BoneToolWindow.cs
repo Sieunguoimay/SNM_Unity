@@ -20,8 +20,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
         private readonly BoneTool tool = new();
 
         private Action _cleanToolVECallback;
-        private Material _material;
-        private GPUSkinnedMeshRendererCore _renderer;
+        private readonly EditorSkinningPreview _preview = new();
 
         [MenuItem("Tools/Snm/Game/Bone Weight Tool")]
         public static void OpenTool()
@@ -32,13 +31,12 @@ namespace Snm.GPUSkinning.BoneWeightTool
         private void OnEnable()
         {
             SceneView.duringSceneGui += SceneView_duringSceneGui;
-            TryCleanupRenderer();
-            TryCreateRenderer();
+            TryCreatePreview();
         }
 
         private void OnDisable()
         {
-            TryCleanupRenderer();
+            _preview.Cleanup();
             SceneView.duringSceneGui -= SceneView_duringSceneGui;
             tool.BoneTransformsTool.Hide();
             tool.HideVerticesSelector();
@@ -87,49 +85,39 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
         private void DrawMesh()
         {
-            if (_renderer != null)
+            if (!_preview.IsReady) return;
+
+            if (toolMode == BoneToolMode.WeightPainter)
             {
-                if (toolMode == BoneToolMode.WeightPainter)
+                for (int i = 0; i < tool.BoneTransformsTool.BoneTransforms.Length; i++)
                 {
-                    for (int i = 0; i < tool.BoneTransformsTool.BoneTransforms.Length; i++)
-                    {
-                        var bt = tool.BoneTransformsTool.BoneTransforms[i];
-                        _renderer.SetSkinningMatrix(i, bt.transform.localToWorldMatrix * tool.Bones[i].bindpose);
-                    }
-                    _renderer.UploadBoneMatricesViaMaterial(tool.Bones.Length);
+                    var bt = tool.BoneTransformsTool.BoneTransforms[i];
+                    _preview.SetSkinningMatrix(i, bt.transform.localToWorldMatrix * tool.Bones[i].bindpose);
                 }
-                else
-                {
-                    _renderer.UploadBoneMatricesViaMaterial(0);
-                }
-                _renderer.Render(Matrix4x4.identity);
+                _preview.UploadAndRender(tool.Bones.Length, Matrix4x4.identity);
+            }
+            else
+            {
+                _preview.UploadAndRender(0, Matrix4x4.identity);
             }
         }
 
         private void OnValidate()
         {
-            TryCleanupRenderer();
-            TryCreateRenderer();
+            TryCreatePreview();
         }
 
-        private void TryCreateRenderer()
+        private void TryCreatePreview()
         {
-            if (mesh == null) return;
-
-            _material = new Material(
-                AssetDatabase.LoadAssetAtPath<Shader>("Assets/SNM_Unity/Runtime/GPUSkinning/GPUSkin.shader"));
-            _renderer = new GPUSkinnedMeshRendererCore(mesh, _material);
-            _renderer.UploadMeshDataViaMesh();
-        }
-
-        private void TryCleanupRenderer()
-        {
-            if (_material != null)
+            if (mesh == null)
             {
-                DestroyImmediate(_material);
-                _material = null;
+                _preview.Cleanup();
+                return;
             }
-            _renderer = null;
+
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/SNM_Unity/Runtime/GPUSkinning/Shader/GPUSkin.shader");
+            var boneCount = skeleton != null ? skeleton.skeleton.bones.Length : mesh.bindposes.Length;
+            _preview.Create(mesh, shader, boneCount);
         }
 
         private void DrawVerticesSelector(VerticesSelectionTool verticesSelector)
@@ -227,8 +215,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
             var boneWeights = BoneWeightConverter.ExtractBoneWeights(RuntimeBoneImporter.Export(tool.Bones).Item1, mesh.vertexCount);
 
             AssetExportTool.ExportBoneWeightsToMesh(boneWeights, bindposes, mesh, ref mesh);
-            TryCleanupRenderer();
-            TryCreateRenderer();
+            TryCreatePreview();
         }
 
         private void RefreshVE()
@@ -318,8 +305,7 @@ namespace Snm.GPUSkinning.BoneWeightTool
 
                 tool.SetRuntimeBones(runtimeBones);
 
-                TryCleanupRenderer();
-                TryCreateRenderer();
+                TryCreatePreview();
             }
             else
             {

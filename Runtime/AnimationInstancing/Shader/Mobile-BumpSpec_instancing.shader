@@ -15,16 +15,16 @@ Properties {
 	_MainTex ("Base (RGB) Gloss (A)", 2D) = "white" {}
 	[NoScaleOffset] _BumpMap ("Normalmap", 2D) = "bump" {}
 }
-SubShader { 
+SubShader {
 	Tags { "RenderType"="Opaque" }
 	LOD 250
-	
+
 CGPROGRAM
 
+#pragma multi_compile _ BAKED_SKINNING_ON
 #include "AnimationInstancingBase.cginc"
-#pragma vertex vert 
+#pragma vertex vert
 #pragma multi_compile_instancing
-//DECLARE_VERTEX_SKINNING
 
 #pragma surface surf MobileBlinnPhong exclude_path:prepass nolightmap noforwardadd halfasview interpolateview addshadow
 
@@ -33,7 +33,7 @@ inline fixed4 LightingMobileBlinnPhong (SurfaceOutput s, fixed3 lightDir, fixed3
 	fixed diff = max (0, dot (s.Normal, lightDir));
 	fixed nh = max (0, dot (s.Normal, halfDir));
 	fixed spec = pow (nh, s.Specular*128) * s.Gloss;
-	
+
 	fixed4 c;
 	c.rgb = (s.Albedo * _LightColor0.rgb * diff + _LightColor0.rgb * spec) * atten;
 	UNITY_OPAQUE_ALPHA(c.a);
@@ -47,8 +47,6 @@ half _Shininess;
 struct Input {
 	float2 uv_MainTex;
 };
-
-
 
 void surf (Input IN, inout SurfaceOutput o) {
 	fixed4 tex = tex2D(_MainTex, IN.uv_MainTex);

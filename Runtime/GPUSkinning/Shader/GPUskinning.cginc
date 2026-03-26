@@ -1,3 +1,4 @@
+// Deprecated: Use ../Shaders/UnifiedSkinning.cginc with GPU_SKINNING_ON keyword instead.
 #ifndef GPU_SKINNING_INCLUDED
 #define GPU_SKINNING_INCLUDED
 

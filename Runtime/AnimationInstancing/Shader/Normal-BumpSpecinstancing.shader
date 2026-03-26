@@ -11,6 +11,7 @@ Properties {
 
 CGINCLUDE
 
+#pragma multi_compile _ BAKED_SKINNING_ON
 #include "AnimationInstancingBase.cginc"
 
 sampler2D _MainTex;
@@ -33,27 +34,16 @@ void surf (Input IN, inout SurfaceOutput o) {
 }
 ENDCG
 
-SubShader { 
+SubShader {
 	Tags { "RenderType"="Opaque" }
 	LOD 400
-	
+
 	CGPROGRAM
 	#pragma surface surf BlinnPhong addshadow
-	#pragma vertex vert 
+	#pragma vertex vert
 	#pragma multi_compile_instancing
-	//#pragma target 3.0
-	//#pragma enable_d3d11_debug_symbols
 	ENDCG
 }
-//
-//SubShader { 
-//	Tags { "RenderType"="Opaque" }
-//	LOD 400
-//	
-//	CGPROGRAM
-//	#pragma surface surf BlinnPhong nodynlightmap
-//	ENDCG
-//}
 
 //FallBack "Legacy Shaders/Specular"
 }

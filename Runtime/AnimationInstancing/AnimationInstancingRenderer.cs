@@ -263,9 +263,9 @@ namespace Snm.AnimationInstancing
                     copyMaterials[i].enableInstancing = true;
 #endif
                     // if (useInstancing)
-                    copyMaterials[i].EnableKeyword("SKINNED_INSTANCING_ON");
+                    copyMaterials[i].EnableKeyword("BAKED_SKINNING_ON");
                     // else
-                    //     copyMaterials[i].DisableKeyword("SKINNED_INSTANCING_ON");
+                    //     copyMaterials[i].DisableKeyword("BAKED_SKINNING_ON");
 
                     copyMaterials[i].EnableKeyword("USE_CONSTANT_BUFFER");
                     copyMaterials[i].DisableKeyword("USE_COMPUTE_BUFFER");

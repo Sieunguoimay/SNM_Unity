@@ -192,15 +192,7 @@ namespace Snm.AnimationInstancing
 
         private static void AddBoneWeightsAndIndicesToMesh(Mesh mesh, Vector4[] boneWeights, Vector4[] boneIndices)
         {
-            var colors = new Color[mesh.vertexCount];
-            for (int i = 0; i != mesh.vertexCount; ++i)
-            {
-                colors[i].r = boneWeights[i].x;
-                colors[i].g = boneWeights[i].y;
-                colors[i].b = boneWeights[i].z;
-                colors[i].a = boneWeights[i].w;
-            }
-            mesh.colors = colors;
+            mesh.SetUVs(1, boneWeights);
             mesh.SetUVs(2, boneIndices);
             mesh.UploadMeshData(false);
         }

@@ -1,114 +1,90 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
 {
-    public class GPUSkinnedMeshRendererCore
+    /// <summary>
+    /// High-level GPU skinning renderer.
+    /// Computes bone matrices from Transform array + bindposes and delegates to GPUSkinUploader.
+    /// Uses dirty-flag caching: only recomputes when bone transforms actually change.
+    /// </summary>
+    public class GPUSkinRenderer : IGPUSkinRenderer
     {
-        private const int MAX_BONES = 256;
+        public SkinningMode Mode => SkinningMode.LiveBones;
 
-        private readonly Mesh mesh;
-        private readonly Material material;
-        private readonly Matrix4x4[] skinningMatrices = new Matrix4x4[MAX_BONES];
+        private readonly GPUSkinUploader _uploader;
+        private readonly Matrix4x4[] _bindposes;
+        private readonly Transform[] _boneTransforms;
+        private readonly Transform _meshTransform;
+        private readonly int _boneCount;
 
-        public GPUSkinnedMeshRendererCore(
-            Mesh mesh,
-            Material material)
-        {
-            this.mesh = mesh;
-            this.material = material;
-        }
-
-        public void UploadMeshDataViaMesh()
-        {
-            ConvertToRaw(mesh.vertexCount, mesh.boneWeights, out var boneWeights4, out var boneIndices4);
-            mesh.SetUVs(1, boneWeights4);
-            mesh.SetUVs(2, boneIndices4);
-            mesh.UploadMeshData(false);
-        }
-
-        public void SetSkinningMatrix(int boneIndex, Matrix4x4 matrix)
-        {
-            skinningMatrices[boneIndex] = matrix;
-        }
-
-        public void UploadBoneMatricesViaMaterial(int boneCount)
-        {
-            material.SetInt("_BoneCount", boneCount);
-            material.SetMatrixArray("_Bones", skinningMatrices);
-        }
-
-        public void Render(Matrix4x4 meshToWorld)
-        {
-            Graphics.DrawMesh(mesh, meshToWorld, material, 0);
-        }
-
-        public static void ConvertToRaw(int vertexCount, BoneWeight[] boneWeights, out List<Vector4> boneWeights4, out List<Vector4> boneIndices4)
-        {
-            boneWeights4 = new List<Vector4>(vertexCount);
-            boneIndices4 = new List<Vector4>(vertexCount);
-
-            for (int i = 0; i < vertexCount; i++)
-            {
-                var w = Vector4.zero;
-                var idx = Vector4.zero;
-
-                if (i < boneWeights.Length)
-                {
-                    var bw = boneWeights[i];
-                    w = new Vector4(bw.weight0, bw.weight1, bw.weight2, bw.weight3);
-                    idx = new Vector4(bw.boneIndex0, bw.boneIndex1, bw.boneIndex2, bw.boneIndex3);
-                }
-
-                boneWeights4.Add(w);
-                boneIndices4.Add(idx);
-            }
-        }
-    }
-
-    public class GPUSkinnedMeshRenderer
-    {
-        private readonly GPUSkinnedMeshRendererCore core;
-        private readonly Matrix4x4[] bindposes;
-        private readonly Transform[] boneTransforms;
-        private readonly Transform meshTransform;
-
-        public GPUSkinnedMeshRenderer(
+        public GPUSkinRenderer(
             Mesh mesh,
             Matrix4x4[] bindposes,
             Material material,
             Transform[] boneTransforms,
             Transform meshTransform)
         {
-            core = new(mesh, material);
-            this.bindposes = bindposes;
-            this.boneTransforms = boneTransforms;
-            this.meshTransform = meshTransform;
+            _boneCount = boneTransforms.Length;
+            _uploader = new GPUSkinUploader(mesh, material, _boneCount);
+            _bindposes = bindposes;
+            _boneTransforms = boneTransforms;
+            _meshTransform = meshTransform;
         }
 
         public void SetupMesh()
         {
-            core.UploadMeshDataViaMesh();
+            _uploader.UploadMeshData();
         }
 
-        public void SetupMaterial()
+        /// <summary>
+        /// Checks if any bone transform has changed, recomputes matrices if needed, and uploads to GPU.
+        /// </summary>
+        public void UpdateSkinning()
         {
-            FillSkinningMatrices(boneTransforms);
+            if (!HasAnyBoneChanged())
+                return;
 
-            core.UploadBoneMatricesViaMaterial(boneTransforms.Length);
+            ComputeBoneMatrices();
+            _uploader.UploadBoneMatrices(_boneCount);
+            ClearChangedFlags();
         }
 
         public void Render()
         {
-            core.Render(meshTransform.localToWorldMatrix);
+            _uploader.Render(_meshTransform.localToWorldMatrix);
         }
 
-        private void FillSkinningMatrices(Transform[] boneTransforms)
+        public void Dispose()
         {
-            for (int i = 0; i < boneTransforms.Length; i++)
+            // No unmanaged resources; reserved for future use (NativeArray, compute buffers).
+        }
+
+        private bool HasAnyBoneChanged()
+        {
+            for (int i = 0; i < _boneCount; i++)
             {
-                var skinningMatrix = boneTransforms[i].localToWorldMatrix * bindposes[i];
-                core.SetSkinningMatrix(i, skinningMatrix);
+                if (_boneTransforms[i].hasChanged)
+                    return true;
+            }
+            return false;
+        }
+
+        private void ClearChangedFlags()
+        {
+            for (int i = 0; i < _boneCount; i++)
+                _boneTransforms[i].hasChanged = false;
+        }
+
+        /// <summary>
+        /// skinningMatrix[i] = boneTransform[i].localToWorldMatrix * bindpose[i]
+        /// Transforms vertices from bind-pose space to current world space.
+        /// </summary>
+        private void ComputeBoneMatrices()
+        {
+            for (int i = 0; i < _boneCount; i++)
+            {
+                var skinningMatrix = _boneTransforms[i].localToWorldMatrix * _bindposes[i];
+                _uploader.SetSkinningMatrix(i, skinningMatrix);
             }
         }
     }

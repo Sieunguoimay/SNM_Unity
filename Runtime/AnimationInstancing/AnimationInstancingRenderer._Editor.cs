@@ -119,7 +119,7 @@ namespace Snm.AnimationInstancing
                         UnityEditor.EditorGUILayout.ObjectField($"{i++} {bone.bonePath}", bone.boneTransform, typeof(Transform), true);
                         foreach (var r in bone.associatedRenderers)
                         {
-                            if (r.sharedMaterial.shader.keywordSpace.keywords.Any(k => k.name == "SKINNED_INSTANCING_ON"))
+                            if (r.sharedMaterial.shader.keywordSpace.keywords.Any(k => k.name == "BAKED_SKINNING_ON"))
                             {
                                 UnityEditor.EditorGUILayout.ObjectField($"      ", r, typeof(Renderer), true);
                             }

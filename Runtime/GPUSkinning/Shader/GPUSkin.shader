@@ -20,9 +20,10 @@ Shader "Custom/GpuSkin"
             #pragma fragment frag
             #pragma multi_compile_fwdbase
             #pragma multi_compile_instancing
+            #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
 
             #include "UnityCG.cginc"
-            #include "GPUSkinning.cginc"
+            #include "UnifiedSkinning.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -32,9 +33,10 @@ Shader "Custom/GpuSkin"
             {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
+                float3 tangent : TANGENT;
                 float2 uv : TEXCOORD0;
 
-                GPU_SKINNING_VERTEX_INPUT
+                SKINNING_VERTEX_INPUT
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -55,19 +57,27 @@ Shader "Custom/GpuSkin"
                 UNITY_INITIALIZE_OUTPUT(v2f, o);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
-                // --- GPU SKINNING ---
-                float4 skinnedWorldPos;
-                float3 skinnedWorldNormal;
-                
-                if (!SKIN(v, skinnedWorldPos, skinnedWorldNormal))
-                {
-                    skinnedWorldPos = mul(unity_ObjectToWorld, v.vertex);
-                    skinnedWorldNormal = UnityObjectToWorldNormal(v.normal);
-                }
+                float4 worldPos;
+                float3 worldNormal;
 
-                o.pos = UnityWorldToClipPos(skinnedWorldPos);
+                #if defined(GPU_SKINNING_ON)
+                if (!SKIN(v, worldPos, worldNormal))
+                {
+                    worldPos = mul(unity_ObjectToWorld, v.vertex);
+                    worldNormal = UnityObjectToWorldNormal(v.normal);
+                }
+                #elif defined(BAKED_SKINNING_ON)
+                v.vertex = SKIN_BAKED(v);
+                worldPos = mul(unity_ObjectToWorld, v.vertex);
+                worldNormal = UnityObjectToWorldNormal(v.normal);
+                #else
+                worldPos = mul(unity_ObjectToWorld, v.vertex);
+                worldNormal = UnityObjectToWorldNormal(v.normal);
+                #endif
+
+                o.pos = UnityWorldToClipPos(worldPos);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                o.normal = skinnedWorldNormal;
+                o.normal = worldNormal;
 
                 return o;
             }
