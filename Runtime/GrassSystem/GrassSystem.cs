@@ -11,6 +11,7 @@ namespace Snm.GrassSystem
         GrassSystemHandle _handle;
         IReadOnlyList<IGrassDisturber> _disturbers;
         GrassGridBuilder.Result _grid;
+        bool _usingPatches;
 
         public GrassSystemConfig Config => config;
         public GrassRenderer Renderer => _handle?.Renderer;
@@ -38,6 +39,42 @@ namespace Snm.GrassSystem
 
         void OnEnable()
         {
+            // --- Patch-based path: child GrassPatch components ---
+            var patches = GetComponentsInChildren<GrassPatch>();
+            if (patches.Length > 0)
+            {
+                _usingPatches = true;
+
+                var renderGroups = GrassPatchCollector.Collect(patches);
+                if (renderGroups.Count == 0) return;
+
+                var worldBounds = GrassPatchCollector.ComputeWorldBounds(patches);
+                var canvas = new SurfaceInteraction.SurfaceCanvas
+                {
+                    Position = worldBounds.center,
+                    Rotation = Quaternion.identity,
+                    Size = new Vector2(worldBounds.size.x, worldBounds.size.z)
+                };
+
+                // Store first group's matrices for InstanceCount/Matrices properties
+                _grid = new GrassGridBuilder.Result
+                {
+                    Matrices = renderGroups[0].Matrices,
+                    Canvas = canvas,
+                    WorldBounds = worldBounds
+                };
+
+                _handle = GrassSystemFactory.CreateFromPatches(config, renderGroups, canvas, worldBounds);
+
+                if (_disturbers != null)
+                    _handle?.Trample?.SetDisturbers(_disturbers);
+
+                return;
+            }
+
+            // --- Legacy grid-based path ---
+            _usingPatches = false;
+
             if (!config.HasLayers && (config.grassMesh == null || config.grassMaterial == null)) return;
             if (config.HasLayers && !ValidateLayers()) return;
 

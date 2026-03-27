@@ -16,9 +16,11 @@ namespace Snm.Runtime.GPUSkinning
     public interface IGPUSkinRenderer
     {
         SkinningMode Mode { get; }
+        int BlendShapeCount { get; }
         void SetupMesh();
         void UpdateSkinning();
         void Render();
+        void SetBlendShapeWeight(int shapeIndex, float weight);
         void Dispose();
     }
 }

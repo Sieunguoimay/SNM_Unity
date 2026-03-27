@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Snm.AnimationInstancing
+namespace Snm.Runtime.GPUSkinning
 {
     public class AnimationBakerWindow : EditorWindow
     {

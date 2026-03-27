@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Snm.AnimationInstancing;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning

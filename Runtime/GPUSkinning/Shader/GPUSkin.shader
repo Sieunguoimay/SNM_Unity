@@ -33,10 +33,12 @@ Shader "Custom/GpuSkin"
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
             #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
+            #pragma multi_compile _ BLEND_SHAPES_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "UnifiedSkinning.hlsl"
+            #include "BlendShapes.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST;
@@ -53,6 +55,7 @@ Shader "Custom/GpuSkin"
                 float4 tangentOS  : TANGENT;
                 float2 uv         : TEXCOORD0;
                 SKINNING_VERTEX_INPUT
+                BLEND_SHAPE_VERTEX_INPUT
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -75,6 +78,8 @@ Shader "Custom/GpuSkin"
 
                 float3 posWS;
                 float3 normWS;
+
+                APPLY_BLEND_SHAPES(v);
 
                 #if defined(GPU_SKINNING_ON)
                     float4 skinnedPos;
@@ -140,10 +145,12 @@ Shader "Custom/GpuSkin"
             #pragma fragment fragShadow
             #pragma multi_compile_instancing
             #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
+            #pragma multi_compile _ BLEND_SHAPES_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
             #include "UnifiedSkinning.hlsl"
+            #include "BlendShapes.hlsl"
 
             float3 _LightDirection;
 
@@ -153,6 +160,7 @@ Shader "Custom/GpuSkin"
                 float3 normalOS   : NORMAL;
                 float4 tangentOS  : TANGENT;
                 SKINNING_VERTEX_INPUT
+                BLEND_SHAPE_VERTEX_INPUT
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -171,6 +179,8 @@ Shader "Custom/GpuSkin"
 
                 float3 posWS;
                 float3 normWS;
+
+                APPLY_BLEND_SHAPES(v);
 
                 #if defined(GPU_SKINNING_ON)
                     float4 skinnedPos;
@@ -228,9 +238,11 @@ Shader "Custom/GpuSkin"
             #pragma fragment fragDepth
             #pragma multi_compile_instancing
             #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
+            #pragma multi_compile _ BLEND_SHAPES_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "UnifiedSkinning.hlsl"
+            #include "BlendShapes.hlsl"
 
             struct DepthAttributes
             {
@@ -238,6 +250,7 @@ Shader "Custom/GpuSkin"
                 float3 normalOS   : NORMAL;
                 float4 tangentOS  : TANGENT;
                 SKINNING_VERTEX_INPUT
+                BLEND_SHAPE_VERTEX_INPUT
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -254,6 +267,8 @@ Shader "Custom/GpuSkin"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
                 float3 posWS;
+
+                APPLY_BLEND_SHAPES(v);
 
                 #if defined(GPU_SKINNING_ON)
                     float4 skinnedPos;

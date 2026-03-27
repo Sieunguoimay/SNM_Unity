@@ -10,6 +10,7 @@ namespace Snm.Runtime.GPUSkinning
     public class GPUSkinRenderer : IGPUSkinRenderer
     {
         public SkinningMode Mode => SkinningMode.LiveBones;
+        public int BlendShapeCount => _uploader.BlendShapeCount;
 
         private readonly GPUSkinUploader _uploader;
         private readonly Matrix4x4[] _bindposes;
@@ -34,6 +35,7 @@ namespace Snm.Runtime.GPUSkinning
         public void SetupMesh()
         {
             _uploader.UploadMeshData();
+            _uploader.UploadBlendShapeData();
         }
 
         /// <summary>
@@ -41,12 +43,19 @@ namespace Snm.Runtime.GPUSkinning
         /// </summary>
         public void UpdateSkinning()
         {
+            _uploader.UploadBlendShapeWeights();
+
             if (!HasAnyBoneChanged())
                 return;
 
             ComputeBoneMatrices();
             _uploader.UploadBoneMatrices(_boneCount);
             ClearChangedFlags();
+        }
+
+        public void SetBlendShapeWeight(int shapeIndex, float weight)
+        {
+            _uploader.SetBlendShapeWeight(shapeIndex, weight);
         }
 
         public void Render()
@@ -56,7 +65,7 @@ namespace Snm.Runtime.GPUSkinning
 
         public void Dispose()
         {
-            // No unmanaged resources; reserved for future use (NativeArray, compute buffers).
+            _uploader.Dispose();
         }
 
         private bool HasAnyBoneChanged()

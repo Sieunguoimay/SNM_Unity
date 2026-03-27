@@ -150,45 +150,53 @@ public event Action OnAfterSkinningUpdate;
 - Enables procedural bone manipulation (IK, ragdoll blend, hit reactions)
 - Called from `LateUpdate` before/after matrix computation
 
-#### 3.5 Decouple editor preview from runtime renderer
-- `BoneToolWindow` should use a dedicated `EditorSkinningPreview` class
-- This class wraps `GPUSkinUploader` (renamed Core) but handles editor-only concerns
-- Runtime code stays clean of `#if UNITY_EDITOR` blocks
+#### 3.5 Decouple editor preview from runtime renderer ✅
+- `BoneToolWindow` uses dedicated `EditorSkinningPreview` class
+- `EditorSkinningPreview` wraps `GPUSkinUploader` for editor-only concerns
+- `#if UNITY_EDITOR` blocks extracted from `GPUSkinRendererMB` and `GPUSkinReplacementRendererMB` into partial `._Editor.cs` files
+- Runtime `.cs` files are now free of editor-only code
 
 ---
 
 ### Phase 4 — Optional Future Enhancements
 
-#### 4.1 Animation clip baking
+#### 4.1 Animation clip baking ✅
 - Bake `AnimationClip` bone matrices into a texture (bone matrix texture animation)
 - Sample in vertex shader — zero CPU cost per frame
-- Great for background crowds with looping animations
+- Implemented via `BakedAnimationSkinRenderer` + `BakedAnimationPlayer` + BakeTool
 
 #### 4.2 Dual quaternion skinning
 - Add DQS option in shader for better volume preservation at joints
 - Toggle via material keyword `_SKINNING_DQ`
 
-#### 4.3 Blend shape support
-- Pack blend shape deltas into additional vertex streams
-- Add blend weight uniforms alongside bone matrices
+#### 4.3 Blend shape support ✅
+- Blend shape deltas extracted from `Mesh` and uploaded via `ComputeBuffer` (StructuredBuffer)
+- Per-frame weights uploaded via `MaterialPropertyBlock` (up to 8 simultaneous shapes)
+- Shader keyword `BLEND_SHAPES_ON`, applied before skinning using `SV_VertexID`
+- `BlendShapes.hlsl` shader include, integrated into all passes of `GPUSkin.shader`
+- API: `GPUSkinUploader.SetBlendShapeWeight()`, exposed through `IGPUSkinRenderer`, `GPUSkinRendererMB`, `GPUSkinReplacementRendererMB`
 
 ---
 
 ## Execution Priority
 
 ```
-Phase 1.1 (MaterialPropertyBlock)  ← biggest perf win, enables batching
-Phase 1.2 (dirty flag)             ← easy win, reduces CPU cost
-Phase 2.1 (one class per file)     ← quick cleanup
-Phase 2.2 (rename)                 ← do alongside 2.1
-Phase 1.3 (right-size arrays)      ← small memory win
-Phase 1.4 (culling)                ← matters at scale
-Phase 3.1 (interface)              ← foundation for extensibility
-Phase 2.4 (remove magic string)    ← quick fix
-Phase 3.4 (callbacks)              ← enables gameplay integration
-Phase 3.3 (shader variants)        ← needed for URP/HDRP
-Phase 3.5 (decouple editor)        ← cleaner architecture
-Phase 1.5 (reduce allocations)     ← polish
-Phase 1.6 (compute shader)         ← only if crowd rendering needed
-Phase 4.x (future)                 ← as needed
+Phase 1.1 (MaterialPropertyBlock)  ✅ done
+Phase 1.2 (dirty flag)             ✅ done
+Phase 2.1 (one class per file)     ✅ done
+Phase 2.2 (rename)                 ✅ done
+Phase 1.3 (right-size arrays)      ✅ done
+Phase 1.4 (culling)                ✅ done
+Phase 3.1 (interface)              ✅ done
+Phase 2.3 (XML docs)               ✅ done
+Phase 2.4 (remove magic string)    ✅ done
+Phase 3.2 (MaterialPropertyBlock)  ✅ done
+Phase 3.3 (shader variants)        ✅ done
+Phase 3.4 (callbacks)              ✅ done
+Phase 3.5 (decouple editor)        ✅ done
+Phase 1.5 (reduce allocations)     ✅ done
+Phase 4.1 (animation baking)       ✅ done
+Phase 4.3 (blend shapes)           ✅ done
+Phase 1.6 (compute shader)         — not implemented (only needed for 50+ identical characters)
+Phase 4.2 (dual quaternion)        — not implemented
 ```

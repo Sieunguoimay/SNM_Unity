@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Snm.AnimationInstancing;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -10,8 +9,8 @@ namespace Snm.Runtime.GPUSkinning
     /// </summary>
     public class BakedAnimationPlayer
     {
-        private readonly List<AnimationInstancing.AnimationInfo> _animInfoList;
-        private readonly AnimationInstancing.AnimationInfo.ComparerHash _comparer = new();
+        private readonly List<AnimationInfo> _animInfoList;
+        private readonly AnimationInfo.ComparerHash _comparer = new();
 
         private float _curFrame;
         private float _preAniFrame;
@@ -123,7 +122,7 @@ namespace Snm.Runtime.GPUSkinning
             UpdateCurrentFrame(deltaTime);
         }
 
-        public AnimationInstancing.AnimationInfo GetCurrentAnimationInfo()
+        public AnimationInfo GetCurrentAnimationInfo()
         {
             if (_animInfoList != null && _aniIndex >= 0 && _aniIndex < _animInfoList.Count)
                 return _animInfoList[_aniIndex];

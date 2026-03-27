@@ -5,7 +5,9 @@ using System.Linq.Expressions;
 using System.Reflection;
 
 using Snm.Tools;
+#if UNITY_EDITOR
 using Snm.Tools.InspectorExtensions;
+#endif
 using UnityEngine;
 
 namespace Reflection

@@ -1,11 +1,6 @@
 using System;
 using System.Linq;
 using Snm.Runtime.GPUSkinning.Serialize;
-
-#if UNITY_EDITOR
-using Snm.GPUSkinning.BoneWeightTool;
-using UnityEditor;
-#endif
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -15,7 +10,7 @@ namespace Snm.Runtime.GPUSkinning
     /// Assign a mesh, material (using any GPU skinning-compatible shader), bone transforms, and optionally a SkeletonAsset.
     /// </summary>
     [ExecuteInEditMode]
-    public class GPUSkinRendererMB : MonoBehaviour
+    public partial class GPUSkinRendererMB : MonoBehaviour
     {
         [SerializeField] private Mesh mesh;
         [SerializeField] private SkeletonAsset skeleton;
@@ -29,6 +24,17 @@ namespace Snm.Runtime.GPUSkinning
         public event Action OnBeforeSkinningUpdate;
         /// <summary>Fired after bone matrices are uploaded to GPU.</summary>
         public event Action OnAfterSkinningUpdate;
+
+        /// <summary>Number of blend shapes available on the mesh.</summary>
+        public int BlendShapeCount => _renderer?.BlendShapeCount ?? 0;
+
+        /// <summary>
+        /// Sets the weight for a blend shape by index.
+        /// </summary>
+        public void SetBlendShapeWeight(int shapeIndex, float weight)
+        {
+            _renderer?.SetBlendShapeWeight(shapeIndex, weight);
+        }
 
         private void OnEnable()
         {
@@ -96,24 +102,5 @@ namespace Snm.Runtime.GPUSkinning
                 Mathf.Abs(axisX.z) + Mathf.Abs(axisY.z) + Mathf.Abs(axisZ.z));
             return new Bounds(center, worldExtents * 2f);
         }
-
-#if UNITY_EDITOR
-        [ContextMenu("Create Bone Transforms")]
-        private void CreateBoneTransforms()
-        {
-            foreach (var bt in boneTransforms) bt.name += "_OBSOLETE";
-            var hierarchy = skeleton != null
-                ? skeleton.skeleton.bones.Select(b => b.parent).ToArray()
-                : Array.Empty<int>();
-
-            boneTransforms = BoneTransformsTool.CreateBoneHierarchy(
-                mesh.bindposes,
-                transform.localToWorldMatrix,
-                hierarchy);
-
-            EditorUtility.SetDirty(this);
-            OnValidate();
-        }
-#endif
     }
 }

@@ -10,7 +10,7 @@ namespace Snm.Runtime.GPUSkinning
     /// Clones the SMR's material, swaps to GPU skinning shader, and disables the original SMR.
     /// </summary>
     [ExecuteInEditMode]
-    public class GPUSkinReplacementRendererMB : MonoBehaviour
+    public partial class GPUSkinReplacementRendererMB : MonoBehaviour
     {
         [SerializeField] private SkinnedMeshRenderer unitySMR;
         [SerializeField] private Shader gpuSkinningShader;
@@ -24,6 +24,17 @@ namespace Snm.Runtime.GPUSkinning
         /// <summary>Fired after bone matrices are uploaded to GPU.</summary>
         public event Action OnAfterSkinningUpdate;
 
+        /// <summary>Number of blend shapes available on the mesh.</summary>
+        public int BlendShapeCount => _renderer?.BlendShapeCount ?? 0;
+
+        /// <summary>
+        /// Sets the weight for a blend shape by index.
+        /// </summary>
+        public void SetBlendShapeWeight(int shapeIndex, float weight)
+        {
+            _renderer?.SetBlendShapeWeight(shapeIndex, weight);
+        }
+
         private void OnEnable()
         {
             TryCreate();
@@ -33,17 +44,6 @@ namespace Snm.Runtime.GPUSkinning
         {
             TryDestroy();
         }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (gpuSkinningShader == null)
-                gpuSkinningShader = UnityEditor.AssetDatabase.LoadAssetAtPath<Shader>("Assets/SNM_Unity/Runtime/GPUSkinning/Shader/GPUSkin.shader");
-            if (!isActiveAndEnabled) return;
-            TryDestroy();
-            TryCreate();
-        }
-#endif
 
         private void TryCreate()
         {

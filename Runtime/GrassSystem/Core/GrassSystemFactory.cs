@@ -104,5 +104,87 @@ namespace Snm.GrassSystem
 
             return new GrassSystemHandle(cleanup, primaryRenderer, trampleFeature?.Trample, canvas);
         }
+
+        /// <summary>
+        /// Creates a GrassSystemHandle from patch-based render groups.
+        /// Each group has its own mesh/material and produces one draw call.
+        /// </summary>
+        public static GrassSystemHandle CreateFromPatches(
+            GrassSystemConfig config,
+            List<GrassPatchCollector.RenderGroup> renderGroups,
+            SurfaceCanvas canvas,
+            Bounds worldBounds)
+        {
+            var worldMin = canvas.WorldMin;
+            var canvasVec = new Vector4(worldMin.x, worldMin.y, canvas.Size.x, canvas.Size.y);
+
+            var renderers = new List<GrassRenderer>();
+            var allMaterials = new List<Material>();
+
+            foreach (var group in renderGroups)
+            {
+                if (group.Matrices.Length == 0) continue;
+
+                var r = new GrassRenderer();
+                r.Setup(group.Mesh, group.Material, group.Matrices, worldBounds);
+                r.SetWorldCanvas(canvasVec);
+
+                float bladeHeight = group.Mesh.bounds.size.y;
+                r.SetBladeHeight(bladeHeight);
+
+                renderers.Add(r);
+                allMaterials.Add(r.Material);
+            }
+
+            if (renderers.Count == 0) return null;
+
+            var primaryRenderer = renderers[0];
+
+            var primaryMaterial = allMaterials[0];
+            var ctx = new GrassFeatureContext(config, canvas, primaryMaterial, allMaterials);
+
+            var composite = new GrassFeatureComposite();
+
+            if (config.ambientOcclusion.enabled)
+                composite.Add(new AmbientOcclusionFeature(ctx));
+
+            if (config.colorVariation.enabled)
+                composite.Add(new ColorVariationFeature(ctx));
+
+            if (config.wind.enabled)
+                composite.Add(new WindFeature(ctx));
+            else
+                WindFeature.ClearWindProperties(ctx.AllMaterials);
+
+            TrampleFeature trampleFeature = null;
+            if (config.trample.enabled)
+            {
+                trampleFeature = new TrampleFeature(ctx);
+                composite.Add(trampleFeature);
+            }
+
+            if (config.trample.enabled && config.trample.springEnabled)
+                composite.Add(new RecoverySpringFeature(ctx));
+
+            if (config.frustumCulling.enabled)
+                composite.Add(new FrustumCullingFeature(renderers, config.frustumCulling.margin));
+
+            foreach (var r in renderers)
+                composite.Add(new RenderFeature(r));
+
+            var updater = new GameObject("[GrassUpdater]").AddComponent<UpdateDispatcher>();
+            updater.AddUpdateTarget(composite);
+
+            var disposeList = new List<System.IDisposable> { composite };
+            disposeList.AddRange(renderers);
+            disposeList.Add(new DisposeCallback(() =>
+            {
+                if (updater) UnityEngineUtility.DestroyObject(updater.gameObject);
+            }));
+
+            var cleanup = new DisposeCollection(disposeList.ToArray());
+
+            return new GrassSystemHandle(cleanup, primaryRenderer, trampleFeature?.Trample, canvas);
+        }
     }
 }

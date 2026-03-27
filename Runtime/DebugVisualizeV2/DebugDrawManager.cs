@@ -1,5 +1,7 @@
 using Snm.Runtime.Unity;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 namespace Snm.Runtime.DebugDraw
@@ -34,11 +36,13 @@ namespace Snm.Runtime.DebugDraw
             }
         }
 
+#if UNITY_EDITOR
         [MenuItem("Tools/Snm/Toggle Debug Draw Manager")]
         private static void CreateMenuItem()
         {
             Enabled = !Enabled;
         }
+#endif
 
         private void Awake()
         {

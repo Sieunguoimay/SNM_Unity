@@ -1,9 +1,9 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
 using UnityEngine;
-using static Snm.AnimationInstancing.AnimationBaker;
+using static Snm.Runtime.GPUSkinning.AnimationBaker;
 
-namespace Snm.AnimationInstancing
+namespace Snm.Runtime.GPUSkinning
 {
     public class AnimationTextureBaker
     {

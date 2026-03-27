@@ -1,4 +1,3 @@
-using Snm.AnimationInstancing;
 using UnityEngine;
 
 namespace Snm.Runtime.GPUSkinning
@@ -27,6 +26,7 @@ namespace Snm.Runtime.GPUSkinning
         private readonly BakedAnimationPlayer _player;
 
         public SkinningMode Mode => SkinningMode.BakedTexture;
+        public int BlendShapeCount => 0;
         public BakedAnimationPlayer Player => _player;
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace Snm.Runtime.GPUSkinning
         {
             // Baked mode reads bone data from texture, but still needs
             // bone weights/indices in TEXCOORD1/TEXCOORD2 on the mesh.
-            // These are expected to be pre-baked (via BoneAndMeshSetup or GPUSkinUploader).
+            // These are expected to be pre-baked (via GPUSkinUploader).
         }
 
         public void UpdateSkinning()
@@ -82,6 +82,11 @@ namespace Snm.Runtime.GPUSkinning
         public void Render()
         {
             Graphics.DrawMesh(_mesh, _meshTransform.localToWorldMatrix, _material, 0, null, 0, _propertyBlock);
+        }
+
+        public void SetBlendShapeWeight(int shapeIndex, float weight)
+        {
+            // Blend shapes not supported in baked animation mode.
         }
 
         public void Dispose()
