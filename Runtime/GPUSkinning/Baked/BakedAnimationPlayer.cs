@@ -34,10 +34,36 @@ namespace Snm.Runtime.GPUSkinning
         public bool IsPlaying => _aniIndex >= 0;
         public bool IsPaused => _speedParameter == 0f;
 
+        /// <summary>Current local frame within the active clip (0 to totalFrame-1).</summary>
+        public float CurrentFrame => _curFrame;
+
+        /// <summary>Number of animations available.</summary>
+        public int AnimationCount => _animInfoList?.Count ?? 0;
+
         public float PlaySpeed
         {
             get => _playSpeed;
             set => _playSpeed = value;
+        }
+
+        /// <summary>Get animation info by index.</summary>
+        public AnimationInfo GetAnimationInfo(int index)
+        {
+            if (_animInfoList == null || index < 0 || index >= _animInfoList.Count) return null;
+            return _animInfoList[index];
+        }
+
+        /// <summary>
+        /// Set the current frame directly (for editor scrubbing). Clamps to valid range.
+        /// </summary>
+        public void SetFrame(float frame)
+        {
+            if (_aniIndex < 0 || _animInfoList == null) return;
+            var info = _animInfoList[_aniIndex];
+            _curFrame = Mathf.Clamp(frame, 0f, info.totalFrame - 1);
+            _preAniFrame = _curFrame;
+            _transitionProgress = 1f;
+            _isInTransition = false;
         }
 
         public BakedAnimationPlayer(AnimationInstancingData data)

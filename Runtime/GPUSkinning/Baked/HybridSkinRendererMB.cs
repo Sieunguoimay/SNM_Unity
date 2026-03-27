@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Snm.Runtime.GPUSkinning.Serialize;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Snm.Runtime.GPUSkinning
 {
@@ -23,17 +24,32 @@ namespace Snm.Runtime.GPUSkinning
         [Header("Baked Animation (crowd mode)")]
         [SerializeField] private AnimationInstancingData bakedAnimationData;
         [SerializeField] private int defaultAnimation;
+        [SerializeField] private bool useBatchedInstancing = true;
 
         [Header("LOD Switching")]
         [SerializeField] private float lodSwitchDistance = 30f;
         [SerializeField] private float switchHysteresis = 2f;
 
+        [Header("Rendering")]
+        [SerializeField] private ShadowCastingMode shadowCasting = ShadowCastingMode.On;
+        [SerializeField] private bool receiveShadows = true;
+
         private GPUSkinRenderer _liveRenderer;
-        private BakedAnimationSkinRenderer _bakedRenderer;
-        private IGPUSkinRenderer _activeRenderer;
+        private BakedAnimationPlayer _bakedPlayer;
+        private AnimationTextureData _bakedTextureData;
         private SkinningMode _currentMode = SkinningMode.None;
         private Material _liveMaterial;
         private Material _bakedMaterial;
+        private MaterialPropertyBlock _bakedPropertyBlock;
+
+        private static readonly int BoneTextureId = Shader.PropertyToID("_boneTexture");
+        private static readonly int BoneTextureWidthId = Shader.PropertyToID("_boneTextureWidth");
+        private static readonly int BoneTextureHeightId = Shader.PropertyToID("_boneTextureHeight");
+        private static readonly int BoneTextureBlockWidthId = Shader.PropertyToID("_boneTextureBlockWidth");
+        private static readonly int BoneTextureBlockHeightId = Shader.PropertyToID("_boneTextureBlockHeight");
+        private static readonly int FrameIndexId = Shader.PropertyToID("frameIndex");
+        private static readonly int PreFrameIndexId = Shader.PropertyToID("preFrameIndex");
+        private static readonly int TransitionProgressId = Shader.PropertyToID("transitionProgress");
 
         /// <summary>Fired before bone matrices are computed (live mode only).</summary>
         public event Action OnBeforeSkinningUpdate;
@@ -41,7 +57,7 @@ namespace Snm.Runtime.GPUSkinning
         public event Action OnAfterSkinningUpdate;
 
         /// <summary>Access the baked animation player for playback control (Play, CrossFade, etc.).</summary>
-        public BakedAnimationPlayer BakedPlayer => _bakedRenderer?.Player;
+        public BakedAnimationPlayer BakedPlayer => _bakedPlayer;
         public SkinningMode CurrentMode => _currentMode;
 
         private void OnEnable()
@@ -65,7 +81,7 @@ namespace Snm.Runtime.GPUSkinning
         {
             if (mesh == null || material == null) return;
 
-            // Create live-bone renderer if bones are available
+            // Live-bone renderer
             if (boneTransforms != null && boneTransforms.Length > 0)
             {
                 var bindposes = skeleton != null
@@ -81,43 +97,95 @@ namespace Snm.Runtime.GPUSkinning
                 _liveRenderer.SetupMesh();
             }
 
-            // Create baked-texture renderer if baked data is available
+            // Baked-texture path
             if (bakedAnimationData != null)
             {
+                _bakedTextureData = bakedAnimationData.animationTextureData;
+
                 _bakedMaterial = Instantiate(material);
                 _bakedMaterial.EnableKeyword("BAKED_SKINNING_ON");
                 _bakedMaterial.DisableKeyword("GPU_SKINNING_ON");
+                _bakedMaterial.enableInstancing = true;
 
-                _bakedRenderer = new BakedAnimationSkinRenderer(mesh, _bakedMaterial, transform, bakedAnimationData);
-                _bakedRenderer.SetupMesh();
-                _bakedRenderer.Player.Play(defaultAnimation);
+                if (_bakedTextureData?.bakedBoneTextures != null && _bakedTextureData.bakedBoneTextures.Length > 0)
+                {
+                    var tex = _bakedTextureData.bakedBoneTextures[0];
+                    _bakedMaterial.SetTexture(BoneTextureId, tex);
+                    _bakedMaterial.SetInt(BoneTextureWidthId, tex.width);
+                    _bakedMaterial.SetInt(BoneTextureHeightId, tex.height);
+                    _bakedMaterial.SetInt(BoneTextureBlockWidthId, _bakedTextureData.textureBlockWidth);
+                    _bakedMaterial.SetInt(BoneTextureBlockHeightId, _bakedTextureData.textureBlockHeight);
+                }
+
+                _bakedPlayer = new BakedAnimationPlayer(bakedAnimationData);
+                _bakedPlayer.Play(defaultAnimation);
+                _bakedPropertyBlock = new MaterialPropertyBlock();
             }
 
-            // Start with best available mode
             SwitchMode(GetDesiredMode());
         }
 
         private void LateUpdate()
         {
-            if (_activeRenderer == null) return;
+            if (_currentMode == SkinningMode.None) return;
 
             var desiredMode = GetDesiredMode();
             if (desiredMode != _currentMode)
                 SwitchMode(desiredMode);
 
-            OnBeforeSkinningUpdate?.Invoke();
-            _activeRenderer.UpdateSkinning();
-            OnAfterSkinningUpdate?.Invoke();
-            _activeRenderer.Render();
+            if (_currentMode == SkinningMode.LiveBones)
+            {
+                OnBeforeSkinningUpdate?.Invoke();
+                _liveRenderer.UpdateSkinning();
+                OnAfterSkinningUpdate?.Invoke();
+                _liveRenderer.Render();
+            }
+            else if (_currentMode == SkinningMode.BakedTexture)
+            {
+                _bakedPlayer.Update(Time.deltaTime);
+
+                if (useBatchedInstancing)
+                {
+                    GPUSkinInstanceBatcher.Instance.Submit(
+                        mesh, _bakedMaterial,
+                        transform.localToWorldMatrix,
+                        _bakedPlayer.FrameIndex, _bakedPlayer.PreFrameIndex, _bakedPlayer.TransitionProgress,
+                        gameObject.layer, shadowCasting, receiveShadows);
+                }
+                else
+                {
+                    SetBakedPropertyBlock();
+                    Graphics.DrawMesh(mesh, transform.localToWorldMatrix, _bakedMaterial,
+                        gameObject.layer, null, 0, _bakedPropertyBlock,
+                        shadowCasting, receiveShadows);
+                }
+            }
+        }
+
+        private void SetBakedPropertyBlock()
+        {
+            int texIdx = _bakedPlayer.TextureIndex;
+            if (_bakedTextureData?.bakedBoneTextures != null && texIdx < _bakedTextureData.bakedBoneTextures.Length)
+            {
+                var tex = _bakedTextureData.bakedBoneTextures[texIdx];
+                _bakedPropertyBlock.SetTexture(BoneTextureId, tex);
+                _bakedPropertyBlock.SetInt(BoneTextureWidthId, tex.width);
+                _bakedPropertyBlock.SetInt(BoneTextureHeightId, tex.height);
+                _bakedPropertyBlock.SetInt(BoneTextureBlockWidthId, _bakedTextureData.textureBlockWidth);
+                _bakedPropertyBlock.SetInt(BoneTextureBlockHeightId, _bakedTextureData.textureBlockHeight);
+            }
+            _bakedPropertyBlock.SetFloat(FrameIndexId, _bakedPlayer.FrameIndex);
+            _bakedPropertyBlock.SetFloat(PreFrameIndexId, _bakedPlayer.PreFrameIndex);
+            _bakedPropertyBlock.SetFloat(TransitionProgressId, _bakedPlayer.TransitionProgress);
         }
 
         private SkinningMode GetDesiredMode()
         {
-            if (_liveRenderer == null && _bakedRenderer == null)
+            if (_liveRenderer == null && _bakedPlayer == null)
                 return SkinningMode.None;
             if (_liveRenderer == null)
                 return SkinningMode.BakedTexture;
-            if (_bakedRenderer == null)
+            if (_bakedPlayer == null)
                 return SkinningMode.LiveBones;
 
             if (Camera.main == null)
@@ -125,7 +193,6 @@ namespace Snm.Runtime.GPUSkinning
 
             float dist = Vector3.Distance(transform.position, Camera.main.transform.position);
 
-            // Hysteresis to prevent mode flickering at boundary
             if (_currentMode == SkinningMode.LiveBones)
                 return dist > lodSwitchDistance + switchHysteresis ? SkinningMode.BakedTexture : SkinningMode.LiveBones;
             else
@@ -135,21 +202,14 @@ namespace Snm.Runtime.GPUSkinning
         private void SwitchMode(SkinningMode mode)
         {
             _currentMode = mode;
-            _activeRenderer = mode switch
-            {
-                SkinningMode.LiveBones => _liveRenderer,
-                SkinningMode.BakedTexture => _bakedRenderer,
-                _ => null
-            };
         }
 
         private void DisposeAll()
         {
             _liveRenderer?.Dispose();
-            _bakedRenderer?.Dispose();
             _liveRenderer = null;
-            _bakedRenderer = null;
-            _activeRenderer = null;
+            _bakedPlayer = null;
+            _bakedPropertyBlock = null;
             _currentMode = SkinningMode.None;
 
             if (_liveMaterial != null) { DestroyImmediate(_liveMaterial); _liveMaterial = null; }

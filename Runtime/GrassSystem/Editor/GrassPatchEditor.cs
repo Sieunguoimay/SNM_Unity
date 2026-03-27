@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Snm.GrassSystem
 {
     [CustomEditor(typeof(GrassPatch))]
-    public class GrassPatchEditor : Editor
+    public class GrassPatchEditor : UnityEditor.Editor
     {
         GrassPatch _patch;
 

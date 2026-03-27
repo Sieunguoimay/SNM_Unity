@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Snm.Runtime.GPUSkinning
 {
     /// <summary>
-    /// Batches BakedAnimationSkinRenderer instances sharing the same mesh+material
+    /// Batches baked-animation instances sharing the same mesh+material
     /// and renders them via Graphics.DrawMeshInstanced (up to 200 per draw call).
-    /// Attach to a manager GameObject or use as a singleton.
+    /// Auto-created as a singleton. Characters submit per-frame via Submit().
     /// </summary>
     public class GPUSkinInstanceBatcher : MonoBehaviour
     {
@@ -43,22 +44,30 @@ namespace Snm.Runtime.GPUSkinning
         }
 
         /// <summary>
-        /// Register an instance for batched rendering. Call every frame from LateUpdate
-        /// after UpdateSkinning() but instead of calling Render() individually.
+        /// Submit an instance for batched rendering this frame.
+        /// Bone texture data must already be set on the material.
         /// </summary>
-        public void Submit(BakedAnimationSkinRenderer renderer, Mesh mesh, Material material,
-            Matrix4x4 localToWorld, int layer = 0)
+        public void Submit(
+            Mesh mesh,
+            Material material,
+            Matrix4x4 localToWorld,
+            float frameIndex,
+            float preFrameIndex,
+            float transitionProgress,
+            int layer = 0,
+            ShadowCastingMode shadowCasting = ShadowCastingMode.On,
+            bool receiveShadows = true)
         {
             int key = HashCode(mesh, material);
 
             if (!_groups.TryGetValue(key, out var group))
             {
-                group = new BatchGroup(mesh, material, layer);
+                group = new BatchGroup(mesh, material, layer, shadowCasting, receiveShadows);
                 _groups[key] = group;
                 _activeGroups.Add(group);
             }
 
-            group.Add(localToWorld, renderer.FrameIndex, renderer.PreFrameIndex, renderer.TransitionProgress);
+            group.Add(localToWorld, frameIndex, preFrameIndex, transitionProgress);
         }
 
         private void LateUpdate()
@@ -89,6 +98,8 @@ namespace Snm.Runtime.GPUSkinning
             private readonly Mesh _mesh;
             private readonly Material _material;
             private readonly int _layer;
+            private readonly ShadowCastingMode _shadowCasting;
+            private readonly bool _receiveShadows;
             private readonly MaterialPropertyBlock _propertyBlock = new();
 
             private readonly Matrix4x4[] _matrices = new Matrix4x4[BatchSize];
@@ -97,11 +108,14 @@ namespace Snm.Runtime.GPUSkinning
             private readonly float[] _transitionProgress = new float[BatchSize];
             private int _count;
 
-            public BatchGroup(Mesh mesh, Material material, int layer)
+            public BatchGroup(Mesh mesh, Material material, int layer,
+                ShadowCastingMode shadowCasting, bool receiveShadows)
             {
                 _mesh = mesh;
                 _material = material;
                 _layer = layer;
+                _shadowCasting = shadowCasting;
+                _receiveShadows = receiveShadows;
             }
 
             public void Add(Matrix4x4 localToWorld, float frameIndex, float preFrameIndex, float transitionProgress)
@@ -134,8 +148,8 @@ namespace Snm.Runtime.GPUSkinning
                         _mesh, sub, _material,
                         _matrices, _count,
                         _propertyBlock,
-                        UnityEngine.Rendering.ShadowCastingMode.On,
-                        true, _layer);
+                        _shadowCasting,
+                        _receiveShadows, _layer);
                 }
 
                 _count = 0;

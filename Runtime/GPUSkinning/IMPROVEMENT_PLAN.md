@@ -153,7 +153,7 @@ public event Action OnAfterSkinningUpdate;
 #### 3.5 Decouple editor preview from runtime renderer ✅
 - `BoneToolWindow` uses dedicated `EditorSkinningPreview` class
 - `EditorSkinningPreview` wraps `GPUSkinUploader` for editor-only concerns
-- `#if UNITY_EDITOR` blocks extracted from `GPUSkinRendererMB` and `GPUSkinReplacementRendererMB` into partial `._Editor.cs` files
+- `#if UNITY_EDITOR` blocks extracted from runtime MBs into partial `._Editor.cs` files
 - Runtime `.cs` files are now free of editor-only code
 
 ---
@@ -174,7 +174,7 @@ public event Action OnAfterSkinningUpdate;
 - Per-frame weights uploaded via `MaterialPropertyBlock` (up to 8 simultaneous shapes)
 - Shader keyword `BLEND_SHAPES_ON`, applied before skinning using `SV_VertexID`
 - `BlendShapes.hlsl` shader include, integrated into all passes of `GPUSkin.shader`
-- API: `GPUSkinUploader.SetBlendShapeWeight()`, exposed through `IGPUSkinRenderer`, `GPUSkinRendererMB`, `GPUSkinReplacementRendererMB`
+- API: `GPUSkinUploader.SetBlendShapeWeight()`, exposed through `IGPUSkinRenderer` and `GPUSkinRendererMB`
 
 ---
 

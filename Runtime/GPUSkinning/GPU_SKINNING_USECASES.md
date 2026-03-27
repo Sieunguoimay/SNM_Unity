@@ -6,12 +6,14 @@
 
 **Component:** `GPUSkinRendererMB`
 
-**Process:**
+**Setup:**
 1. Assign: Mesh + Material (GPUSkin shader) + SkeletonAsset + bone Transforms
-2. `OnEnable` → `GPUSkinRenderer` created
+
+**Process:**
+1. `OnEnable` → `GPUSkinRenderer` created
    - `GPUSkinUploader.UploadMeshData()` → pack bone weights/indices into TEXCOORD1/2
    - `GPUSkinUploader.UploadBlendShapeData()` → extract deltas into StructuredBuffer (if any)
-3. Every `LateUpdate`:
+2. Every `LateUpdate`:
    - Frustum cull check (skip if off-screen)
    - `OnBeforeSkinningUpdate` event → game code moves bones (IK, ragdoll, etc.)
    - `UploadBlendShapeWeights()` → send dirty weights to GPU
@@ -25,109 +27,75 @@
 
 ---
 
-## 2. Replace Unity's SkinnedMeshRenderer
+## 2. Baked Animation Characters & Crowds
 
-**When:** You have an existing character using Unity's CPU-based `SkinnedMeshRenderer` and want to switch to GPU skinning without restructuring the hierarchy.
+**When:** Characters playing pre-baked animation clips. No per-bone control needed. Automatically batches identical characters into instanced draw calls.
 
-**Component:** `GPUSkinReplacementRendererMB`
+**Component:** `BakedAnimationRendererMB`
+
+**Setup:**
+1. Bake animations: **Tools → Snm → Game → AnimInstancingBaker** → select prefab + clips → Bake → save `.asset`
+2. Add `BakedAnimationRendererMB` to a GameObject
+3. Assign: Mesh + Material + baked `AnimationInstancingData` asset
+4. Done. Instancing is on by default.
 
 **Process:**
-1. Assign: reference to the existing `SkinnedMeshRenderer` + GPU skinning shader
-2. `OnEnable`:
-   - Clone the SMR's material, swap shader to GPUSkin
-   - Read mesh + bones + bindposes from the SMR
-   - Create `GPUSkinRenderer` (same as use case 1)
-   - Disable the original `SkinnedMeshRenderer`
-3. Every `LateUpdate`: same as use case 1
-4. `OnDisable`: re-enable the original SMR (graceful fallback)
+1. `OnEnable`:
+   - Get or create a shared material (pooled by base material + baked data)
+   - Material gets `BAKED_SKINNING_ON` keyword + bone texture data pre-configured
+   - `BakedAnimationPlayer` created, plays `defaultAnimation`
+2. Every `LateUpdate`:
+   - `BakedAnimationPlayer.Update(deltaTime)` → advance frame, handle wrap/crossfade
+   - If `useInstancing` (default): submit to `GPUSkinInstanceBatcher`
+     - Batcher groups by mesh+material, calls `Graphics.DrawMeshInstanced` (up to 200 per call)
+   - If not instancing: `Graphics.DrawMesh` with per-instance property block
 
-**Benefit:** Drop-in replacement. Unity's Animator still drives the bone Transforms — this component just reads them on GPU instead of CPU.
+**Runtime control:**
+```csharp
+var renderer = GetComponent<BakedAnimationRendererMB>();
+renderer.Player.Play("Walk");
+renderer.Player.CrossFade("Run", 0.3f);
+renderer.Player.Pause();
+```
+
+**Inspector buttons:**
+- **Bake...** → opens AnimationBakerWindow
+- **Rebake** → re-bakes using existing asset (when clips change)
+
+**Shader path:** `BAKED_SKINNING_ON` → `SkinBaked()` reads `_boneTexture` using frame index + bone index, interpolates between frames.
 
 ---
 
-## 3. Baked Animation Crowds (Zero CPU Skinning)
-
-**When:** Many identical characters playing looped animations (NPCs, crowds, background characters). You don't need per-bone control.
-
-**Components:** `BakedAnimationSkinRenderer` + `BakedAnimationPlayer`
-
-**Process:**
-1. **Offline (Editor):**
-   - `AnimationBakerWindow`: select prefab + clips + FPS
-   - `AnimationBaker.BakeWithAnimator()`:
-     - Instantiate prefab, play each animation clip frame-by-frame
-     - At each frame: compute `bone.localToWorldMatrix * bindpose` for all bones
-   - `AnimationTextureBaker`: pack all pose matrices into `Texture2D` (RGBAHalf)
-   - Save as `AnimationInstancingData` ScriptableObject (contains textures + clip metadata)
-2. **Runtime setup:**
-   - `BakedAnimationSkinRenderer(mesh, material, instancingData)`
-   - Enable `BAKED_SKINNING_ON` keyword
-   - `BakedAnimationPlayer.Play(clipIndex)`
-3. **Every frame:**
-   - `BakedAnimationPlayer.Update(deltaTime)`
-     - Advance `_curFrame` by `fps * deltaTime`
-     - Handle wrap mode (Loop, PingPong, Once)
-     - Handle crossfade transitions (blend between preFrame and curFrame)
-   - Set per-instance properties via `MaterialPropertyBlock`:
-     - `_boneTexture` (the baked pose texture)
-     - `frameIndex` (current frame)
-     - `preFrameIndex` (previous animation frame, for crossfade)
-     - `transitionProgress` (0→1 blend weight)
-   - `Graphics.DrawMesh()` → GPU samples bone matrices from texture, no CPU bone computation
-
-**Shader path:** `BAKED_SKINNING_ON` → `SkinBaked()` reads `_boneTexture` using frame index + bone index to reconstruct the 4x4 matrix, interpolates between frames.
-
----
-
-## 4. Batched Baked Crowds (Instanced Draw Calls)
-
-**When:** 10–200 identical baked characters sharing the same mesh+material. Minimizes draw calls.
-
-**Component:** `GPUSkinInstanceBatcher` (singleton)
-
-**Process:**
-1. Each character has its own `BakedAnimationSkinRenderer` + `BakedAnimationPlayer`
-2. Instead of calling `Render()` individually, each submits to the batcher:
-   `GPUSkinInstanceBatcher.Instance.Submit(renderer, mesh, material, localToWorld)`
-3. Batcher groups by `mesh + material` hash:
-   - Collects world matrices + `frameIndex` + `preFrameIndex` + `transitionProgress`
-   - When batch hits 200 or `LateUpdate` fires:
-     - Pack per-instance data into float arrays
-     - `Graphics.DrawMeshInstanced(mesh, material, matrices[], count, propertyBlock)`
-   - 200 characters = 1 draw call instead of 200
-
-**Benefit:** Massive reduction in draw calls. Each character can play a different animation/frame — the per-instance `frameIndex` ensures correct pose sampling.
-
----
-
-## 5. Hybrid LOD (Live Close + Baked Far)
+## 3. Hybrid LOD (Live Close + Baked Far)
 
 **When:** A character needs full procedural control up close (IK, ragdoll) but should be cheap when far away.
 
 **Component:** `HybridSkinRendererMB`
 
+**Setup:**
+1. Bake animations (same as use case 2)
+2. Add `HybridSkinRendererMB` to a GameObject
+3. Assign: Mesh + Material + bone Transforms + baked `AnimationInstancingData`
+4. Set `lodSwitchDistance` (default 30m)
+
 **Process:**
-1. Assign: Mesh + Material + bone Transforms + `AnimationInstancingData` + `lodSwitchDistance`
-2. `OnEnable`:
-   - Create `GPUSkinRenderer` (live bones, `GPU_SKINNING_ON` material clone)
-   - Create `BakedAnimationSkinRenderer` (baked texture, `BAKED_SKINNING_ON` material clone)
-3. Every `LateUpdate`:
+1. `OnEnable`:
+   - Create `GPUSkinRenderer` (live bones, `GPU_SKINNING_ON` material)
+   - Create `BakedAnimationPlayer` (baked texture, `BAKED_SKINNING_ON` material)
+2. Every `LateUpdate`:
    - Measure distance to `Camera.main`
    - Compare against `lodSwitchDistance` (with hysteresis to prevent flickering)
-   - If close → `_activeRenderer = liveRenderer` (full bone control)
-   - If far → `_activeRenderer = bakedRenderer` (zero CPU skinning)
-   - `_activeRenderer.UpdateSkinning()` + `Render()`
+   - If close → live-bone path (full bone control, `OnBeforeSkinningUpdate` events)
+   - If far → baked path (submit to `GPUSkinInstanceBatcher` if `useBatchedInstancing` is on)
 
-**Benefit:** Best of both worlds. Close-up: full IK/ragdoll quality. Far away: near-zero CPU cost.
+**Benefit:** Best of both worlds. Close-up: full IK/ragdoll quality. Far away: near-zero CPU cost + instanced draw calls.
 
 ---
 
 ## Summary
 
-| Use Case | Component | Skinning Mode | CPU Cost/Frame | Draw Calls | Bone Control |
-|----------|-----------|---------------|----------------|------------|--------------|
-| Single character | `GPUSkinRendererMB` | Live | Low (dirty-flag) | 1 per mesh | Full |
-| Replace Unity SMR | `GPUSkinReplacementRendererMB` | Live | Low | 1 per mesh | Full (via Animator) |
-| Baked crowd | `BakedAnimationSkinRenderer` | Baked texture | Near zero | 1 per mesh | None (clips only) |
-| Instanced crowd | `GPUSkinInstanceBatcher` | Baked texture | Near zero | 1 per 200 | None (clips only) |
-| Hybrid LOD | `HybridSkinRendererMB` | Both | Adaptive | 1 per mesh | Close: full, Far: none |
+| Use Case | Component | Setup Steps | CPU Cost/Frame | Draw Calls | Bone Control |
+|----------|-----------|-------------|----------------|------------|--------------|
+| Single character | `GPUSkinRendererMB` | Assign mesh, material, bones | Low (dirty-flag) | 1 per mesh | Full |
+| Baked crowd | `BakedAnimationRendererMB` | Bake + assign 3 fields | Near zero | 1 per 200 (instanced) | None (clips only) |
+| Hybrid LOD | `HybridSkinRendererMB` | Bake + assign bones + baked data | Adaptive | 1 per mesh or instanced | Close: full, Far: none |

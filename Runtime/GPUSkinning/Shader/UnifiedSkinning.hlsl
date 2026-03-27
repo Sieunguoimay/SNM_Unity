@@ -129,6 +129,14 @@ half4x4 LoadBoneMatFromTexture(uint frame, uint boneIndex)
     return m;
 }
 
+#include "BoneOverride.hlsl"
+
+// Wrapper: loads baked bone matrix then applies any override.
+half4x4 GetBoneMatrix(uint frame, uint boneIndex)
+{
+    return BONE_OVERRIDE(LoadBoneMatFromTexture(frame, boneIndex), boneIndex);
+}
+
 float4 SkinBaked(inout float4 vertex, inout float3 normal, inout float3 tangent,
     float4 weights, float4 indices)
 {
@@ -146,15 +154,15 @@ float4 SkinBaked(inout float4 vertex, inout float3 normal, inout float3 tangent,
     int preFrame = (int)curFrame;
     int nextFrame = preFrame + 1;
 
-    half4x4 matPre = LoadBoneMatFromTexture(preFrame, (uint)bone.x) * weights.x;
-    matPre += LoadBoneMatFromTexture(preFrame, (uint)bone.y) * max(0, weights.y);
-    matPre += LoadBoneMatFromTexture(preFrame, (uint)bone.z) * max(0, weights.z);
-    matPre += LoadBoneMatFromTexture(preFrame, (uint)bone.w) * max(0, weights.w);
+    half4x4 matPre = GetBoneMatrix(preFrame, (uint)bone.x) * weights.x;
+    matPre += GetBoneMatrix(preFrame, (uint)bone.y) * max(0, weights.y);
+    matPre += GetBoneMatrix(preFrame, (uint)bone.z) * max(0, weights.z);
+    matPre += GetBoneMatrix(preFrame, (uint)bone.w) * max(0, weights.w);
 
-    half4x4 matNext = LoadBoneMatFromTexture(nextFrame, (uint)bone.x) * weights.x;
-    matNext += LoadBoneMatFromTexture(nextFrame, (uint)bone.y) * max(0, weights.y);
-    matNext += LoadBoneMatFromTexture(nextFrame, (uint)bone.z) * max(0, weights.z);
-    matNext += LoadBoneMatFromTexture(nextFrame, (uint)bone.w) * max(0, weights.w);
+    half4x4 matNext = GetBoneMatrix(nextFrame, (uint)bone.x) * weights.x;
+    matNext += GetBoneMatrix(nextFrame, (uint)bone.y) * max(0, weights.y);
+    matNext += GetBoneMatrix(nextFrame, (uint)bone.z) * max(0, weights.z);
+    matNext += GetBoneMatrix(nextFrame, (uint)bone.w) * max(0, weights.w);
 
     float frameLerp = curFrame - preFrame;
     float4 localPosPre = mul(vertex, matPre);
@@ -169,7 +177,7 @@ float4 SkinBaked(inout float4 vertex, inout float3 normal, inout float3 tangent,
     half3 tanNext = mul(tangent, (float3x3)matNext);
     tangent = normalize(lerp(tanPre, tanNext, frameLerp));
 
-    half4x4 matPreAni = LoadBoneMatFromTexture((uint)preAniFrame, (uint)bone.x);
+    half4x4 matPreAni = GetBoneMatrix((uint)preAniFrame, (uint)bone.x);
     float4 localPosPreAni = mul(vertex, matPreAni);
     localPos = lerp(localPos, localPosPreAni, (1.0 - progress) * (preAniFrame > 0.0));
 
@@ -192,11 +200,11 @@ float4 SkinBakedShadow(float4 vertex, float4 weights, float4 indices)
     int preFrame = (int)curFrame;
     int nextFrame = preFrame + 1;
 
-    half4x4 matPre = LoadBoneMatFromTexture(preFrame, (uint)bone.x);
-    half4x4 matNext = LoadBoneMatFromTexture(nextFrame, (uint)bone.x);
+    half4x4 matPre = GetBoneMatrix(preFrame, (uint)bone.x);
+    half4x4 matNext = GetBoneMatrix(nextFrame, (uint)bone.x);
     float4 localPos = lerp(mul(vertex, matPre), mul(vertex, matNext), curFrame - preFrame);
 
-    half4x4 matPreAni = LoadBoneMatFromTexture((uint)preAniFrame, (uint)bone.x);
+    half4x4 matPreAni = GetBoneMatrix((uint)preAniFrame, (uint)bone.x);
     float4 localPosPreAni = mul(vertex, matPreAni);
     localPos = lerp(localPos, localPosPreAni, (1.0 - progress) * (preAniFrame > 0.0));
 

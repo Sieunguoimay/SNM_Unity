@@ -34,6 +34,7 @@ Shader "Custom/GpuSkin"
             #pragma multi_compile_instancing
             #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
             #pragma multi_compile _ BLEND_SHAPES_ON
+            #pragma multi_compile _ BONE_OVERRIDE_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -146,6 +147,7 @@ Shader "Custom/GpuSkin"
             #pragma multi_compile_instancing
             #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
             #pragma multi_compile _ BLEND_SHAPES_ON
+            #pragma multi_compile _ BONE_OVERRIDE_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
@@ -239,6 +241,7 @@ Shader "Custom/GpuSkin"
             #pragma multi_compile_instancing
             #pragma multi_compile _ GPU_SKINNING_ON BAKED_SKINNING_ON
             #pragma multi_compile _ BLEND_SHAPES_ON
+            #pragma multi_compile _ BONE_OVERRIDE_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "UnifiedSkinning.hlsl"
