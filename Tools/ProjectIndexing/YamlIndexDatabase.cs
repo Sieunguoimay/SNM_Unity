@@ -41,6 +41,9 @@ namespace Snm.Tools
             var json =
                 File.ReadAllText(IndexPath);
 
+            if (string.IsNullOrWhiteSpace(json))
+                return;
+
             var db =
                 JsonUtility.FromJson<YamlAssetIndex>(json);
 
