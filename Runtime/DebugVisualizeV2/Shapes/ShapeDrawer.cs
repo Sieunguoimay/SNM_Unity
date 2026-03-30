@@ -177,8 +177,10 @@ namespace Snm.Runtime.DebugDraw
 
         private void ReturnMesh(MeshSlot slot)
         {
-            slot.Filter.mesh = null;
-            slot.Go.SetActive(false);
+            if (slot.Filter != null)
+                slot.Filter.mesh = null;
+            if (slot.Go != null)
+                slot.Go.SetActive(false);
             _meshPool.Enqueue(slot);
         }
 
