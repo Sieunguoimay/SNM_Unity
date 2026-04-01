@@ -85,7 +85,7 @@ namespace Snm.Tools.ObjectBrowser
                 else if (memberInfo is PropertyInfo pi)
                 {
                     memberType = pi.PropertyType;
-                    getValueFunc = obj => pi.GetValue(obj);
+                    getValueFunc = obj => ObjectReflectionExposer.IsSideEffectProperty(pi, obj) ? null : pi.GetValue(obj);
                 }
                 else if (memberInfo is MethodInfo mi)
                 {

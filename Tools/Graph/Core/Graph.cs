@@ -18,6 +18,8 @@ namespace Snm.Tools.GraphPresentation
         public Port[] inputs = new Port[0];
         public Port[] outputs = new Port[0];
         public Vector2 position;
+        public Color color = Color.gray;
+        public string tooltip;
 
         public Node()
         {

@@ -9,7 +9,6 @@ namespace Snm.Tools.GraphPresentation
     {
         public static VisualElement CreateViewport()
         {
-
             var viewport = new VisualElement
             {
                 name = "viewport",
@@ -107,7 +106,7 @@ namespace Snm.Tools.GraphPresentation
 
             void OnPointerMove(PointerMoveEvent evt)
             {
-                if (!_isDragging)// || evt.pointerId != _capturedPointerId || ve == null)
+                if (!_isDragging)
                     return;
 
                 Vector2 curLocal = evt.localPosition;
@@ -153,19 +152,16 @@ namespace Snm.Tools.GraphPresentation
         {
             float currentScale = 1f;
 
-            // We listen on the VE's parent so zooming works anywhere inside it
             var parent = ve.parent;
             parent.RegisterCallback<WheelEvent>(OnWheel);
 
             void OnWheel(WheelEvent evt)
             {
-                // delta.y > 0 scrolls down → usually zoom OUT
                 float scroll = evt.delta.y;
 
                 if (Mathf.Abs(scroll) < 0.01f)
                     return;
 
-                // Calculate new scale
                 float oldScale = currentScale;
                 float newScale = Mathf.Clamp(currentScale - scroll * zoomSpeed, minScale, maxScale);
                 if (Mathf.Approximately(newScale, oldScale))
@@ -173,17 +169,12 @@ namespace Snm.Tools.GraphPresentation
 
                 currentScale = newScale;
 
-                // Mouse position relative to ve
                 Vector2 mouseLocal = ve.WorldToLocal(evt.mousePosition);
 
-                // Apply scale
                 ve.style.scale = new Scale(new Vector2(newScale, newScale));
 
-                // --- Keep zoom centered on cursor ---
-                // Get new mouse-local after scaling
                 Vector2 mouseLocalNew = ve.WorldToLocal(evt.mousePosition);
 
-                // Move VE so the point under cursor stays still
                 Vector2 delta = mouseLocalNew - mouseLocal;
 
                 float left = ve.resolvedStyle.left + delta.x;
@@ -196,10 +187,23 @@ namespace Snm.Tools.GraphPresentation
             }
         }
 
-        public static VisualElement CreateWorld()
+        public static VisualElement CreateWorld(Graph graph = null)
         {
+            // Size world to fit graph content with padding, minimum 1400x900
             var width = 1400;
             var height = 900;
+
+            if (graph != null && graph.nodes != null)
+            {
+                float maxX = 0, maxY = 0;
+                foreach (var node in graph.nodes)
+                {
+                    maxX = Mathf.Max(maxX, Mathf.Abs(node.position.x) + 300);
+                    maxY = Mathf.Max(maxY, Mathf.Abs(node.position.y) + 200);
+                }
+                width = Mathf.Max(width, (int)(maxX * 2));
+                height = Mathf.Max(height, (int)(maxY * 2));
+            }
 
             var world = new VisualElement
             {

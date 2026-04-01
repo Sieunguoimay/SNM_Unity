@@ -127,7 +127,8 @@ namespace Snm.Tools.ObjectBrowser
                     object value = null;
                     try
                     {
-                        value = propInfo.GetValue(targetObject);
+                        if (!ShouldSkipProperty(propInfo, targetObject))
+                            value = propInfo.GetValue(targetObject);
                     }
                     catch (Exception)
                     {
@@ -179,6 +180,31 @@ namespace Snm.Tools.ObjectBrowser
                     };
                 }
             }
+        }
+
+        // Properties that cause side effects (instantiation, allocation) when accessed via reflection.
+        // Key: declaring type name, Value: set of property names to skip.
+        private static readonly Dictionary<Type, HashSet<string>> SideEffectProperties = new()
+        {
+            { typeof(UnityEngine.Renderer), new() { "material", "materials" } },
+            { typeof(UnityEngine.MeshFilter), new() { "mesh" } },
+            { typeof(UnityEngine.Collider), new() { "material" } },
+        };
+
+        public static bool IsSideEffectProperty(PropertyInfo propInfo, object target) => ShouldSkipProperty(propInfo, target);
+
+        private static bool ShouldSkipProperty(PropertyInfo propInfo, object target)
+        {
+            if (target == null) return false;
+
+            var targetType = target.GetType();
+            foreach (var kvp in SideEffectProperties)
+            {
+                if (kvp.Key.IsAssignableFrom(targetType) && kvp.Value.Contains(propInfo.Name))
+                    return true;
+            }
+
+            return false;
         }
 
         public static bool IsPrimitive(Type type)

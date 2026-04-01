@@ -103,10 +103,10 @@ namespace Snm.Tools.GraphPresentation
                 var localPos2 = root.WorldToLocal(to);
 
 
-                var color = new Color(.05f, .05f, .05f, 1f);
+                var color = new Color(0.8f, 0.8f, 0.8f, 0.6f);
 
-                Painter2DUtility.DrawPath(context.painter2D, new[] { localPos1, localPos2 }, color, 10f, 1f);
-                Painter2DUtility.DrawCap(context, localPos1, localPos2, new Vector2(8, 6), color);
+                Painter2DUtility.DrawPath(context.painter2D, new[] { localPos1, localPos2 }, color, 10f, 1.5f);
+                Painter2DUtility.DrawCap(context, localPos1, localPos2, new Vector2(12, 10), color);
             };
 
             repaintAction = () =>
@@ -235,13 +235,15 @@ namespace Snm.Tools.GraphPresentation
         {
             var root = new VisualElement()
             {
+                name = $"node-{node.id}",
+                tooltip = node.tooltip ?? node.name,
                 style = {
                     position = Position.Absolute,
                     left = node.position.x,
                     top = node.position.y,
                     width = Length.Auto(),
                     height = Length.Auto(),
-                    backgroundColor = Color.gray,
+                    backgroundColor = node.color,
                     borderTopLeftRadius = 6,
                     borderTopRightRadius = 6,
                     borderBottomLeftRadius = 6,

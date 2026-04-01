@@ -7,56 +7,93 @@ namespace Snm.Tools.InspectorExtensions
 {
     public sealed class SecondHeaderVECreator
     {
+        private static readonly StyleLength ZeroMargin = new(0f);
+        private static readonly StyleLength SmallPadding = new(3f);
+
         public static VisualElement Create(SerializedObject serializedObject, VisualElement imguiContainer)
         {
             if (serializedObject.targetObjects.Length > 1) return new VisualElement();
 
             var target = serializedObject.targetObject;
+            var assetPath = AssetDatabase.GetAssetPath(target);
+            var isAsset = !string.IsNullOrEmpty(assetPath);
+            var isScript = target is MonoBehaviour || target is ScriptableObject;
+
             var root = new VisualElement();
-            var layout_Buttons = new VisualElement()
+            var layout_Refs = new VisualElement();
+
+            var bar = new VisualElement
             {
-                style = {
-                    flexDirection = FlexDirection.RowReverse,
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
                     flexGrow = 1,
                     marginBottom = 4,
                     backgroundColor = new Color(0f, 0f, 0f, .2f),
                     height = EditorGUIUtility.singleLineHeight + 2,
+                    alignItems = Align.Center,
                 }
             };
 
-            var button_Browse = new Button { text = "Browse", clickable = new(() => SecondHeaderTools.OpenObjectBrowser(target)) };
-            var button_EditScript = new Button() { text = "Edit Script", clickable = new(() => SecondHeaderTools.OpenScript(target)), };
-            var button_Ping = new Button() { text = "Ping", clickable = new(() => EditorGUIUtility.PingObject(target)) };
-            var button_Open = new Button() { text = "To Window", clickable = new(() => EditorPopupWindow.Open(target)), tooltip = "Open in new Window", };
-            var layout_Refs = new VisualElement();
-            var button_Toggle = CustomEditorVECreator.BuildVE(serializedObject, imguiContainer, layout_Refs);
-            var button_Find = CreateFindReferences(target);
-            var shouldShow_EditScript = target is MonoBehaviour || target is ScriptableObject;
+            // Left group: view mode
+            bar.Add(CompactButton("Fields", CustomEditorVECreator.BuildVE(serializedObject, imguiContainer, layout_Refs)));
 
-            var button_CopyPath = CreateCopyPathButton(target);
+            bar.Add(Separator());
 
-            if (shouldShow_EditScript) layout_Buttons.Add(button_EditScript);
-            layout_Buttons.Add(button_Ping);
-            layout_Buttons.Add(button_Browse);
-            layout_Buttons.Add(button_Open);
-            layout_Buttons.Add(button_Find);
-            layout_Buttons.Add(button_CopyPath);
-            layout_Buttons.Add(button_Toggle);
+            // Center group: navigation
+            bar.Add(CompactButton("Browse", new Button(() => SecondHeaderTools.OpenObjectBrowser(target))));
+            bar.Add(CompactButton("Window", new Button(() => EditorPopupWindow.Open(target)) { tooltip = "Open in new Window" }));
+            bar.Add(CompactButton("Ping", new Button(() => EditorGUIUtility.PingObject(target))));
+            if (isScript)
+                bar.Add(CompactButton("Script", new Button(() => SecondHeaderTools.OpenScript(target)) { tooltip = "Edit Script" }));
 
-            root.Add(layout_Buttons);
+            bar.Add(Separator());
+
+            // Right group: search & copy
+            bar.Add(CreateFindReferences(target));
+            if (isAsset)
+                bar.Add(CreateCopyPathButton(assetPath));
+
+            root.Add(bar);
             root.Add(layout_Refs);
 
             return root;
         }
 
-        private static VisualElement CreateCopyPathButton(Object target)
+        private static VisualElement CompactButton(string label, VisualElement element)
         {
-            var assetPath = AssetDatabase.GetAssetPath(target);
+            if (element is Button btn && string.IsNullOrEmpty(btn.text))
+                btn.text = label;
+
+            element.style.marginLeft = ZeroMargin;
+            element.style.marginRight = ZeroMargin;
+            element.style.paddingLeft = SmallPadding;
+            element.style.paddingRight = SmallPadding;
+
+            return element;
+        }
+
+        private static VisualElement Separator()
+        {
+            return new VisualElement
+            {
+                style =
+                {
+                    width = 1,
+                    height = new Length(70, LengthUnit.Percent),
+                    backgroundColor = new Color(1f, 1f, 1f, 0.1f),
+                    marginLeft = 2,
+                    marginRight = 2,
+                }
+            };
+        }
+
+        private static VisualElement CreateCopyPathButton(string assetPath)
+        {
             var guid = AssetDatabase.AssetPathToGUID(assetPath);
 
-            var button = new Button()
+            return CompactButton("Copy", new Button()
             {
-                text = "Copy",
                 clickable = new(() =>
                 {
                     var menu = new GenericMenu();
@@ -72,10 +109,7 @@ namespace Snm.Tools.InspectorExtensions
                     });
                     menu.ShowAsContext();
                 }),
-            };
-
-            button.SetEnabled(!string.IsNullOrEmpty(assetPath));
-            return button;
+            });
         }
 
         private static VisualElement CreateFindReferences(Object target)
@@ -99,7 +133,9 @@ namespace Snm.Tools.InspectorExtensions
             image.style.height = 17;
             image.style.width = 17;
 #endif
-            return button;
+            button.style.paddingTop = ZeroMargin;
+            button.style.paddingBottom = ZeroMargin;
+            return CompactButton("Find", button);
         }
     }
 }

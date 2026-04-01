@@ -1,8 +1,9 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Snm.Tools;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -16,11 +17,22 @@ namespace Snm.Tools.ObjectBrowser
         [SerializeField] private ReflectionFilterType reflectionFilterType = ReflectionFilterType.IncludeBaseTypes;
         [SerializeField] private MemberFilterType memberFilterType = MemberFilterType.AllMembers;
         [SerializeField] private bool displayTypeHash;
+        [SerializeField] private bool watchMode;
+        [SerializeField] private string memberSearchFilter = "";
 
         private IReadOnlyList<ObjectExposedItem> _displayItems;
         private object _currentObject;
         private Type _currentReflectionType;
         private Vector2 _scrollPos;
+
+        // Navigation history
+        private readonly List<string> _pathHistory = new();
+        private int _historyCursor = -1;
+        private bool _navigating;
+
+        // Watch mode
+        private double _lastRefreshTime;
+        private const double WatchInterval = 0.5;
 
         public object CurrentObject => _currentObject;
         public string Path => path;
@@ -47,16 +59,31 @@ namespace Snm.Tools.ObjectBrowser
             OnClosed?.Invoke(this);
         }
 
+        private void Update()
+        {
+            if (watchMode && EditorApplication.isPlaying && EditorApplication.timeSinceStartup - _lastRefreshTime > WatchInterval)
+            {
+                _lastRefreshTime = EditorApplication.timeSinceStartup;
+                Browse();
+                Repaint();
+            }
+        }
+
         private void OnGUI()
         {
-            EditorGUILayout.BeginHorizontal();
-            GUI.enabled = false;
-            EditorGUILayout.ObjectField(MonoScript.FromScriptableObject(this), GetType(), false);
-            GUI.enabled = true;
-            EditorGUILayout.EndHorizontal();
+            DrawSourceObject();
+            GUILayout.Space(4);
+            DrawBreadcrumb();
+            GUILayout.Space(4);
+            DrawFilterBar();
+            DrawItems();
+            DrawEmptyState();
+        }
 
-            GUILayout.Space(10);
+        // ── Source Object ────────────────────────────────────────
 
+        private void DrawSourceObject()
+        {
             EditorGUILayout.BeginHorizontal();
             GUILayout.Space(50);
             var ro = EditorGUILayout.ObjectField("Source Object", rootObject, typeof(Object), true);
@@ -79,15 +106,24 @@ namespace Snm.Tools.ObjectBrowser
                 foreach (var t in supportedTypes)
                 {
                     var current = t;
-                    menu.AddItem(new GUIContent(t.Name), false, () =>
-                    {
-                        PickInMemoryObject(current);
-                    });
+                    menu.AddItem(new GUIContent(t.Name), false, () => PickInMemoryObject(current));
                 }
                 menu.ShowAsContext();
             }
 
-            GUILayout.Space(50);
+            // Watch toggle
+            var watchLabel = watchMode ? "Watch: ON" : "Watch: OFF";
+            var watchStyle = new GUIStyle(EditorStyles.miniButton);
+            if (watchMode) watchStyle.normal.textColor = new Color(0.3f, 0.9f, 0.3f);
+            if (GUILayout.Button(watchLabel, watchStyle, GUILayout.Width(70)))
+            {
+                watchMode = !watchMode;
+                _lastRefreshTime = 0;
+            }
+
+            if (GUILayout.Button("Refresh", EditorStyles.miniButton, GUILayout.Width(50)))
+                Browse();
+
             EditorGUILayout.EndHorizontal();
 
             if (rootObject != ro)
@@ -96,42 +132,110 @@ namespace Snm.Tools.ObjectBrowser
                 ResetPath();
                 Browse();
             }
+        }
 
-            GUILayout.Space(10);
+        // ── Breadcrumb ───────────────────────────────────────────
+
+        private void DrawBreadcrumb()
+        {
             EditorGUILayout.BeginHorizontal();
 
-            var enableBackButton = !string.IsNullOrEmpty(path);
-            var ge = GUI.enabled;
-            GUI.enabled = enableBackButton;
-            if (GUILayout.Button("<-", GUILayout.Width(25)))
+            // Back / Forward
+            GUI.enabled = _historyCursor > 0;
+            if (GUILayout.Button("\u25C0", EditorStyles.miniButton, GUILayout.Width(22)))
+                NavigateHistory(-1);
+            GUI.enabled = _historyCursor < _pathHistory.Count - 1;
+            if (GUILayout.Button("\u25B6", EditorStyles.miniButton, GUILayout.Width(22)))
+                NavigateHistory(1);
+            GUI.enabled = true;
+
+            var segments = GetPathSegments();
+
+            // Root button
+            var rootStyle = new GUIStyle(EditorStyles.miniButton) { fontStyle = segments.Length == 0 ? FontStyle.Bold : FontStyle.Normal, stretchWidth = false };
+            if (GUILayout.Button(rootObject != null ? rootObject.name : "root", rootStyle))
             {
-                RemoveLastPathSegment();
+                ResetPath();
                 Browse();
             }
 
-            GUI.enabled = ge;
-            path = EditorGUILayout.TextField(path);
-            if (GUILayout.Button("Browse", GUILayout.Width(60)))
+            for (int i = 0; i < segments.Length; i++)
             {
-                Browse();
+                GUILayout.Label("\u25B8", GUILayout.Width(12));
+
+                var isLast = i == segments.Length - 1;
+                var style = new GUIStyle(EditorStyles.miniButton) { fontStyle = isLast ? FontStyle.Bold : FontStyle.Normal, stretchWidth = false };
+                var displayName = segments[i];
+                // Strip hash prefixes for display
+                if (displayName.Contains('.'))
+                    displayName = displayName.Substring(displayName.LastIndexOf('.') + 1);
+
+                if (GUILayout.Button(displayName, style))
+                {
+                    // Navigate to this depth
+                    path = string.Join("|", segments.Take(i + 1).Select(s => "|" + s)).TrimStart('|');
+                    path = string.Join("", segments.Take(i + 1).Select(s => "|" + s));
+                    Browse();
+                }
             }
+
+            // Search field fills remaining space
+            memberSearchFilter = EditorGUILayout.TextField(memberSearchFilter);
+            GUILayout.Label(EditorGUIUtility.IconContent("Search Icon"), GUILayout.Width(18), GUILayout.Height(16));
+            if (!string.IsNullOrEmpty(memberSearchFilter) && GUILayout.Button("X", EditorStyles.miniButton, GUILayout.Width(18)))
+                memberSearchFilter = "";
 
             EditorGUILayout.EndHorizontal();
+        }
 
+        private string[] GetPathSegments()
+        {
+            if (string.IsNullOrEmpty(path)) return Array.Empty<string>();
+            return path.Split('|', StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        // ── Filter Bar ───────────────────────────────────────────
+
+        private void DrawFilterBar()
+        {
             var rect = EditorGUILayout.GetControlRect();
 
-            var w3 = 135f;
-            var w2 = 90f;
+            var isVisual = _currentObject is Texture or Sprite or Material;
+            var wPreview = isVisual ? 55f : 0f;
+            var wCopy = 42f;
+            var wFilter1 = 90f;
+            var wFilter2 = 135f;
+            var wRight = wCopy + wPreview + wFilter1 + wFilter2 + 8f;
             var w0 = 50f;
-            var w1 = rect.width - w2 - w3 - w0;
+            var w1 = rect.width - w0 - wRight;
 
             var r0 = new Rect(rect.x, rect.y, w0, rect.height);
             var r1 = new Rect(rect.x + w0, rect.y, w1 - 4f, rect.height);
-            var r2 = new Rect(rect.x + w0 + w1, rect.y, w2, rect.height);
-            var r3 = new Rect(rect.x + w0 + w1 + w2, rect.y, w3, rect.height);
+
+            var x = r1.xMax + 4f;
+
+            if (isVisual)
+            {
+                var rPreview = new Rect(x, rect.y, wPreview, rect.height);
+                if (GUI.Button(rPreview, new GUIContent("Preview", "Open preview window")))
+                {
+                    var previewObj = _currentObject as Object;
+                    if (previewObj != null) PreviewWindow.Open(previewObj);
+                }
+                x += wPreview + 2f;
+            }
+
+            var rCopy = new Rect(x, rect.y, wCopy, rect.height);
+            if (GUI.Button(rCopy, new GUIContent("Copy", "Copy current value to clipboard")))
+                GUIUtility.systemCopyBuffer = ObjectReflectionExposer.ValueToString(_currentObject);
+            x = rCopy.xMax + 2f;
+
+            var r2 = new Rect(x, rect.y, wFilter1, rect.height);
+            var r3 = new Rect(r2.xMax, rect.y, wFilter2, rect.height);
 
             GUI.Label(r0, "Current");
             DrawCurrentObject(r1);
+
             var mfType = (MemberFilterType)EditorGUI.EnumPopup(r2, memberFilterType);
             var rfType = (ReflectionFilterType)EditorGUI.EnumPopup(r3, reflectionFilterType);
 
@@ -141,26 +245,79 @@ namespace Snm.Tools.ObjectBrowser
                 memberFilterType = mfType;
                 Browse();
             }
+        }
 
-            if (_displayItems != null && _displayItems.Count > 0)
-            {
-                var allowExpose = _currentObject == null || !ObjectReflectionExposer.IsPrimitive(_currentObject.GetType());
-                var hasObject = _currentReflectionType == null && _currentObject != null;
+        // ── Items ────────────────────────────────────────────────
 
-                EditorGUILayout.BeginVertical(GUI.skin.box);
-                _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos, EditorStyles.helpBox, GUILayout.ExpandWidth(true));
+        private void DrawItems()
+        {
+            if (_displayItems == null || _displayItems.Count == 0) return;
 
-                ObjectExposedItemsDrawer.DrawExposedItems(_displayItems, OnItemClicked, allowExpose, hasObject, displayTypeHash);
+            var allowExpose = _currentObject == null || !ObjectReflectionExposer.IsPrimitive(_currentObject.GetType());
+            var hasObject = _currentReflectionType == null && _currentObject != null;
 
-                EditorGUILayout.EndScrollView();
-                EditorGUILayout.EndVertical();
-            }
+            EditorGUILayout.BeginVertical(GUI.skin.box);
+            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos, EditorStyles.helpBox, GUILayout.ExpandWidth(true));
 
+            var items = string.IsNullOrEmpty(memberSearchFilter)
+                ? _displayItems
+                : _displayItems.Where(i =>
+                    i.DisplayMemberName != null &&
+                    i.DisplayMemberName.IndexOf(memberSearchFilter, StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
+
+            ObjectExposedItemsDrawer.DrawExposedItems(
+                items, OnItemClicked, allowExpose, hasObject, displayTypeHash, _currentObject);
+
+            EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawEmptyState()
+        {
             if (rootObject == null)
             {
-                GUILayout.Box("Drag UnityEngine.Object into the above Object Field", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 25, wordWrap = true }, GUILayout.ExpandHeight(true), GUILayout.ExpandWidth(true));
+                GUILayout.Box("Drag UnityEngine.Object into the above Object Field",
+                    new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 25, wordWrap = true },
+                    GUILayout.ExpandHeight(true), GUILayout.ExpandWidth(true));
             }
         }
+
+        // ── Navigation ──────────────────────────────────────────
+
+        private void NavigateHistory(int direction)
+        {
+            var newCursor = _historyCursor + direction;
+            if (newCursor < 0 || newCursor >= _pathHistory.Count) return;
+
+            _navigating = true;
+            _historyCursor = newCursor;
+            path = _pathHistory[_historyCursor];
+            Browse();
+            _navigating = false;
+        }
+
+        private void PushHistory()
+        {
+            if (_navigating) return;
+
+            var currentPath = path ?? "";
+
+            // Truncate forward history
+            if (_historyCursor < _pathHistory.Count - 1)
+                _pathHistory.RemoveRange(_historyCursor + 1, _pathHistory.Count - _historyCursor - 1);
+
+            // Don't add duplicate
+            if (_pathHistory.Count > 0 && _pathHistory[^1] == currentPath)
+                return;
+
+            _pathHistory.Add(currentPath);
+            if (_pathHistory.Count > 100)
+                _pathHistory.RemoveAt(0);
+
+            _historyCursor = _pathHistory.Count - 1;
+        }
+
+        // ── Core ─────────────────────────────────────────────────
 
         private void PickInMemoryObject(Type targetType)
         {
@@ -169,10 +326,8 @@ namespace Snm.Tools.ObjectBrowser
             var dic = nonAssetScriptableObjects
                 .ToDictionary(o =>
                 {
-                    if(o is EditorWindow editorWindow)
-                    {
+                    if (o is EditorWindow editorWindow)
                         return $"{editorWindow.titleContent.text} ({o.GetType().Name}@{o.GetInstanceID()})";
-                    }
                     return $"{o.name} ({o.GetType().Name}@{o.GetInstanceID()})";
                 }, o => o);
 
@@ -190,6 +345,7 @@ namespace Snm.Tools.ObjectBrowser
         {
             UpdateCurrentObject();
             Expose();
+            PushHistory();
         }
 
         private void DrawCurrentObject(Rect rect)
@@ -210,7 +366,6 @@ namespace Snm.Tools.ObjectBrowser
 
             if (_currentObject is Object obj)
             {
-
                 var enabled = GUI.enabled;
                 GUI.enabled = false;
                 EditorGUI.ObjectField(rect_Value, obj, typeof(Object), true);
@@ -220,7 +375,6 @@ namespace Snm.Tools.ObjectBrowser
             else
             {
                 var value = ObjectReflectionExposer.ValueToString(_currentObject);
-
                 EditorGUI.TextField(rect_Value, value);
                 EditorGUI.LabelField(rect_Type, reflectionTypeName);
             }
@@ -237,15 +391,15 @@ namespace Snm.Tools.ObjectBrowser
 
                 var objects = rootObject switch
                 {
-                    GameObject go => go.GetComponents<Component>().OfType<UnityEngine.Object>().Append(go),
-                    Component co => co.gameObject.GetComponents<Component>().OfType<UnityEngine.Object>().Append(co.gameObject),
+                    GameObject go => go.GetComponents<Component>().OfType<Object>().Append(go),
+                    Component co => co.gameObject.GetComponents<Component>().OfType<Object>().Append(co.gameObject),
                     ScriptableObject so => AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(so)),
                     _ => throw new ArgumentOutOfRangeException()
                 };
 
                 foreach (var i in objects)
                 {
-                    menu.AddItem(new GUIContent(i.GetType().Name), rootObject == i, () => { selectedHandler?.Invoke(i); });
+                    menu.AddItem(new GUIContent(i.GetType().Name), rootObject == i, () => selectedHandler?.Invoke(i));
                 }
 
                 menu.ShowAsContext();
@@ -287,15 +441,6 @@ namespace Snm.Tools.ObjectBrowser
         private void AppendPath(string memberName)
         {
             path = string.Concat(path, $"|{memberName}");
-        }
-
-        private void RemoveLastPathSegment()
-        {
-            var lastIndexOf = path.LastIndexOf("|", StringComparison.Ordinal);
-            if (lastIndexOf >= 0)
-            {
-                path = path[..lastIndexOf];
-            }
         }
 
         private void UpdateCurrentObject()

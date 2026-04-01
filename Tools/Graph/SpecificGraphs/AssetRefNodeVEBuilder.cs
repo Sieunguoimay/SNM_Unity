@@ -18,6 +18,7 @@ namespace Snm.Tools.GraphPresentation
         {
             var asset = assetResolver(node);
             var ve = CreateProjectItem(asset);
+            ve.name = $"node-{node.id}";
             ve.style.position = Position.Absolute;
             ve.style.left = node.position.x;
             ve.style.top = node.position.y;
