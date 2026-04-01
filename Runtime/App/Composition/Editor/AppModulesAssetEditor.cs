@@ -7,7 +7,7 @@ namespace Snm.Runtime.App.Composition
     [CustomEditor(typeof(AppModulesAsset))]
     public class AppModulesAssetEditor : Editor
     {
-        [MenuItem("Tools/GrabAndToss/Collect AppModules")]
+        // [MenuItem("Tools/Snm/App/Collect AppModules")]
         public static void CollectAppModulesMenuItem()
         {
             var registry = Selection.activeObject as AppModulesAsset;
