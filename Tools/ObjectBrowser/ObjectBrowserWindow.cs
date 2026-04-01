@@ -94,22 +94,8 @@ namespace Snm.Tools.ObjectBrowser
                 Browse();
             });
 
-            if (GUILayout.Button(new GUIContent("@", "Pick In Memory Object"), GUILayout.Width(25)))
-            {
-                var supportedTypes = new Type[] {
-                    typeof(ScriptableObject),
-                    typeof(Material),
-                    typeof(Mesh),
-                    typeof(Texture)
-                };
-                var menu = new GenericMenu();
-                foreach (var t in supportedTypes)
-                {
-                    var current = t;
-                    menu.AddItem(new GUIContent(t.Name), false, () => PickInMemoryObject(current));
-                }
-                menu.ShowAsContext();
-            }
+            if (GUILayout.Button(new GUIContent("@", "Pick in-memory object"), GUILayout.Width(25)))
+                PickInMemory();
 
             // Watch toggle
             var watchLabel = watchMode ? "Watch: ON" : "Watch: OFF";
@@ -319,17 +305,36 @@ namespace Snm.Tools.ObjectBrowser
 
         // ── Core ─────────────────────────────────────────────────
 
-        private void PickInMemoryObject(Type targetType)
+        private void PickInMemory()
         {
-            var nonAssetScriptableObjects = Resources.FindObjectsOfTypeAll(targetType)
-                .Where(o => string.IsNullOrEmpty(AssetDatabase.GetAssetPath(o)));
-            var dic = nonAssetScriptableObjects
-                .ToDictionary(o =>
+            var allObjects = Resources.FindObjectsOfTypeAll<Object>()
+                .Where(o =>
                 {
-                    if (o is EditorWindow editorWindow)
-                        return $"{editorWindow.titleContent.text} ({o.GetType().Name}@{o.GetInstanceID()})";
-                    return $"{o.name} ({o.GetType().Name}@{o.GetInstanceID()})";
-                }, o => o);
+                    // Exclude assets and packages — only in-memory objects
+                    var assetPath = AssetDatabase.GetAssetPath(o);
+                    if (!string.IsNullOrEmpty(assetPath)) return false;
+                    // Exclude hidden Unity internals
+                    if (o.hideFlags.HasFlag(HideFlags.HideAndDontSave) && string.IsNullOrEmpty(o.name)) return false;
+                    return true;
+                });
+
+            var dic = new Dictionary<string, Object>();
+            foreach (var o in allObjects)
+            {
+                var typeName = o.GetType().Name;
+                string label;
+
+                if (o is EditorWindow ew)
+                    label = $"[EditorWindow] {ew.titleContent.text} ({typeName}@{o.GetInstanceID()})";
+                else if (o is GameObject go)
+                    label = $"[GameObject] {go.name} ({typeName}@{o.GetInstanceID()})";
+                else if (o is Component comp)
+                    label = $"[Component] {comp.gameObject.name}/{typeName} (@{o.GetInstanceID()})";
+                else
+                    label = $"[{typeName}] {o.name} (@{o.GetInstanceID()})";
+
+                dic.TryAdd(label, o);
+            }
 
             SearchWindow.Show(dic.Keys, t => Browse(dic[t], ""));
         }
