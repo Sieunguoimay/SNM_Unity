@@ -96,7 +96,7 @@ namespace Snm.Graphics3D.GPUSkinning
         {
             unchecked
             {
-                return mesh.GetHashCode() * 397 ^ material.GetHashCode();
+                return mesh.GetInstanceID() * 397 ^ material.GetInstanceID();
             }
         }
 

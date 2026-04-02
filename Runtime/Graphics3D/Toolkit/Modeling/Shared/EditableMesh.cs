@@ -261,8 +261,10 @@ namespace Snm.Graphics3D.Modeling
         {
             int current = toVert;
             int prev = fromVert;
+            int maxIterations = Mathf.Max(VertexCount, 10000);
 
-            for (int safety = 0; safety < 10000; safety++)
+            int safety;
+            for (safety = 0; safety < maxIterations; safety++)
             {
                 // Find the triangle on the "other side" of the current edge
                 var tris = GetTrianglesForEdge(prev, current);
@@ -309,6 +311,9 @@ namespace Snm.Graphics3D.Modeling
                 prev = current;
                 current = nextVert;
             }
+
+            if (safety >= maxIterations)
+                Debug.LogWarning($"EditableMesh.WalkEdgeLoop: Safety limit ({maxIterations}) reached. Edge loop may be incomplete.");
         }
 
         #endregion

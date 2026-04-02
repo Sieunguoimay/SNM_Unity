@@ -89,9 +89,16 @@ namespace Snm.Graphics3D.GPUSkinning
         public bool HasBoneOverrides => _hasOverrides;
 
         // --- Shared material pool ---
-        private static readonly Dictionary<long, Material> SharedMaterials = new();
-        private static readonly Dictionary<long, int> SharedMaterialRefCounts = new();
+        private static Dictionary<long, Material> SharedMaterials = new();
+        private static Dictionary<long, int> SharedMaterialRefCounts = new();
         private long _materialKey;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticPool()
+        {
+            SharedMaterials = new Dictionary<long, Material>();
+            SharedMaterialRefCounts = new Dictionary<long, int>();
+        }
 
         private void OnEnable()
         {

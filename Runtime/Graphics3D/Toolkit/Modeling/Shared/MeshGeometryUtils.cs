@@ -46,6 +46,8 @@ namespace Snm.Graphics3D.Modeling
             hitDistance = float.MaxValue;
             hitBary = Vector3.zero;
 
+            if (vertices == null || triangles == null) return false;
+
             // Transform ray to local space
             Matrix4x4 worldToLocal = localToWorld.inverse;
             Vector3 localOrigin = worldToLocal.MultiplyPoint3x4(ray.origin);

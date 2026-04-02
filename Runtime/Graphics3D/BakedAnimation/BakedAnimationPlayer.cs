@@ -27,10 +27,13 @@ namespace Snm.Graphics3D.GPUSkinning
         private float _transitionProgress = 1f;
         private bool _isInTransition;
 
-        public float FrameIndex => _aniIndex >= 0 ? _animInfoList[_aniIndex].startFrameIndex + _curFrame : -1f;
-        public float PreFrameIndex => _preAniIndex >= 0 ? _animInfoList[_preAniIndex].startFrameIndex + _preAniFrame : -1f;
+        public float FrameIndex => _aniIndex >= 0 && _aniIndex < (_animInfoList?.Count ?? 0)
+            ? _animInfoList[_aniIndex].startFrameIndex + _curFrame : -1f;
+        public float PreFrameIndex => _preAniIndex >= 0 && _preAniIndex < (_animInfoList?.Count ?? 0)
+            ? _animInfoList[_preAniIndex].startFrameIndex + _preAniFrame : -1f;
         public float TransitionProgress => _transitionProgress;
-        public int TextureIndex => _aniIndex >= 0 ? _animInfoList[_aniIndex].textureIndex : 0;
+        public int TextureIndex => _aniIndex >= 0 && _aniIndex < (_animInfoList?.Count ?? 0)
+            ? _animInfoList[_aniIndex].textureIndex : 0;
         public bool IsPlaying => _aniIndex >= 0;
         public bool IsPaused => _speedParameter == 0f;
 
@@ -175,12 +178,17 @@ namespace Snm.Graphics3D.GPUSkinning
             var totalFrame = aniInfo.totalFrame;
             _curFrame += _playSpeed * _speedParameter * deltaTime * aniInfo.fps;
 
+            if (totalFrame <= 1)
+            {
+                _curFrame = 0f;
+                return;
+            }
+
             switch (_wrapMode)
             {
                 case WrapMode.Loop:
                     float loopLen = totalFrame - 1;
-                    if (loopLen > 0f)
-                        _curFrame = ((_curFrame % loopLen) + loopLen) % loopLen;
+                    _curFrame = ((_curFrame % loopLen) + loopLen) % loopLen;
                     break;
                 case WrapMode.PingPong:
                     if (_curFrame < 0f)

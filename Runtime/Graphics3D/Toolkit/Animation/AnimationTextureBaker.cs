@@ -8,7 +8,7 @@ namespace Snm.Graphics3D.Animation
 {
     public class AnimationTextureBaker
     {
-        private static readonly int[] stardardTextureSize = { 64, 128, 256, 512, 1024 };
+        private static readonly int[] standardTextureSize = { 64, 128, 256, 512, 1024 };
 
         public static AnimationTextureData GenerateAnimationTextureData(
             List<Graphics3D.GPUSkinning.AnimationInfo> animInfoList,
@@ -35,13 +35,17 @@ namespace Snm.Graphics3D.Animation
             }
 
             var textureWidth = CalculateTextureSize(out int count, frames, textureBlockWidth, textureBlockHeight);
-            Debug.Assert(textureWidth > 0);
+            if (textureWidth <= 0)
+            {
+                Debug.LogError("AnimationTextureBaker: Failed to calculate valid texture size.");
+                return null;
+            }
 
             var bakedBoneTextures = new Texture2D[count];
             var format = TextureFormat.RGBAHalf;
             for (int i = 0; i != count; ++i)
             {
-                int width = count > 1 && i < count ? stardardTextureSize[^1] : textureWidth;
+                int width = count > 1 && i < count ? standardTextureSize[^1] : textureWidth;
                 bakedBoneTextures[i] = new Texture2D(width, width, format, false)
                 {
                     filterMode = FilterMode.Point,
@@ -64,12 +68,12 @@ namespace Snm.Graphics3D.Animation
             int blockHeight,
             int blockWidth)
         {
-            int textureWidth = stardardTextureSize[0];
+            int textureWidth = standardTextureSize[0];
 
             int count = 1;
-            for (int i = stardardTextureSize.Length - 1; i >= 0; --i)
+            for (int i = standardTextureSize.Length - 1; i >= 0; --i)
             {
-                int size = stardardTextureSize[i];
+                int size = standardTextureSize[i];
                 int blockCountEachLine = size / blockWidth;
                 int x = 0, y = 0;
                 int k = 0;
@@ -89,10 +93,11 @@ namespace Snm.Graphics3D.Animation
                     {
                         x = y = 0;
                         ++count;
-                        k = j--;
+                        k = j;
+                        j--; // retry this frame on the next texture
                         if (check)
                         {
-                            if (i == stardardTextureSize.Length - 1)
+                            if (i == standardTextureSize.Length - 1)
                             {
                                 //Debug.LogError("There is certain animation's frame larger than a texture.");
                                 textureCount = 0;
@@ -105,11 +110,11 @@ namespace Snm.Graphics3D.Animation
                 }
 
                 bool suitable = false;
-                if (count > 1 && i == stardardTextureSize.Length - 1)
+                if (count > 1 && i == standardTextureSize.Length - 1)
                 {
-                    for (int m = 0; m != stardardTextureSize.Length; ++m)
+                    for (int m = 0; m != standardTextureSize.Length; ++m)
                     {
-                        size = stardardTextureSize[m];
+                        size = standardTextureSize[m];
                         x = y = 0;
                         for (int n = k; n < frames.Length; ++n)
                         {
@@ -136,7 +141,7 @@ namespace Snm.Graphics3D.Animation
                 }
                 else if (count > 1)
                 {
-                    textureWidth = stardardTextureSize[i + 1];
+                    textureWidth = standardTextureSize[i + 1];
                     count = 1;
                     suitable = true;
                 }
@@ -199,7 +204,11 @@ namespace Snm.Graphics3D.Animation
                             ++bakedTextureIndex;
                             pixelx = 0;
                             pixely = 0;
-                            Debug.Assert(bakedTextureIndex < bakedBoneTexture.Length);
+                            if (bakedTextureIndex >= bakedBoneTexture.Length)
+                            {
+                                Debug.LogError("AnimationTextureBaker: Exceeded baked texture count during fill.");
+                                return;
+                            }
                         }
                     }
 
@@ -214,7 +223,11 @@ namespace Snm.Graphics3D.Animation
                 }
                 if (matrixData.poseMatrices != null)
                 {
-                    Debug.Assert(pixely + textureBlockHeight <= bakedBoneTexture[bakedTextureIndex].height);
+                    if (pixely + textureBlockHeight > bakedBoneTexture[bakedTextureIndex].height)
+                    {
+                        Debug.LogError($"AnimationTextureBaker: Pixel Y ({pixely}) exceeds texture height ({bakedBoneTexture[bakedTextureIndex].height}).");
+                        return;
+                    }
                     var color = Convert2Color(matrixData.poseMatrices);
                     bakedBoneTexture[bakedTextureIndex].SetPixels(pixelx, pixely, textureBlockWidth, textureBlockHeight, color);
                     matrixData.frameIndex = pixelx / textureBlockWidth + pixely / textureBlockHeight * bakedBoneTexture[bakedTextureIndex].width / textureBlockWidth;
@@ -226,16 +239,19 @@ namespace Snm.Graphics3D.Animation
                     }
                     if (pixely + textureBlockHeight > bakedBoneTexture[bakedTextureIndex].height)
                     {
-                        Debug.Assert(animPoseDataList[i + 1].stateName != matrixData.stateName);
                         ++bakedTextureIndex;
                         pixelx = 0;
                         pixely = 0;
-                        Debug.Assert(bakedTextureIndex < bakedBoneTexture.Length);
+                        if (bakedTextureIndex >= bakedBoneTexture.Length)
+                        {
+                            Debug.LogError("AnimationTextureBaker: Exceeded baked texture count during pixel write.");
+                            return;
+                        }
                     }
                 }
                 else
                 {
-                    Debug.Assert(false);
+                    Debug.LogWarning($"AnimationTextureBaker: Null pose matrices at index {i}, skipping.");
                 }
             }
         }

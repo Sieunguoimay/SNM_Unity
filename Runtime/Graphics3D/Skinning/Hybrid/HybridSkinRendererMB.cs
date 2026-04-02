@@ -189,10 +189,11 @@ namespace Snm.Graphics3D.GPUSkinning
             if (_bakedPlayer == null)
                 return SkinningMode.LiveBones;
 
-            if (Camera.main == null)
+            var cam = Camera.main;
+            if (cam == null)
                 return SkinningMode.LiveBones;
 
-            float dist = Vector3.Distance(transform.position, Camera.main.transform.position);
+            float dist = Vector3.Distance(transform.position, cam.transform.position);
 
             if (_currentMode == SkinningMode.LiveBones)
                 return dist > lodSwitchDistance + switchHysteresis ? SkinningMode.BakedTexture : SkinningMode.LiveBones;

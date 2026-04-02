@@ -41,31 +41,40 @@ namespace Snm.Graphics3D.Animation
             var preGo = UnityEditor.Selection.activeGameObject;
             UnityEditor.Selection.activeGameObject = go;
 
-            CreateBoneBakeInfos(go, selectedExtraBones,
-                out var boneList,
-                out var bindPoseList,
-                out var extraBoneInfo);
-            CreateAnimationBakeInfos(go, selectedAnims, fps,
-                out var animBakeInfoList,
-                out var cacheTransitions,
-                out var cacheAnimationEvents);
-            GenerateAnimationPoseData(animBakeInfoList, boneList, bindPoseList,
-                out var animInfoList,
-                out var animPoseDataList);
-            ResetAnimationController(cacheTransitions, cacheAnimationEvents);
+            Dictionary<UnityEditor.Animations.AnimatorState, UnityEditor.Animations.AnimatorStateTransition[]> cacheTransitions = null;
+            Dictionary<AnimationClip, UnityEngine.AnimationEvent[]> cacheAnimationEvents = null;
 
-            var animationTextureData = AnimationTextureBaker
-                .GenerateAnimationTextureData(animInfoList, animPoseDataList, boneList.Length);
+            try
+            {
+                CreateBoneBakeInfos(go, selectedExtraBones,
+                    out var boneList,
+                    out var bindPoseList,
+                    out var extraBoneInfo);
+                CreateAnimationBakeInfos(go, selectedAnims, fps,
+                    out var animBakeInfoList,
+                    out cacheTransitions,
+                    out cacheAnimationEvents);
+                GenerateAnimationPoseData(animBakeInfoList, boneList, bindPoseList,
+                    out var animInfoList,
+                    out var animPoseDataList);
 
-            var animationData = ScriptableObject.CreateInstance<AnimationInstancingData>();
-            animationData.animInfoList = animInfoList;
-            animationData.boneData = extraBoneInfo;
-            animationData.animationTextureData = animationTextureData;
+                var animationTextureData = AnimationTextureBaker
+                    .GenerateAnimationTextureData(animInfoList, animPoseDataList, boneList.Length);
 
-            Object.DestroyImmediate(go);
-            UnityEditor.Selection.activeGameObject = preGo;
+                var animationData = ScriptableObject.CreateInstance<AnimationInstancingData>();
+                animationData.animInfoList = animInfoList;
+                animationData.boneData = extraBoneInfo;
+                animationData.animationTextureData = animationTextureData;
 
-            return animationData;
+                return animationData;
+            }
+            finally
+            {
+                if (cacheTransitions != null && cacheAnimationEvents != null)
+                    ResetAnimationController(cacheTransitions, cacheAnimationEvents);
+                Object.DestroyImmediate(go);
+                UnityEditor.Selection.activeGameObject = preGo;
+            }
         }
 
         private static void CreateBoneBakeInfos(
