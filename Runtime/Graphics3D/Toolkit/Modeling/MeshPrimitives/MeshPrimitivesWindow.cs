@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using Snm.Graphics3D.Toolkit;
 
 namespace Snm.Graphics3D.Modeling
 {
@@ -61,14 +63,21 @@ namespace Snm.Graphics3D.Modeling
         void OnGUI()
         {
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            DrawContent();
+            EditorGUILayout.EndScrollView();
+        }
+
+        internal void DrawContent()
+        {
+            ToolkitGUI.Title("Primitives Generator");
 
             type = (PrimitiveType)EditorGUILayout.EnumPopup("Shape", type);
-            EditorGUILayout.Space(4);
+            EditorGUILayout.Space(ToolkitWindowStyles.ItemSpacing);
 
             defaultMaterial = (Material)EditorGUILayout.ObjectField(
                 "Material", defaultMaterial, typeof(Material), false);
 
-            EditorGUILayout.Space(4);
+            ToolkitGUI.SectionHeader($"{type} Parameters");
 
             switch (type)
             {
@@ -83,20 +92,18 @@ namespace Snm.Graphics3D.Modeling
                 case PrimitiveType.Capsule: DrawCapsuleParams(); break;
             }
 
-            EditorGUILayout.Space(8);
+            GUILayout.Space(ToolkitWindowStyles.SectionSpacing);
 
-            if (GUILayout.Button("Create", GUILayout.Height(30)))
+            if (ToolkitGUI.BigButton("Create"))
                 CreatePrimitive();
 
-            EditorGUILayout.Space(4);
+            EditorGUILayout.Space(ToolkitWindowStyles.ItemSpacing);
 
-            if (GUILayout.Button("Create & Select"))
+            if (ToolkitGUI.ActionButton("Create & Select"))
             {
                 var go = CreatePrimitive();
                 if (go != null) Selection.activeGameObject = go;
             }
-
-            EditorGUILayout.EndScrollView();
         }
 
         #region Parameter UIs
@@ -197,12 +204,31 @@ namespace Snm.Graphics3D.Modeling
 
             if (mesh == null) return null;
 
+            var prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
+            var selectedParent = Selection.activeTransform;
+
             var go = new GameObject(type.ToString());
 
-            // Position at scene view focus
-            var sceneView = SceneView.lastActiveSceneView;
-            if (sceneView != null)
-                go.transform.position = sceneView.pivot;
+            if (selectedParent != null)
+            {
+                go.transform.SetParent(selectedParent, false);
+            }
+            else if (prefabStage != null)
+            {
+                go.transform.SetParent(prefabStage.prefabContentsRoot.transform, false);
+            }
+            else
+            {
+                var sceneView = SceneView.lastActiveSceneView;
+                if (sceneView != null)
+                    go.transform.position = sceneView.pivot;
+            }
+
+            if (prefabStage != null)
+            {
+                mesh.name = type.ToString();
+                AssetDatabase.AddObjectToAsset(mesh, prefabStage.assetPath);
+            }
 
             var mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = mesh;
@@ -211,6 +237,9 @@ namespace Snm.Graphics3D.Modeling
             mr.sharedMaterial = defaultMaterial != null ? defaultMaterial : GetDefaultMaterial();
 
             MeshUndoHelper.RegisterCreatedGameObject(go, $"Create {type}");
+
+            if (prefabStage != null)
+                EditorUtility.SetDirty(prefabStage.prefabContentsRoot);
 
             return go;
         }

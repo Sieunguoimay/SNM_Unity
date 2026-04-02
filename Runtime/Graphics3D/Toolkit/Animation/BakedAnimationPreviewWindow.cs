@@ -89,7 +89,12 @@ namespace Snm.Graphics3D.Animation
 
         private void CreateGUI()
         {
-            var root = rootVisualElement;
+            rootVisualElement.Add(BuildContent());
+        }
+
+        internal VisualElement BuildContent()
+        {
+            var root = new VisualElement { style = { flexGrow = 1 } };
             root.style.paddingTop = 4;
             root.style.paddingLeft = 4;
             root.style.paddingRight = 4;
@@ -204,6 +209,7 @@ namespace Snm.Graphics3D.Animation
             root.Add(overrideInfo);
 
             RefreshUI();
+            return root;
         }
 
         // =============================================

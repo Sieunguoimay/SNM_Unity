@@ -74,7 +74,12 @@ namespace Snm.Graphics3D.Rigging
 
         public void CreateGUI()
         {
-            var root = rootVisualElement;
+            rootVisualElement.Add(BuildContent());
+        }
+
+        internal VisualElement BuildContent()
+        {
+            var root = new VisualElement { style = { flexGrow = 1f } };
             root.style.flexGrow = 1f;
 
             // === Input fields ===
@@ -273,6 +278,7 @@ namespace Snm.Graphics3D.Rigging
             root.Add(bottomSection);
 
             SwitchMode(RigDocument.ToolModeEnum.Skeleton);
+            return root;
         }
 
         private static VisualElement MakeSeparator()

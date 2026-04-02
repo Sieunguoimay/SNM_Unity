@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using Snm.Graphics3D.Toolkit;
 
 namespace Snm.Graphics3D.Modeling
 {
@@ -20,29 +21,33 @@ namespace Snm.Graphics3D.Modeling
         void OnGUI()
         {
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            DrawContent();
+            EditorGUILayout.EndScrollView();
+        }
 
-            EditorGUILayout.LabelField("Mesh Combiner", EditorStyles.boldLabel);
+        internal void DrawContent()
+        {
+            ToolkitGUI.Title("Mesh Combiner");
             EditorGUILayout.HelpBox(
                 "Select multiple GameObjects with MeshFilters/SkinnedMeshRenderers, " +
                 "then click Combine to merge them into a single mesh.",
                 MessageType.Info);
 
-            EditorGUILayout.Space(4);
+            ToolkitGUI.SectionHeader("Options");
 
             _mergeByMaterial = EditorGUILayout.Toggle("Merge by Material", _mergeByMaterial);
             _includeChildren = EditorGUILayout.Toggle("Include Children", _includeChildren);
             _removeSources = EditorGUILayout.Toggle("Disable Sources After", _removeSources);
 
-            EditorGUILayout.Space(4);
+            ToolkitGUI.SectionHeader("Selection Info");
 
-            // Show selection info
             var selected = Selection.gameObjects;
-            EditorGUILayout.LabelField("Selected Objects", selected.Length.ToString());
+            ToolkitGUI.StatRow("Selected Objects", selected.Length.ToString());
 
             if (selected.Length > 0)
             {
                 var inputs = MeshCombineLogic.CollectFromGameObjects(selected, _includeChildren);
-                EditorGUILayout.LabelField("Meshes Found", inputs.Count.ToString());
+                ToolkitGUI.StatRow("Meshes Found", inputs.Count.ToString());
 
                 int totalVerts = 0, totalTris = 0;
                 foreach (var input in inputs)
@@ -50,26 +55,24 @@ namespace Snm.Graphics3D.Modeling
                     totalVerts += input.Mesh.vertexCount;
                     totalTris += input.Mesh.triangles.Length / 3;
                 }
-                EditorGUILayout.LabelField("Total Vertices", totalVerts.ToString("N0"));
-                EditorGUILayout.LabelField("Total Triangles", totalTris.ToString("N0"));
+                ToolkitGUI.StatRow("Total Vertices", totalVerts.ToString("N0"));
+                ToolkitGUI.StatRow("Total Triangles", totalTris.ToString("N0"));
 
                 if (totalVerts > 65535)
                     EditorGUILayout.HelpBox("Result will use 32-bit indices.", MessageType.None);
             }
 
-            EditorGUILayout.Space(8);
+            GUILayout.Space(ToolkitWindowStyles.SectionSpacing);
 
             EditorGUI.BeginDisabledGroup(selected.Length == 0);
 
-            if (GUILayout.Button("Combine", GUILayout.Height(30)))
+            if (ToolkitGUI.BigButton("Combine"))
                 DoCombine();
 
-            if (GUILayout.Button("Combine & Save as Asset"))
+            if (ToolkitGUI.ActionButton("Combine & Save as Asset"))
                 DoCombineAndSave();
 
             EditorGUI.EndDisabledGroup();
-
-            EditorGUILayout.EndScrollView();
         }
 
         void DoCombine()

@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using Snm.Graphics3D.Toolkit;
 
 namespace Snm.Graphics3D.Modeling
 {
@@ -19,8 +20,13 @@ namespace Snm.Graphics3D.Modeling
         void OnGUI()
         {
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            DrawContent();
+            EditorGUILayout.EndScrollView();
+        }
 
-            EditorGUILayout.LabelField("Mesh Editor", EditorStyles.boldLabel);
+        internal void DrawContent()
+        {
+            ToolkitGUI.Title("Mesh Editor");
             EditorGUILayout.HelpBox(
                 "Select a GameObject with a MeshFilter, then activate the Mesh Editor tool " +
                 "from the Scene View toolbar (or Component Tools overlay).\n\n" +
@@ -42,12 +48,8 @@ namespace Snm.Graphics3D.Modeling
             var mf = go != null ? go.GetComponent<MeshFilter>() : null;
             var mesh = mf != null ? mf.sharedMesh : null;
 
-            if (mesh == null)
-            {
-                EditorGUILayout.HelpBox("No mesh selected.", MessageType.Warning);
-                EditorGUILayout.EndScrollView();
+            if (!ToolkitGUI.ValidateMesh(mesh, "Select a GameObject with a MeshFilter."))
                 return;
-            }
 
             var sel = MeshSelection.GetOrCreate(mesh);
 
@@ -200,8 +202,6 @@ namespace Snm.Graphics3D.Modeling
                     mesh.RecalculateTangents();
                 }
             }
-
-            EditorGUILayout.EndScrollView();
         }
     }
 }

@@ -86,6 +86,11 @@ namespace Snm.Graphics3D.UVLayout
 
         void OnGUI()
         {
+            DrawContent();
+        }
+
+        internal void DrawContent()
+        {
             EditorGUILayout.BeginHorizontal();
 
             // Left: preview area

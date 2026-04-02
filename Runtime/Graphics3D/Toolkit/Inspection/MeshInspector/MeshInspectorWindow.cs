@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Snm.Graphics3D.Modeling;
+using Snm.Graphics3D.Toolkit;
 
 namespace Snm.Graphics3D.Inspection
 {
@@ -80,6 +81,15 @@ namespace Snm.Graphics3D.Inspection
 
         void OnGUI()
         {
+            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            DrawContent();
+            EditorGUILayout.EndScrollView();
+        }
+
+        internal void DrawContent()
+        {
+            ToolkitGUI.Title("Mesh Inspector");
+
             EditorGUI.BeginChangeCheck();
             targetMesh = (Mesh)EditorGUILayout.ObjectField("Mesh", targetMesh, typeof(Mesh), false);
             if (EditorGUI.EndChangeCheck()) Refresh();
@@ -92,71 +102,45 @@ namespace Snm.Graphics3D.Inspection
                 return;
             }
 
-            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
-
             DrawOverview();
             DrawAttributes();
             DrawSubMeshes();
             DrawTopology();
             DrawFixButtons();
-
-            EditorGUILayout.EndScrollView();
         }
 
         void DrawOverview()
         {
-            EditorGUILayout.LabelField("Overview", EditorStyles.boldLabel);
-            EditorGUI.indentLevel++;
+            ToolkitGUI.SectionHeader("Overview");
 
-            EditorGUILayout.LabelField("Name", targetMesh.name);
-            EditorGUILayout.LabelField("Vertices", _stats.VertexCount.ToString("N0"));
-            EditorGUILayout.LabelField("Triangles", _stats.TriangleCount.ToString("N0"));
-            EditorGUILayout.LabelField("Edges", _stats.EdgeCount.ToString("N0"));
-            EditorGUILayout.LabelField("Sub-meshes", _stats.SubMeshCount.ToString());
-            EditorGUILayout.LabelField("Index Format",
+            ToolkitGUI.StatRow("Name", targetMesh.name);
+            ToolkitGUI.StatRow("Vertices", _stats.VertexCount.ToString("N0"));
+            ToolkitGUI.StatRow("Triangles", _stats.TriangleCount.ToString("N0"));
+            ToolkitGUI.StatRow("Edges", _stats.EdgeCount.ToString("N0"));
+            ToolkitGUI.StatRow("Sub-meshes", _stats.SubMeshCount.ToString());
+            ToolkitGUI.StatRow("Index Format",
                 _stats.IndexFormat == IndexFormat.UInt32 ? "32-bit" : "16-bit");
-            EditorGUILayout.LabelField("Readable", _stats.IsReadable ? "Yes" : "No");
-            EditorGUILayout.LabelField("Memory (est.)",
+            ToolkitGUI.StatusRow("Readable", _stats.IsReadable);
+            ToolkitGUI.StatRow("Memory (est.)",
                 MeshInspectorAnalyzer.FormatBytes(_stats.EstimatedMemoryBytes));
 
             EditorGUILayout.Space(2);
-            EditorGUILayout.LabelField("Bounds Center", _stats.Bounds.center.ToString("F3"));
-            EditorGUILayout.LabelField("Bounds Size", _stats.Bounds.size.ToString("F3"));
-
-            EditorGUI.indentLevel--;
-            EditorGUILayout.Space(6);
+            ToolkitGUI.StatRow("Bounds Center", _stats.Bounds.center.ToString("F3"));
+            ToolkitGUI.StatRow("Bounds Size", _stats.Bounds.size.ToString("F3"));
         }
 
         void DrawAttributes()
         {
-            _showAttributes = EditorGUILayout.Foldout(_showAttributes, "Attributes", true);
+            _showAttributes = ToolkitGUI.SectionFoldout(_showAttributes, "Attributes");
             if (!_showAttributes) return;
 
-            EditorGUI.indentLevel++;
-
-            DrawAttributeRow("Normals", _stats.HasNormals);
-            DrawAttributeRow("Tangents", _stats.HasTangents);
-            DrawAttributeRow("Vertex Colors", _stats.HasColors);
-            DrawAttributeRow("Bone Weights", _stats.HasBoneWeights);
+            ToolkitGUI.StatusRow("Normals", _stats.HasNormals, "Present", "\u2014");
+            ToolkitGUI.StatusRow("Tangents", _stats.HasTangents, "Present", "\u2014");
+            ToolkitGUI.StatusRow("Vertex Colors", _stats.HasColors, "Present", "\u2014");
+            ToolkitGUI.StatusRow("Bone Weights", _stats.HasBoneWeights, "Present", "\u2014");
 
             for (int ch = 0; ch < 8; ch++)
-                DrawAttributeRow($"UV{ch}", _stats.HasUV[ch]);
-
-            EditorGUI.indentLevel--;
-            EditorGUILayout.Space(6);
-        }
-
-        void DrawAttributeRow(string label, bool present)
-        {
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField(label, GUILayout.Width(120));
-
-            var prevColor = GUI.color;
-            GUI.color = present ? new Color(0.4f, 1f, 0.4f) : new Color(0.6f, 0.6f, 0.6f);
-            EditorGUILayout.LabelField(present ? "Present" : "—", EditorStyles.miniLabel);
-            GUI.color = prevColor;
-
-            EditorGUILayout.EndHorizontal();
+                ToolkitGUI.StatusRow($"UV{ch}", _stats.HasUV[ch], "Present", "\u2014");
         }
 
         void DrawSubMeshes()
@@ -197,50 +181,31 @@ namespace Snm.Graphics3D.Inspection
 
         void DrawTopology()
         {
-            _showTopology = EditorGUILayout.Foldout(_showTopology, "Topology Analysis", true);
+            _showTopology = ToolkitGUI.SectionFoldout(_showTopology, "Topology Analysis");
             if (!_showTopology) return;
-
-            EditorGUI.indentLevel++;
 
             if (!_stats.IsReadable)
             {
                 EditorGUILayout.HelpBox("Mesh is not readable. Enable Read/Write to analyze topology.",
                     MessageType.Warning);
-                EditorGUI.indentLevel--;
                 return;
             }
 
-            DrawIssueRow("Degenerate Triangles", _stats.DegenerateTriangles);
-            DrawIssueRow("Unused Vertices", _stats.UnusedVertices);
-            DrawIssueRow("Non-manifold Edges", _stats.NonManifoldEdges);
-            DrawIssueRow("Boundary Edges", _stats.BoundaryEdges);
+            ToolkitGUI.IssueRow("Degenerate Triangles", _stats.DegenerateTriangles);
+            ToolkitGUI.IssueRow("Unused Vertices", _stats.UnusedVertices);
+            ToolkitGUI.IssueRow("Non-manifold Edges", _stats.NonManifoldEdges);
+            ToolkitGUI.IssueRow("Boundary Edges", _stats.BoundaryEdges);
 
             if (_stats.DuplicateVertices >= 0)
-                DrawIssueRow("Duplicate Vertices", _stats.DuplicateVertices);
+                ToolkitGUI.IssueRow("Duplicate Vertices", _stats.DuplicateVertices);
             else
-                EditorGUILayout.LabelField("Duplicate Vertices", "Skipped (mesh too large)");
+                ToolkitGUI.StatRow("Duplicate Vertices", "Skipped (mesh too large)");
 
             bool hasIssues = _stats.DegenerateTriangles > 0 || _stats.UnusedVertices > 0 ||
                              _stats.NonManifoldEdges > 0;
 
             if (!hasIssues)
                 EditorGUILayout.HelpBox("No topology issues found.", MessageType.Info);
-
-            EditorGUI.indentLevel--;
-            EditorGUILayout.Space(6);
-        }
-
-        void DrawIssueRow(string label, int count)
-        {
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField(label, GUILayout.Width(180));
-
-            var prevColor = GUI.color;
-            GUI.color = count > 0 ? new Color(1f, 0.6f, 0.3f) : new Color(0.4f, 1f, 0.4f);
-            EditorGUILayout.LabelField(count > 0 ? count.ToString() : "None", EditorStyles.miniLabel);
-            GUI.color = prevColor;
-
-            EditorGUILayout.EndHorizontal();
         }
 
         void DrawFixButtons()
@@ -250,14 +215,12 @@ namespace Snm.Graphics3D.Inspection
                              (_stats.DuplicateVertices > 0);
             if (!hasIssues) return;
 
-            _showFix = EditorGUILayout.Foldout(_showFix, "Fix Issues", true);
+            _showFix = ToolkitGUI.SectionFoldout(_showFix, "Fix Issues");
             if (!_showFix) return;
-
-            EditorGUI.indentLevel++;
 
             if (_stats.DegenerateTriangles > 0)
             {
-                if (GUILayout.Button($"Remove {_stats.DegenerateTriangles} Degenerate Triangles"))
+                if (ToolkitGUI.ActionButton($"Remove {_stats.DegenerateTriangles} Degenerate Triangles"))
                 {
                     MeshUndoHelper.RecordMesh(targetMesh, "Remove Degenerate Triangles");
                     var em = EditableMesh.FromMesh(targetMesh);
@@ -269,7 +232,7 @@ namespace Snm.Graphics3D.Inspection
 
             if (_stats.UnusedVertices > 0)
             {
-                if (GUILayout.Button($"Remove {_stats.UnusedVertices} Unused Vertices"))
+                if (ToolkitGUI.ActionButton($"Remove {_stats.UnusedVertices} Unused Vertices"))
                 {
                     MeshUndoHelper.RecordMesh(targetMesh, "Remove Unused Vertices");
                     var em = EditableMesh.FromMesh(targetMesh);
@@ -281,7 +244,7 @@ namespace Snm.Graphics3D.Inspection
 
             if (_stats.DuplicateVertices > 0)
             {
-                if (GUILayout.Button($"Weld {_stats.DuplicateVertices} Duplicate Vertices"))
+                if (ToolkitGUI.ActionButton($"Weld {_stats.DuplicateVertices} Duplicate Vertices"))
                 {
                     MeshUndoHelper.RecordMesh(targetMesh, "Weld Duplicate Vertices");
                     var em = EditableMesh.FromMesh(targetMesh);
@@ -291,11 +254,8 @@ namespace Snm.Graphics3D.Inspection
                 }
             }
 
-            EditorGUI.indentLevel--;
+            EditorGUILayout.Space(ToolkitWindowStyles.ItemSpacing);
 
-            EditorGUILayout.Space(4);
-
-            // Copy stats
             if (GUILayout.Button("Copy Stats to Clipboard"))
             {
                 var sb = new System.Text.StringBuilder();

@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using Snm.Graphics3D.Toolkit;
 
 namespace Snm.Graphics3D.Modeling
 {
@@ -18,8 +19,13 @@ namespace Snm.Graphics3D.Modeling
         void OnGUI()
         {
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            DrawContent();
+            EditorGUILayout.EndScrollView();
+        }
 
-            EditorGUILayout.LabelField("Pivot Editor", EditorStyles.boldLabel);
+        internal void DrawContent()
+        {
+            ToolkitGUI.Title("Pivot Editor");
             EditorGUILayout.HelpBox(
                 "Moves the mesh pivot by offsetting all vertices and adjusting the Transform.\n\n" +
                 "You can also activate the Pivot Editor tool from the Scene View toolbar " +
@@ -30,65 +36,49 @@ namespace Snm.Graphics3D.Modeling
             var mf = go != null ? go.GetComponent<MeshFilter>() : null;
             var mesh = mf != null ? mf.sharedMesh : null;
 
-            if (mesh == null)
-            {
-                EditorGUILayout.HelpBox("Select a GameObject with a MeshFilter.", MessageType.Warning);
-                EditorGUILayout.EndScrollView();
+            if (!ToolkitGUI.ValidateMesh(mesh, "Select a GameObject with a MeshFilter."))
                 return;
-            }
 
-            if (!mesh.isReadable)
-            {
-                EditorGUILayout.HelpBox("Mesh is not readable.", MessageType.Error);
-                EditorGUILayout.EndScrollView();
-                return;
-            }
+            ToolkitGUI.StatRow("Mesh", mesh.name);
+            ToolkitGUI.StatRow("Bounds Center", mesh.bounds.center.ToString("F3"));
+            ToolkitGUI.StatRow("Bounds Size", mesh.bounds.size.ToString("F3"));
 
-            EditorGUILayout.LabelField("Mesh", mesh.name);
-            EditorGUILayout.LabelField("Bounds Center", mesh.bounds.center.ToString("F3"));
-            EditorGUILayout.LabelField("Bounds Size", mesh.bounds.size.ToString("F3"));
+            ToolkitGUI.SectionHeader("Presets");
 
-            EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Presets", EditorStyles.boldLabel);
-
-            if (GUILayout.Button("Center of Bounds"))
+            if (ToolkitGUI.ActionButton("Center of Bounds"))
                 ApplyPivot(mf, mesh, mesh.bounds.center);
 
-            if (GUILayout.Button("Bottom Center"))
+            if (ToolkitGUI.ActionButton("Bottom Center"))
             {
                 var b = mesh.bounds;
                 ApplyPivot(mf, mesh, new Vector3(b.center.x, b.min.y, b.center.z));
             }
 
-            if (GUILayout.Button("Top Center"))
+            if (ToolkitGUI.ActionButton("Top Center"))
             {
                 var b = mesh.bounds;
                 ApplyPivot(mf, mesh, new Vector3(b.center.x, b.max.y, b.center.z));
             }
 
-            if (GUILayout.Button("Origin (0,0,0)"))
+            if (ToolkitGUI.ActionButton("Origin (0,0,0)"))
                 ApplyPivot(mf, mesh, Vector3.zero);
 
-            EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Custom", EditorStyles.boldLabel);
+            ToolkitGUI.SectionHeader("Custom");
 
             _customPivot = EditorGUILayout.Vector3Field("Pivot (Local)", _customPivot);
-            if (GUILayout.Button("Apply Custom Pivot"))
+            if (ToolkitGUI.ActionButton("Apply Custom Pivot"))
                 ApplyPivot(mf, mesh, _customPivot);
 
-            // Selection-based pivot
             var sel = MeshSelection.GetOrCreate(mesh);
             if (sel.HasSelection)
             {
-                EditorGUILayout.Space(4);
-                if (GUILayout.Button("Center of Selection"))
+                EditorGUILayout.Space(ToolkitWindowStyles.ItemSpacing);
+                if (ToolkitGUI.ActionButton("Center of Selection"))
                 {
                     var em = EditableMesh.FromMesh(mesh);
                     ApplyPivot(mf, mesh, sel.GetSelectionCenter(em));
                 }
             }
-
-            EditorGUILayout.EndScrollView();
         }
 
         static void ApplyPivot(MeshFilter mf, Mesh mesh, Vector3 localPivot)

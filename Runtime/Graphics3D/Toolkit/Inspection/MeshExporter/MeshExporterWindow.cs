@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using Snm.Graphics3D.Toolkit;
 
 namespace Snm.Graphics3D.Inspection
 {
@@ -23,29 +24,35 @@ namespace Snm.Graphics3D.Inspection
         void OnGUI()
         {
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            DrawContent();
+            EditorGUILayout.EndScrollView();
+        }
 
-            EditorGUILayout.LabelField("Mesh Exporter", EditorStyles.boldLabel);
+        internal void DrawContent()
+        {
+            ToolkitGUI.Title("Mesh Exporter");
+
+            ToolkitGUI.SectionHeader("Settings");
 
             format = (ExportFormat)EditorGUILayout.EnumPopup("Format", format);
             _applyTransform = EditorGUILayout.Toggle("Apply Transform", _applyTransform);
             _batchExport = EditorGUILayout.Toggle("Batch (all selected)", _batchExport);
 
-            EditorGUILayout.Space(4);
+            ToolkitGUI.SectionHeader("Selection");
 
-            // Show current selection info
             var selected = Selection.gameObjects;
             var meshes = CollectMeshes(selected);
-            EditorGUILayout.LabelField("Selected Objects", selected.Length.ToString());
-            EditorGUILayout.LabelField("Meshes Found", meshes.Count.ToString());
+            ToolkitGUI.StatRow("Selected Objects", selected.Length.ToString());
+            ToolkitGUI.StatRow("Meshes Found", meshes.Count.ToString());
 
             if (meshes.Count > 0)
             {
                 EditorGUILayout.Space(2);
                 foreach (var (mesh, go, mats) in meshes)
-                    EditorGUILayout.LabelField($"  {go.name}", $"{mesh.vertexCount}v / {mesh.triangles.Length / 3}t");
+                    ToolkitGUI.StatRow($"  {go.name}", $"{mesh.vertexCount}v / {mesh.triangles.Length / 3}t");
             }
 
-            EditorGUILayout.Space(8);
+            GUILayout.Space(ToolkitWindowStyles.SectionSpacing);
 
             string ext = format == ExportFormat.OBJ ? "obj" : "fbx";
 
@@ -53,7 +60,7 @@ namespace Snm.Graphics3D.Inspection
 
             if (!_batchExport)
             {
-                if (GUILayout.Button($"Export as .{ext}", GUILayout.Height(28)))
+                if (ToolkitGUI.BigButton($"Export as .{ext}"))
                 {
                     if (meshes.Count > 0)
                     {
@@ -69,7 +76,7 @@ namespace Snm.Graphics3D.Inspection
             }
             else
             {
-                if (GUILayout.Button($"Batch Export as .{ext}", GUILayout.Height(28)))
+                if (ToolkitGUI.BigButton($"Batch Export as .{ext}"))
                 {
                     string folder = EditorUtility.SaveFolderPanel("Export Folder", "", "");
                     if (!string.IsNullOrEmpty(folder))
@@ -88,8 +95,7 @@ namespace Snm.Graphics3D.Inspection
 
             EditorGUI.EndDisabledGroup();
 
-            EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Format Notes", EditorStyles.boldLabel);
+            ToolkitGUI.SectionHeader("Format Notes");
 
             if (format == ExportFormat.OBJ)
             {
@@ -107,8 +113,6 @@ namespace Snm.Graphics3D.Inspection
                     "No animation or skeleton data — geometry only.",
                     MessageType.None);
             }
-
-            EditorGUILayout.EndScrollView();
         }
 
         void ExportSingle(Mesh mesh, GameObject go, Material[] mats, string path)

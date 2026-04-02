@@ -31,7 +31,12 @@ namespace Snm.Graphics3D.Animation
 
         private void CreateGUI()
         {
-            rootVisualElement.Add(_tool = new AnimationBakerTool(bakerToolSerializedData));
+            rootVisualElement.Add(BuildContent());
+        }
+
+        internal VisualElement BuildContent()
+        {
+            return _tool = new AnimationBakerTool(bakerToolSerializedData);
         }
 
         [Serializable]

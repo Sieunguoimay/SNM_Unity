@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using Snm.Graphics3D.Toolkit;
 
 namespace Snm.Graphics3D.Modeling
 {
@@ -20,8 +21,13 @@ namespace Snm.Graphics3D.Modeling
         void OnGUI()
         {
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            DrawContent();
+            EditorGUILayout.EndScrollView();
+        }
 
-            EditorGUILayout.LabelField("Normals Editor", EditorStyles.boldLabel);
+        internal void DrawContent()
+        {
+            ToolkitGUI.Title("Normals Editor");
             EditorGUILayout.HelpBox(
                 "Select a GameObject with a MeshFilter, then activate the Normals Editor tool " +
                 "from the Scene View toolbar to visualize and interactively edit normals.\n\n" +
@@ -32,29 +38,16 @@ namespace Snm.Graphics3D.Modeling
             var mf = go != null ? go.GetComponent<MeshFilter>() : null;
             var mesh = mf != null ? mf.sharedMesh : null;
 
-            if (mesh == null)
-            {
-                EditorGUILayout.HelpBox("No mesh selected.", MessageType.Warning);
-                EditorGUILayout.EndScrollView();
+            if (!ToolkitGUI.ValidateMesh(mesh, "Select a GameObject with a MeshFilter."))
                 return;
-            }
 
-            if (!mesh.isReadable)
-            {
-                EditorGUILayout.HelpBox("Mesh is not readable.", MessageType.Error);
-                EditorGUILayout.EndScrollView();
-                return;
-            }
+            ToolkitGUI.MeshInfo(mesh);
+            ToolkitGUI.StatusRow("Normals", mesh.normals?.Length > 0);
+            ToolkitGUI.StatusRow("Tangents", mesh.tangents?.Length > 0);
 
-            EditorGUILayout.LabelField("Mesh", mesh.name);
-            EditorGUILayout.LabelField("Vertices", mesh.vertexCount.ToString());
-            EditorGUILayout.LabelField("Has Normals", (mesh.normals?.Length > 0).ToString());
-            EditorGUILayout.LabelField("Has Tangents", (mesh.tangents?.Length > 0).ToString());
+            ToolkitGUI.SectionHeader("Global Operations");
 
-            EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Global Operations", EditorStyles.boldLabel);
-
-            if (GUILayout.Button("Recalculate Normals (Area-Weighted)"))
+            if (ToolkitGUI.ActionButton("Recalculate Normals (Area-Weighted)"))
             {
                 MeshUndoHelper.RecordMesh(mesh, "Recalculate Normals");
                 var em = EditableMesh.FromMesh(mesh);
@@ -62,7 +55,7 @@ namespace Snm.Graphics3D.Modeling
                 em.ToMesh(mesh);
             }
 
-            if (GUILayout.Button("Recalculate Tangents"))
+            if (ToolkitGUI.ActionButton("Recalculate Tangents"))
             {
                 MeshUndoHelper.RecordMesh(mesh, "Recalculate Tangents");
                 var em = EditableMesh.FromMesh(mesh);
@@ -70,7 +63,7 @@ namespace Snm.Graphics3D.Modeling
                 em.ToMesh(mesh);
             }
 
-            if (GUILayout.Button("Flip All Normals"))
+            if (ToolkitGUI.ActionButton("Flip All Normals"))
             {
                 MeshUndoHelper.RecordMesh(mesh, "Flip Normals");
                 var em = EditableMesh.FromMesh(mesh);
@@ -78,11 +71,10 @@ namespace Snm.Graphics3D.Modeling
                 em.ToMesh(mesh);
             }
 
-            EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Smooth / Harden", EditorStyles.boldLabel);
+            ToolkitGUI.SectionHeader("Smooth / Harden");
 
             _smoothDistance = EditorGUILayout.FloatField("Smooth Distance", _smoothDistance);
-            if (GUILayout.Button("Smooth Normals"))
+            if (ToolkitGUI.ActionButton("Smooth Normals"))
             {
                 MeshUndoHelper.RecordMesh(mesh, "Smooth Normals");
                 var em = EditableMesh.FromMesh(mesh);
@@ -91,7 +83,7 @@ namespace Snm.Graphics3D.Modeling
             }
 
             _hardenAngle = EditorGUILayout.Slider("Harden Angle", _hardenAngle, 0f, 180f);
-            if (GUILayout.Button("Harden Edges"))
+            if (ToolkitGUI.ActionButton("Harden Edges"))
             {
                 MeshUndoHelper.RecordMesh(mesh, "Harden Edges");
                 var em = EditableMesh.FromMesh(mesh);
@@ -99,12 +91,11 @@ namespace Snm.Graphics3D.Modeling
                 em.ToMesh(mesh);
             }
 
-            EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Transfer Normals", EditorStyles.boldLabel);
+            ToolkitGUI.SectionHeader("Transfer Normals");
 
             _transferSource = (Mesh)EditorGUILayout.ObjectField("Source Mesh", _transferSource, typeof(Mesh), false);
             EditorGUI.BeginDisabledGroup(_transferSource == null);
-            if (GUILayout.Button("Transfer Normals from Source"))
+            if (ToolkitGUI.ActionButton("Transfer Normals from Source"))
             {
                 MeshUndoHelper.RecordMesh(mesh, "Transfer Normals");
                 var source = EditableMesh.FromMesh(_transferSource);
@@ -113,8 +104,6 @@ namespace Snm.Graphics3D.Modeling
                 target.ToMesh(mesh);
             }
             EditorGUI.EndDisabledGroup();
-
-            EditorGUILayout.EndScrollView();
         }
     }
 }

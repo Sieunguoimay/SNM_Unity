@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using Snm.Graphics3D.Toolkit;
 
 namespace Snm.Graphics3D.Modeling
 {
@@ -49,8 +50,13 @@ namespace Snm.Graphics3D.Modeling
         void OnGUI()
         {
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            DrawContent();
+            EditorGUILayout.EndScrollView();
+        }
 
-            EditorGUILayout.LabelField("Mesh Decimator", EditorStyles.boldLabel);
+        internal void DrawContent()
+        {
+            ToolkitGUI.Title("Mesh Decimator");
 
             EditorGUI.BeginChangeCheck();
             sourceMesh = (Mesh)EditorGUILayout.ObjectField("Source Mesh", sourceMesh, typeof(Mesh), false);
@@ -58,41 +64,31 @@ namespace Snm.Graphics3D.Modeling
 
             if (GUILayout.Button("Use Selection")) TryAutoSelect();
 
-            if (sourceMesh == null)
-            {
-                EditorGUILayout.HelpBox("Select a mesh to decimate.", MessageType.Info);
-                EditorGUILayout.EndScrollView();
+            if (!ToolkitGUI.ValidateMesh(sourceMesh, "Select a mesh to decimate."))
                 return;
-            }
 
-            if (!sourceMesh.isReadable)
-            {
-                EditorGUILayout.HelpBox("Mesh is not readable.", MessageType.Error);
-                EditorGUILayout.EndScrollView();
-                return;
-            }
+            ToolkitGUI.SectionHeader("Source Info");
 
-            EditorGUILayout.Space(4);
             int sourceTris = sourceMesh.triangles.Length / 3;
-            EditorGUILayout.LabelField("Source Vertices", sourceMesh.vertexCount.ToString("N0"));
-            EditorGUILayout.LabelField("Source Triangles", sourceTris.ToString("N0"));
+            ToolkitGUI.StatRow("Vertices", sourceMesh.vertexCount.ToString("N0"));
+            ToolkitGUI.StatRow("Triangles", sourceTris.ToString("N0"));
 
-            EditorGUILayout.Space(4);
+            ToolkitGUI.SectionHeader("Settings");
+
             _reductionPercent = EditorGUILayout.Slider("Reduction %", _reductionPercent, 1f, 99f);
 
             int targetTris = Mathf.Max(4, Mathf.RoundToInt(sourceTris * (1f - _reductionPercent / 100f)));
-            EditorGUILayout.LabelField("Target Triangles", targetTris.ToString("N0"));
+            ToolkitGUI.StatRow("Target Triangles", targetTris.ToString("N0"));
 
-            EditorGUILayout.Space(4);
+            EditorGUILayout.Space(ToolkitWindowStyles.ItemSpacing);
             _preserveBoundary = EditorGUILayout.Toggle("Preserve Boundary", _preserveBoundary);
             _preserveUVSeams = EditorGUILayout.Toggle("Preserve UV Seams", _preserveUVSeams);
             if (_preserveBoundary)
                 _boundaryPenalty = EditorGUILayout.FloatField("Boundary Penalty", _boundaryPenalty);
 
-            EditorGUILayout.Space(8);
+            GUILayout.Space(ToolkitWindowStyles.SectionSpacing);
 
-            // Preview
-            if (GUILayout.Button("Preview Decimation"))
+            if (ToolkitGUI.BigButton("Preview Decimation"))
             {
                 DestroyPreview();
                 _previewMesh = QuadricErrorDecimator.Decimate(sourceMesh, new QuadricErrorDecimator.DecimationSettings
@@ -106,17 +102,16 @@ namespace Snm.Graphics3D.Modeling
 
             if (_previewMesh != null)
             {
-                EditorGUILayout.Space(4);
-                EditorGUILayout.LabelField("Result", EditorStyles.boldLabel);
-                EditorGUILayout.LabelField("Result Vertices", _previewMesh.vertexCount.ToString("N0"));
-                EditorGUILayout.LabelField("Result Triangles", (_previewMesh.triangles.Length / 3).ToString("N0"));
+                ToolkitGUI.SectionHeader("Result");
+                ToolkitGUI.StatRow("Vertices", _previewMesh.vertexCount.ToString("N0"));
+                ToolkitGUI.StatRow("Triangles", (_previewMesh.triangles.Length / 3).ToString("N0"));
 
                 float actualReduction = 1f - (float)(_previewMesh.triangles.Length / 3) / sourceTris;
-                EditorGUILayout.LabelField("Actual Reduction", $"{actualReduction * 100f:F1}%");
+                ToolkitGUI.StatRow("Actual Reduction", $"{actualReduction * 100f:F1}%");
 
-                EditorGUILayout.Space(4);
+                EditorGUILayout.Space(ToolkitWindowStyles.ItemSpacing);
 
-                if (GUILayout.Button("Apply to Selected Object"))
+                if (ToolkitGUI.ActionButton("Apply to Selected Object"))
                 {
                     var go = Selection.activeGameObject;
                     var mf = go != null ? go.GetComponent<MeshFilter>() : null;
@@ -128,7 +123,7 @@ namespace Snm.Graphics3D.Modeling
                     }
                 }
 
-                if (GUILayout.Button("Save as Asset"))
+                if (ToolkitGUI.ActionButton("Save as Asset"))
                 {
                     string path = EditorUtility.SaveFilePanelInProject(
                         "Save Decimated Mesh", _previewMesh.name, "asset", "Save decimated mesh");
@@ -140,14 +135,13 @@ namespace Snm.Graphics3D.Modeling
                     }
                 }
 
-                if (GUILayout.Button("Create as LOD GameObject"))
+                if (ToolkitGUI.ActionButton("Create as LOD GameObject"))
                 {
                     var go = new GameObject($"{sourceMesh.name}_LOD");
                     var mf = go.AddComponent<MeshFilter>();
                     mf.sharedMesh = _previewMesh;
                     var mr = go.AddComponent<MeshRenderer>();
 
-                    // Try to copy material from source
                     var srcGo = Selection.activeGameObject;
                     if (srcGo != null)
                     {
@@ -160,8 +154,6 @@ namespace Snm.Graphics3D.Modeling
                     _previewMesh = null;
                 }
             }
-
-            EditorGUILayout.EndScrollView();
         }
     }
 }

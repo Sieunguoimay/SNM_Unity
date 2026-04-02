@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using Snm.Graphics3D.Toolkit;
 
 namespace Snm.Graphics3D.Modeling
 {
@@ -27,8 +28,13 @@ namespace Snm.Graphics3D.Modeling
         void OnGUI()
         {
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            DrawContent();
+            EditorGUILayout.EndScrollView();
+        }
 
-            EditorGUILayout.LabelField("Mesh Boolean (CSG)", EditorStyles.boldLabel);
+        internal void DrawContent()
+        {
+            ToolkitGUI.Title("Mesh Boolean (CSG)");
             EditorGUILayout.HelpBox(
                 "Select two GameObjects with MeshFilters. The Boolean operation " +
                 "will be performed in world space.\n\n" +
@@ -37,12 +43,12 @@ namespace Snm.Graphics3D.Modeling
                 "Intersect: Only where A and B overlap",
                 MessageType.Info);
 
-            EditorGUILayout.Space(4);
+            ToolkitGUI.SectionHeader("Inputs");
 
             objectA = (GameObject)EditorGUILayout.ObjectField("Object A", objectA, typeof(GameObject), true);
             objectB = (GameObject)EditorGUILayout.ObjectField("Object B", objectB, typeof(GameObject), true);
 
-            EditorGUILayout.Space(4);
+            EditorGUILayout.Space(ToolkitWindowStyles.ItemSpacing);
 
             if (GUILayout.Button("Use Selection (first 2)"))
             {
@@ -59,15 +65,15 @@ namespace Snm.Graphics3D.Modeling
                 }
             }
 
-            EditorGUILayout.Space(4);
+            ToolkitGUI.SectionHeader("Operation");
+
             _operation = (MeshBooleanCSG.Operation)EditorGUILayout.EnumPopup("Operation", _operation);
 
-            // Validate
             var meshA = GetMesh(objectA);
             var meshB = GetMesh(objectB);
 
-            if (meshA != null) EditorGUILayout.LabelField("A", $"{meshA.name} ({meshA.triangles.Length / 3} tris)");
-            if (meshB != null) EditorGUILayout.LabelField("B", $"{meshB.name} ({meshB.triangles.Length / 3} tris)");
+            if (meshA != null) ToolkitGUI.StatRow("A", $"{meshA.name} ({meshA.triangles.Length / 3} tris)");
+            if (meshB != null) ToolkitGUI.StatRow("B", $"{meshB.name} ({meshB.triangles.Length / 3} tris)");
 
             bool valid = meshA != null && meshB != null && meshA.isReadable && meshB.isReadable;
 
@@ -79,11 +85,11 @@ namespace Snm.Graphics3D.Modeling
                     EditorGUILayout.HelpBox("Mesh B is not readable.", MessageType.Error);
             }
 
-            EditorGUILayout.Space(8);
+            GUILayout.Space(ToolkitWindowStyles.SectionSpacing);
 
             EditorGUI.BeginDisabledGroup(!valid);
 
-            if (GUILayout.Button("Execute", GUILayout.Height(28)))
+            if (ToolkitGUI.BigButton("Execute"))
             {
                 if (_resultMesh != null) DestroyImmediate(_resultMesh);
 
@@ -95,22 +101,21 @@ namespace Snm.Graphics3D.Modeling
 
             EditorGUI.EndDisabledGroup();
 
-            // Result
             if (_resultMesh != null)
             {
-                EditorGUILayout.Space(4);
-                EditorGUILayout.LabelField("Result", EditorStyles.boldLabel);
-                EditorGUILayout.LabelField("Vertices", _resultMesh.vertexCount.ToString("N0"));
-                EditorGUILayout.LabelField("Triangles", (_resultMesh.triangles.Length / 3).ToString("N0"));
+                ToolkitGUI.SectionHeader("Result");
+                ToolkitGUI.StatRow("Vertices", _resultMesh.vertexCount.ToString("N0"));
+                ToolkitGUI.StatRow("Triangles", (_resultMesh.triangles.Length / 3).ToString("N0"));
 
-                if (GUILayout.Button("Create GameObject"))
+                EditorGUILayout.Space(ToolkitWindowStyles.ItemSpacing);
+
+                if (ToolkitGUI.ActionButton("Create GameObject"))
                 {
                     var go = new GameObject($"Boolean_{_operation}");
                     var mf = go.AddComponent<MeshFilter>();
                     mf.sharedMesh = _resultMesh;
                     var mr = go.AddComponent<MeshRenderer>();
 
-                    // Copy material from A
                     var srcMr = objectA.GetComponent<MeshRenderer>();
                     if (srcMr != null) mr.sharedMaterials = srcMr.sharedMaterials;
 
@@ -119,7 +124,7 @@ namespace Snm.Graphics3D.Modeling
                     _resultMesh = null;
                 }
 
-                if (GUILayout.Button("Save as Asset"))
+                if (ToolkitGUI.ActionButton("Save as Asset"))
                 {
                     string path = EditorUtility.SaveFilePanelInProject(
                         "Save Boolean Result", _resultMesh.name, "asset", "Save boolean result mesh");
@@ -131,8 +136,6 @@ namespace Snm.Graphics3D.Modeling
                     }
                 }
             }
-
-            EditorGUILayout.EndScrollView();
         }
 
         static Mesh GetMesh(GameObject go)
