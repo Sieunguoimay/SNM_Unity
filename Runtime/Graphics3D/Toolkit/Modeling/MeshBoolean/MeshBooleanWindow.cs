@@ -104,6 +104,7 @@ namespace Snm.Graphics3D.Modeling
             if (_resultMesh != null)
             {
                 ToolkitGUI.SectionHeader("Result");
+                ToolkitGUI.MeshStatus(_resultMesh);
                 ToolkitGUI.StatRow("Vertices", _resultMesh.vertexCount.ToString("N0"));
                 ToolkitGUI.StatRow("Triangles", (_resultMesh.triangles.Length / 3).ToString("N0"));
 
@@ -126,14 +127,8 @@ namespace Snm.Graphics3D.Modeling
 
                 if (ToolkitGUI.ActionButton("Save as Asset"))
                 {
-                    string path = EditorUtility.SaveFilePanelInProject(
-                        "Save Boolean Result", _resultMesh.name, "asset", "Save boolean result mesh");
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        AssetDatabase.CreateAsset(_resultMesh, path);
-                        AssetDatabase.SaveAssets();
-                        _resultMesh = null;
-                    }
+                    var saved = ToolkitGUI.SaveMeshAsset(_resultMesh, _resultMesh.name);
+                    if (saved != null) _resultMesh = null;
                 }
             }
         }

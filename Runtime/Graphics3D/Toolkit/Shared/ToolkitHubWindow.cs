@@ -9,6 +9,7 @@ using Snm.Graphics3D.Inspection;
 using Snm.Graphics3D.UVLayout;
 using Snm.Graphics3D.Animation;
 using Snm.Graphics3D.Rigging;
+using Snm.Graphics3D.VertexColor;
 
 namespace Snm.Graphics3D.Toolkit
 {
@@ -35,6 +36,7 @@ namespace Snm.Graphics3D.Toolkit
             new() { Name = "Combiner",    Category = "Modeling",   WindowType = typeof(MeshCombinerWindow),          Kind = PanelKind.Imgui },
             new() { Name = "Normals",     Category = "Modeling",   WindowType = typeof(NormalsEditorWindow),         Kind = PanelKind.Imgui },
             new() { Name = "Pivot",       Category = "Modeling",   WindowType = typeof(PivotEditorWindow),           Kind = PanelKind.Imgui },
+            new() { Name = "Vtx Color",   Category = "Modeling",   WindowType = typeof(VertexColorPainterWindow),    Kind = PanelKind.UIElements },
             new() { Name = "Inspector",   Category = "Inspect",    WindowType = typeof(MeshInspectorWindow),         Kind = PanelKind.Imgui },
             new() { Name = "Exporter",    Category = "Inspect",    WindowType = typeof(MeshExporterWindow),          Kind = PanelKind.Imgui },
             new() { Name = "UV Layout",   Category = "UV",         WindowType = typeof(UVLayoutWindow),              Kind = PanelKind.Imgui },
@@ -344,6 +346,7 @@ namespace Snm.Graphics3D.Toolkit
                 AnimationBakerWindow w => w.BuildContent(),
                 BakedAnimationPreviewWindow w => w.BuildContent(),
                 BoneToolV2Window w => w.BuildContent(),
+                VertexColorPainterWindow w => w.BuildContent(),
                 _ => null
             };
         }

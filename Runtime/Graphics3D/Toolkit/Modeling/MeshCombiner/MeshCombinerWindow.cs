@@ -104,14 +104,8 @@ namespace Snm.Graphics3D.Modeling
                 ? MeshCombineLogic.CombineByMaterial(inputs)
                 : MeshCombineLogic.CombineAsSubmeshes(inputs);
 
-            string path = EditorUtility.SaveFilePanelInProject("Save Combined Mesh", "CombinedMesh", "asset",
-                "Save the combined mesh as an asset");
-
-            if (!string.IsNullOrEmpty(path))
-            {
-                AssetDatabase.CreateAsset(result.CombinedMesh, path);
-                AssetDatabase.SaveAssets();
-            }
+            var saved = ToolkitGUI.SaveMeshAsset(result.CombinedMesh, "CombinedMesh");
+            if (saved == null) return;
 
             CreateResultGameObject(result);
         }

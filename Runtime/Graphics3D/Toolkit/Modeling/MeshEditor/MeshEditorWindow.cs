@@ -51,6 +51,9 @@ namespace Snm.Graphics3D.Modeling
             if (!ToolkitGUI.ValidateMesh(mesh, "Select a GameObject with a MeshFilter."))
                 return;
 
+            ToolkitGUI.MeshStatus(mesh);
+            mesh = ToolkitGUI.ImportedMeshGuard(mesh, mf);
+
             var sel = MeshSelection.GetOrCreate(mesh);
 
             EditorGUILayout.LabelField("Mesh", mesh.name);
@@ -201,6 +204,14 @@ namespace Snm.Graphics3D.Modeling
                     mesh.RecalculateNormals();
                     mesh.RecalculateTangents();
                 }
+            }
+
+            EditorGUILayout.Space(8);
+            EditorGUILayout.LabelField("Save", EditorStyles.boldLabel);
+
+            if (GUILayout.Button("Save as New Asset"))
+            {
+                ToolkitGUI.SaveMeshCopy(mesh, mf, mesh.name);
             }
         }
     }

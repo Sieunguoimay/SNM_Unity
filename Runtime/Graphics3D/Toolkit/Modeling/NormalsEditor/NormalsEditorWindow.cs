@@ -41,6 +41,9 @@ namespace Snm.Graphics3D.Modeling
             if (!ToolkitGUI.ValidateMesh(mesh, "Select a GameObject with a MeshFilter."))
                 return;
 
+            ToolkitGUI.MeshStatus(mesh);
+            mesh = ToolkitGUI.ImportedMeshGuard(mesh, mf);
+
             ToolkitGUI.MeshInfo(mesh);
             ToolkitGUI.StatusRow("Normals", mesh.normals?.Length > 0);
             ToolkitGUI.StatusRow("Tangents", mesh.tangents?.Length > 0);
@@ -104,6 +107,13 @@ namespace Snm.Graphics3D.Modeling
                 target.ToMesh(mesh);
             }
             EditorGUI.EndDisabledGroup();
+
+            ToolkitGUI.SectionHeader("Save");
+
+            if (ToolkitGUI.ActionButton("Save as New Asset"))
+            {
+                ToolkitGUI.SaveMeshCopy(mesh, mf, mesh.name);
+            }
         }
     }
 }

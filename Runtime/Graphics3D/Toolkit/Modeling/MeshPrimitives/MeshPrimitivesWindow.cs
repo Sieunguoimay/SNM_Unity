@@ -104,6 +104,22 @@ namespace Snm.Graphics3D.Modeling
                 var go = CreatePrimitive();
                 if (go != null) Selection.activeGameObject = go;
             }
+
+            GUILayout.Space(ToolkitWindowStyles.SectionSpacing);
+
+            // Show save option for the selected object's mesh
+            var selectedGo = Selection.activeGameObject;
+            var selectedMf = selectedGo != null ? selectedGo.GetComponent<MeshFilter>() : null;
+            var selectedMesh = selectedMf != null ? selectedMf.sharedMesh : null;
+            if (selectedMesh != null && ToolkitGUI.GetMeshLocation(selectedMesh) == MeshLocation.Unsaved)
+            {
+                ToolkitGUI.SectionHeader("Selected Mesh");
+                ToolkitGUI.MeshStatus(selectedMesh);
+                if (ToolkitGUI.ActionButton("Save Mesh as Asset"))
+                {
+                    ToolkitGUI.SaveMeshCopy(selectedMesh, selectedMf, selectedMesh.name ?? type.ToString());
+                }
+            }
         }
 
         #region Parameter UIs

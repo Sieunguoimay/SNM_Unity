@@ -67,6 +67,8 @@ namespace Snm.Graphics3D.Modeling
             if (!ToolkitGUI.ValidateMesh(sourceMesh, "Select a mesh to decimate."))
                 return;
 
+            ToolkitGUI.MeshStatus(sourceMesh);
+
             ToolkitGUI.SectionHeader("Source Info");
 
             int sourceTris = sourceMesh.triangles.Length / 3;
@@ -103,6 +105,7 @@ namespace Snm.Graphics3D.Modeling
             if (_previewMesh != null)
             {
                 ToolkitGUI.SectionHeader("Result");
+                ToolkitGUI.MeshStatus(_previewMesh);
                 ToolkitGUI.StatRow("Vertices", _previewMesh.vertexCount.ToString("N0"));
                 ToolkitGUI.StatRow("Triangles", (_previewMesh.triangles.Length / 3).ToString("N0"));
 
@@ -125,14 +128,8 @@ namespace Snm.Graphics3D.Modeling
 
                 if (ToolkitGUI.ActionButton("Save as Asset"))
                 {
-                    string path = EditorUtility.SaveFilePanelInProject(
-                        "Save Decimated Mesh", _previewMesh.name, "asset", "Save decimated mesh");
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        AssetDatabase.CreateAsset(_previewMesh, path);
-                        AssetDatabase.SaveAssets();
-                        _previewMesh = null;
-                    }
+                    var saved = ToolkitGUI.SaveMeshAsset(_previewMesh, _previewMesh.name);
+                    if (saved != null) _previewMesh = null;
                 }
 
                 if (ToolkitGUI.ActionButton("Create as LOD GameObject"))
