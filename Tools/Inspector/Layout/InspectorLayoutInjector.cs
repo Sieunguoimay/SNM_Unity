@@ -32,17 +32,18 @@ namespace Snm.Tools.InspectorExtensions
                     {
                         if (!InspectorReflectionHelper.TryGetEditor(editorVE, out var editor)) return null;
 
-                        var imguiContainer = editorVE.Query<IMGUIContainer>().AtIndex(1);
-                        if (imguiContainer == null) return null;
-                        imguiContainer.style.flexGrow = 1;
+                        VisualElement inspectorBody = InspectorReflectionHelper.FindInspectorElement(editorVE);
+                        if (inspectorBody == null)
+                            inspectorBody = editorVE.Query<IMGUIContainer>().AtIndex(1);
+                        if (inspectorBody == null) return null;
+                        inspectorBody.style.flexGrow = 1;
 
                         VisualElement t = new(), b = new(), l = new(), r = new();
-                        zonesLifecycles.Add(new(imguiContainer, t, b, l, r));
+                        zonesLifecycles.Add(new(inspectorBody, t, b, l, r));
 
-                        var inspectorElement = editorVE.Query<IMGUIContainer>().AtIndex(1);
                         return new EditorLayout(
                             attachmentZones: new(t, b, l, r),
-                            targetObjects: editor.targets, editor.serializedObject, inspectorElement);
+                            targetObjects: editor.targets, editor.serializedObject, inspectorBody);
                     })
                     .Where(e => e != null)
                     .ToArray();

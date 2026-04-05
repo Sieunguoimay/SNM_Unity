@@ -79,6 +79,8 @@ namespace Snm.Tools.InspectorExtensions
             return result;
         }
 
+        private const int MaxVisibleItems = 5;
+
         private static VisualElement BuildColumn(string title, List<string> paths)
         {
             var column = new VisualElement
@@ -134,13 +136,46 @@ namespace Snm.Tools.InspectorExtensions
 
             column.Add(header);
 
-            // Items
-            foreach (var path in paths)
+            // Items — show up to MaxVisibleItems, hide the rest behind a "Show more" button
+            var overflow = new VisualElement { style = { display = DisplayStyle.None } };
+
+            for (int i = 0; i < paths.Count; i++)
             {
-                var obj = AssetDatabase.LoadAssetAtPath<Object>(path);
+                var obj = AssetDatabase.LoadAssetAtPath<Object>(paths[i]);
                 if (obj == null) continue;
 
-                column.Add(BuildItem(obj, path));
+                var item = BuildItem(obj, paths[i]);
+                if (i < MaxVisibleItems)
+                    column.Add(item);
+                else
+                    overflow.Add(item);
+            }
+
+            if (paths.Count > MaxVisibleItems)
+            {
+                var showMoreBtn = new Label($"Show {paths.Count - MaxVisibleItems} more…")
+                {
+                    style =
+                    {
+                        color = CountColor,
+                        fontSize = 11,
+                        paddingLeft = 8,
+                        paddingTop = 4,
+                        paddingBottom = 4,
+                        unityFontStyleAndWeight = FontStyle.Italic,
+                    }
+                };
+
+                showMoreBtn.RegisterCallback<MouseEnterEvent>(_ => showMoreBtn.style.color = HeaderColor);
+                showMoreBtn.RegisterCallback<MouseLeaveEvent>(_ => showMoreBtn.style.color = CountColor);
+                showMoreBtn.RegisterCallback<ClickEvent>(_ =>
+                {
+                    overflow.style.display = DisplayStyle.Flex;
+                    showMoreBtn.style.display = DisplayStyle.None;
+                });
+
+                column.Add(showMoreBtn);
+                column.Add(overflow);
             }
 
             return column;
@@ -168,10 +203,12 @@ namespace Snm.Tools.InspectorExtensions
             row.RegisterCallback<MouseLeaveEvent>(_ => row.style.backgroundColor = Color.clear);
 
             var capturedObj = obj;
-            row.RegisterCallback<ClickEvent>(_ =>
+            row.RegisterCallback<ClickEvent>(evt =>
             {
-                EditorGUIUtility.PingObject(capturedObj);
-                Selection.activeObject = capturedObj;
+                if (evt.clickCount >= 2)
+                    Selection.activeObject = capturedObj;
+                else
+                    EditorGUIUtility.PingObject(capturedObj);
             });
 
             if (icon != null)

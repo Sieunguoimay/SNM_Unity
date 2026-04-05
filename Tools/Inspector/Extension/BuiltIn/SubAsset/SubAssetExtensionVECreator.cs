@@ -16,11 +16,15 @@ namespace Snm.Tools.InspectorExtensions
         {
             var ve = new VisualElement();
             var target = serializedObject.targetObject;
-            if (AssetDatabase.IsMainAsset(target) && serializedObject.targetObjects.Length == 1)
+            if (AssetDatabase.IsMainAsset(target))
             {
+                if(serializedObject.targetObjects.Length == 1)
+                {
+                    var list = CreateSubAssetList(target, tool);
+                    ve.Add(list);
+                }
+
                 var button_Add = CreateAddButton(null);
-                var list = CreateSubAssetList(target, tool);
-                ve.Add(list);
                 ve.Add(button_Add);
             }
             return ve;

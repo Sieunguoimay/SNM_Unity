@@ -50,7 +50,7 @@ namespace Snm.Tools.InspectorExtensions
             yield return new SimpleInspectorExtension(
                 location: InspectorExtensionLocation.Bottom,
                 buildVEFunc: context => SubAssetExtensionVECreator.Create(tool, context.SerializedObject),
-                supportedTypes: new[] { typeof(ScriptableObject) },
+                supportedTypes: new[] { typeof(UnityEngine.Object) },
                 unsupportedTypes: Array.Empty<Type>());
 
             yield return new SimpleInspectorExtension(
