@@ -4,9 +4,10 @@ namespace Snm.Runtime.App.Hosting
 {
     public class CoreModuleProvider : IAppModuleProvider
     {
-        private readonly IAppModule[] coreModules = new[]
+        private readonly IAppModule[] coreModules = new IAppModule[]
         {
-            new LifecycleServiceModule()
+            new LifecycleServiceModule(),
+            new ScopeFactoryModule()
         };
 
         public IAppModule[] GetModules()

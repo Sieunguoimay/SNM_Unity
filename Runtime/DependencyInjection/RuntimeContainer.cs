@@ -10,7 +10,9 @@ namespace Snm.DependencyInjection
         private readonly RuntimeContainer parent;
 
         private readonly Dictionary<Binding, object> singletonInstances = new();
+        private readonly List<object> singletonCreationOrder = new();
         private readonly Dictionary<Binding, object> scopedInstances = new();
+        private readonly List<object> scopedCreationOrder = new();
         private readonly List<RuntimeContainer> children = new();
         private readonly HashSet<Binding> resolutionStack = new();
 
@@ -52,18 +54,26 @@ namespace Snm.DependencyInjection
 
             children.Clear();
 
-            // Dispose scoped instances
-            foreach (var instance in scopedInstances.Values.OfType<IDisposable>())
-                instance.Dispose();
+            // Dispose scoped instances in reverse creation order
+            for (int i = scopedCreationOrder.Count - 1; i >= 0; i--)
+            {
+                if (scopedCreationOrder[i] is IDisposable disposable)
+                    disposable.Dispose();
+            }
 
+            scopedCreationOrder.Clear();
             scopedInstances.Clear();
 
             // Only entryPoint disposes singletons
             if (IsRoot)
             {
-                foreach (var instance in singletonInstances.Values.OfType<IDisposable>())
-                    instance.Dispose();
+                for (int i = singletonCreationOrder.Count - 1; i >= 0; i--)
+                {
+                    if (singletonCreationOrder[i] is IDisposable disposable)
+                        disposable.Dispose();
+                }
 
+                singletonCreationOrder.Clear();
                 singletonInstances.Clear();
             }
         }
@@ -71,6 +81,15 @@ namespace Snm.DependencyInjection
         public RuntimeContainer CreateScope()
         {
             var scope = new RuntimeContainer(bindings, this);
+            children.Add(scope);
+            return scope;
+        }
+
+        public RuntimeContainer CreateScope(Action<IBindingContext> configure)
+        {
+            var builder = new ContainerBuilder();
+            configure(builder);
+            var scope = builder.Build(this);
             children.Add(scope);
             return scope;
         }
@@ -120,6 +139,7 @@ namespace Snm.DependencyInjection
 
             var created = binding.CreateInstance(this);
             singletonInstances[binding] = created;
+            singletonCreationOrder.Add(created);
 
             return created;
         }
@@ -131,6 +151,7 @@ namespace Snm.DependencyInjection
 
             var created = binding.CreateInstance(this);
             scopedInstances[binding] = created;
+            scopedCreationOrder.Add(created);
 
             return created;
         }

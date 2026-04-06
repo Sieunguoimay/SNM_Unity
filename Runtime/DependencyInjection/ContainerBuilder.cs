@@ -36,6 +36,16 @@ namespace Snm.DependencyInjection
 
         public RuntimeContainer Build()
         {
+            return BuildInternal(null);
+        }
+
+        internal RuntimeContainer Build(RuntimeContainer parent)
+        {
+            return BuildInternal(parent);
+        }
+
+        private RuntimeContainer BuildInternal(RuntimeContainer parent)
+        {
             EnsureNotBuilt();
 
             _built = true;
@@ -49,7 +59,8 @@ namespace Snm.DependencyInjection
             }
 
             return new RuntimeContainer(
-                new Dictionary<(Type,string), List<Binding>>(_bindings));
+                new Dictionary<(Type,string), List<Binding>>(_bindings),
+                parent);
         }
 
         private void EnsureNotBuilt()
