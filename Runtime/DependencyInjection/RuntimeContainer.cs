@@ -167,6 +167,10 @@ namespace Snm.DependencyInjection
 
         private object ResolveScoped(Binding binding)
         {
+            // Bubble up to the scope that owns the binding, mirroring ResolveSingleton
+            if (parent != null && !OwnsBinding(binding))
+                return parent.ResolveScoped(binding);
+
             if (scopedInstances.TryGetValue(binding, out var existing))
                 return existing;
 
