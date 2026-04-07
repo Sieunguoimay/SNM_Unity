@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Snm.DependencyInjection
 {
@@ -12,6 +13,8 @@ namespace Snm.DependencyInjection
     {
         private readonly ContainerBuilder _container;
         private readonly string _id;
+        private List<(Type type, string id)> _additionalTypes;
+
         public bool Completed { get; private set; }
         public Type BoundType => typeof(T);
 
@@ -19,6 +22,13 @@ namespace Snm.DependencyInjection
         {
             _container = container;
             _id = id;
+        }
+
+        public BindingBuilder<T> AlsoBind<U>(string id = null) where U : class
+        {
+            _additionalTypes ??= new List<(Type, string)>();
+            _additionalTypes.Add((typeof(U), id));
+            return this;
         }
 
         public void ToInstance(T instance)
@@ -54,6 +64,20 @@ namespace Snm.DependencyInjection
                 lifetime);
 
             _container.AddBinding(binding);
+
+            if (_additionalTypes != null)
+            {
+                foreach (var (type, id) in _additionalTypes)
+                {
+                    var forwarding = new Binding(
+                        type,
+                        id,
+                        r => r.Resolve<T>(_id),
+                        lifetime);
+
+                    _container.AddBinding(forwarding);
+                }
+            }
         }
     }
 }

@@ -26,7 +26,7 @@ namespace Snm.GrassSystem
         public void Setup(Mesh mesh, Material material, Matrix4x4[] matrices, Bounds worldBounds)
         {
             _mesh = mesh;
-            _material = material;
+            _material = new Material(material);
             _worldBounds = worldBounds;
 
             int count = matrices.Length;
@@ -109,6 +109,11 @@ namespace Snm.GrassSystem
             _instanceBuffer = null;
             _argsBuffer?.Dispose();
             _argsBuffer = null;
+            if (_material != null)
+            {
+                UnityEngine.Object.Destroy(_material);
+                _material = null;
+            }
         }
     }
 }

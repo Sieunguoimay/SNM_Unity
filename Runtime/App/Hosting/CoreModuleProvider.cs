@@ -7,7 +7,6 @@ namespace Snm.Runtime.App.Hosting
         private readonly IAppModule[] coreModules = new IAppModule[]
         {
             new LifecycleServiceModule(),
-            new ScopeFactoryModule()
         };
 
         public IAppModule[] GetModules()

@@ -14,11 +14,15 @@ namespace Snm.Runtime.App.Hosting
             {
                 module.Configure(builder);
             }
-            
-            var container = builder.Build();
-            var lifecycle = container.Resolve<LifecycleService>();
 
-            return new AppHost(lifecycle, container);
+            IScope rootScope = null;
+            builder.Bind<IScope>().ToFactory(_ => rootScope).AsScoped();
+
+            rootScope = builder.Build();
+
+            var lifecycle = rootScope.Resolver.Resolve<LifecycleService>();
+
+            return new AppHost(lifecycle, rootScope);
         }
     }
 }

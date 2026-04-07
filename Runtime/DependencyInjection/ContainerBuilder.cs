@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Snm.DependencyInjection
 {
-    public sealed class ContainerBuilder : IContainer, IBindingContext
+    public sealed class ContainerBuilder : IBindingContext
     {
         private readonly Dictionary<(Type,string), List<Binding>> _bindings
             = new();

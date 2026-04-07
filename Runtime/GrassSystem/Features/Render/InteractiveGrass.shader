@@ -40,6 +40,7 @@ Shader "Snm/InteractiveGrass"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Assets/Scripts/Rendering/Shaders/Includes/GATLighting.hlsl"
 
             TEXTURE2D(_MainTex);    SAMPLER(sampler_MainTex);
             TEXTURE2D(_TrampleMap); SAMPLER(sampler_TrampleMap); // RT written by EnvironmentInteractionSystem
@@ -205,9 +206,6 @@ Shader "Snm/InteractiveGrass"
                 half4 albedo = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
                 clip(albedo.a - _Cutoff); // Alpha test cutout
 
-                // Flip normal for back faces so both sides receive correct lighting
-                float3 normal = facing ? input.normalWS : -input.normalWS;
-
                 // Gradient tint from root (_BottomColor) to tip (_TopColor)
                 half3 tint = lerp(_BottomColor.rgb, _TopColor.rgb, input.heightFactor);
 
@@ -223,15 +221,21 @@ Shader "Snm/InteractiveGrass"
                 unlit *= ao;
 
                 // ----------------------
-                // Shadows
+                // Hue-shifted lighting
                 // ----------------------
                 #if defined(_MAIN_LIGHT_SHADOWS) || defined(_MAIN_LIGHT_SHADOWS_CASCADE)
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
                 Light mainLight = GetMainLight(shadowCoord);
-                unlit *= clamp(mainLight.shadowAttenuation, 0.5, 1.0);
+                #else
+                Light mainLight = GetMainLight();
                 #endif
+                
+                // float3 normalWS = facing ? input.normalWS : -input.normalWS;
+                // half NdotL = saturate(dot(normalWS, mainLight.direction));
+                half shadowAtten = saturate(mainLight.distanceAttenuation * mainLight.shadowAttenuation);
+                half3 color = GAT_ApplyLighting(unlit, mainLight.color, 1.0, shadowAtten);
 
-                return half4(unlit, albedo.a);
+                return half4(color, albedo.a);
             }
             ENDHLSL
         }

@@ -29,9 +29,9 @@ namespace Snm.Runtime.App.Lifecycle
             if (_initialized)
                 return;
 
-            _initializables = TopologicalSort(_resolver.ResolveAll<IInitializable>());
-            _startables = TopologicalSort(_resolver.ResolveAll<IStartable>());
-            _stoppables = TopologicalSort(_resolver.ResolveAll<IStoppable>());
+            _initializables = TopologicalSort(_resolver.ResolveAllLocal<IInitializable>());
+            _startables = TopologicalSort(_resolver.ResolveAllLocal<IStartable>());
+            _stoppables = TopologicalSort(_resolver.ResolveAllLocal<IStoppable>());
 
             foreach (var i in _initializables)
                 i.Initialize();

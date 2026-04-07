@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Snm.DependencyInjection
 {
-    public sealed class RuntimeContainer : IResolver, IDisposable
+    public sealed class RuntimeContainer : IResolver, IScope
     {
         private readonly Dictionary<(Type, string), List<Binding>> bindings;
         private readonly RuntimeContainer parent;
@@ -17,6 +17,8 @@ namespace Snm.DependencyInjection
         private readonly HashSet<Binding> resolutionStack = new();
 
         private bool IsRoot => parent == null;
+
+        public IResolver Resolver => this;
 
         internal RuntimeContainer(
             Dictionary<(Type, string), List<Binding>> bindings,
@@ -46,6 +48,16 @@ namespace Snm.DependencyInjection
                 .ToArray();
         }
 
+        public T[] ResolveAllLocal<T>() where T : class
+        {
+            var type = typeof(T);
+            var localBindings = GetLocalBindings(type);
+
+            return localBindings
+                .Select(b => (T)ResolveBinding(b))
+                .ToArray();
+        }
+
         public void Dispose()
         {
             // Dispose children first
@@ -57,39 +69,41 @@ namespace Snm.DependencyInjection
             // Dispose scoped instances in reverse creation order
             for (int i = scopedCreationOrder.Count - 1; i >= 0; i--)
             {
-                if (scopedCreationOrder[i] is IDisposable disposable)
+                if (scopedCreationOrder[i] is IDisposable disposable && disposable != this)
                     disposable.Dispose();
             }
 
             scopedCreationOrder.Clear();
             scopedInstances.Clear();
 
-            // Only entryPoint disposes singletons
-            if (IsRoot)
+            // Dispose singletons owned by this container
+            for (int i = singletonCreationOrder.Count - 1; i >= 0; i--)
             {
-                for (int i = singletonCreationOrder.Count - 1; i >= 0; i--)
-                {
-                    if (singletonCreationOrder[i] is IDisposable disposable)
-                        disposable.Dispose();
-                }
-
-                singletonCreationOrder.Clear();
-                singletonInstances.Clear();
+                if (singletonCreationOrder[i] is IDisposable disposable)
+                    disposable.Dispose();
             }
+
+            singletonCreationOrder.Clear();
+            singletonInstances.Clear();
         }
 
-        public RuntimeContainer CreateScope()
+        public IScope CreateChildScope()
         {
             var scope = new RuntimeContainer(bindings, this);
             children.Add(scope);
             return scope;
         }
 
-        public RuntimeContainer CreateScope(Action<IBindingContext> configure)
+        public IScope CreateChildScope(Action<IBindingContext> configure)
         {
             var builder = new ContainerBuilder();
             configure(builder);
-            var scope = builder.Build(this);
+
+            RuntimeContainer scope = null;
+            builder.Bind<IScope>().ToFactory(_ => scope).AsScoped();
+
+            scope = builder.Build(this);
+
             children.Add(scope);
             return scope;
         }
@@ -129,9 +143,16 @@ namespace Snm.DependencyInjection
             }
         }
 
+        private bool OwnsBinding(Binding binding)
+        {
+            var key = (binding.Type, binding.Id);
+            return bindings.TryGetValue(key, out var list) && list.Contains(binding);
+        }
+
         private object ResolveSingleton(Binding binding)
         {
-            if (!IsRoot)
+            // Bubble up ONLY if this container doesn't own the binding
+            if (!IsRoot && !OwnsBinding(binding))
                 return parent.ResolveSingleton(binding);
 
             if (singletonInstances.TryGetValue(binding, out var existing))
@@ -156,11 +177,16 @@ namespace Snm.DependencyInjection
             return created;
         }
 
-        private IEnumerable<Binding> GetAllBindings(Type type)
+        private IEnumerable<Binding> GetLocalBindings(Type type)
         {
-            var local = bindings
+            return bindings
                 .Where(kv => kv.Key.Item1 == type)
                 .SelectMany(kv => kv.Value);
+        }
+
+        private IEnumerable<Binding> GetAllBindings(Type type)
+        {
+            var local = GetLocalBindings(type);
 
             if (parent == null)
                 return local;
