@@ -68,6 +68,8 @@ namespace Snm.WaterSystem.Reflection
 
         private static void CopyLensSettings(Camera source, Camera destination)
         {
+            destination.orthographic = source.orthographic;
+            destination.orthographicSize = source.orthographicSize;
             destination.fieldOfView = source.fieldOfView;
             destination.nearClipPlane = source.nearClipPlane;
             destination.farClipPlane = source.farClipPlane;

@@ -173,8 +173,26 @@ Shader "Custom/WaterSurface"
 
             float ComputeStylizedFresnel(float3 normalWS, float3 viewDir, float rawDepth, float waterDepth)
             {
-                float sceneDepth = LinearEyeDepth(rawDepth, _ZBufferParams);
-                float depthDifference = sceneDepth - waterDepth;
+                float depthDifference;
+
+                if (unity_OrthoParams.w > 0.5)
+                {
+                    // Ortho: depth buffer is linear, not hyperbolic.
+                    #if defined(UNITY_REVERSED_Z)
+                        float sceneEye  = lerp(_ProjectionParams.z, _ProjectionParams.y, rawDepth);
+                        float surfaceEye = lerp(_ProjectionParams.z, _ProjectionParams.y, waterDepth);
+                    #else
+                        float sceneEye  = lerp(_ProjectionParams.y, _ProjectionParams.z, rawDepth);
+                        float surfaceEye = lerp(_ProjectionParams.y, _ProjectionParams.z, waterDepth);
+                    #endif
+                    depthDifference = sceneEye - surfaceEye;
+                }
+                else
+                {
+                    float sceneDepth = LinearEyeDepth(rawDepth, _ZBufferParams);
+                    depthDifference = sceneDepth - waterDepth;
+                }
+
                 float depthFade = ease_OutSine(saturate(depthDifference / 50.0));
 
                 float NdotV = saturate(dot(normalWS, viewDir));

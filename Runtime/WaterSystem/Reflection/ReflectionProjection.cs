@@ -19,9 +19,13 @@ namespace Snm.WaterSystem.Reflection
             Vector3[] waterCorners_ws,
             in ReflectionPlane plane)
         {
-            var clamped = ClampFrustumToWaterQuad(reflectionCamera, waterCorners_ws);
+            bool ortho = reflectionCamera.orthographic;
+            var clamped = ortho
+                ? ClampOrthoToWaterQuad(reflectionCamera, waterCorners_ws)
+                : ClampFrustumToWaterQuad(reflectionCamera, waterCorners_ws);
+
             var clipPlane_cs = plane.ToCameraSpace(reflectionCamera.worldToCameraMatrix, sideSign: 1f);
-            return ApplyObliqueClip(clamped, clipPlane_cs);
+            return ApplyObliqueClip(clamped, clipPlane_cs, ortho);
         }
 
         /// Tight frustum that contains the water corners but stays inside the camera frustum.
@@ -73,24 +77,92 @@ namespace Snm.WaterSystem.Reflection
                 near, far);
         }
 
+        /// Tight ortho volume that contains the water corners but stays inside the camera bounds.
+        private static Matrix4x4 ClampOrthoToWaterQuad(Camera camera, Vector3[] corners_ws)
+        {
+            var w2c = camera.worldToCameraMatrix;
+            float near = camera.nearClipPlane;
+            float far = camera.farClipPlane;
+
+            float maxDepth = float.MinValue;
+            foreach (var c_ws in corners_ws)
+                maxDepth = Mathf.Max(maxDepth, -w2c.MultiplyPoint(c_ws).z);
+
+            far = Mathf.Clamp(maxDepth + FarPadding, near + 0.01f, far);
+
+            // In ortho, camera-space XY maps directly to view bounds (no perspective divide).
+            float left = float.PositiveInfinity, right = float.NegativeInfinity;
+            float bottom = float.PositiveInfinity, top = float.NegativeInfinity;
+
+            foreach (var c_ws in corners_ws)
+            {
+                var c_cs = w2c.MultiplyPoint(c_ws);
+                left   = Mathf.Min(left,   c_cs.x);
+                right  = Mathf.Max(right,  c_cs.x);
+                bottom = Mathf.Min(bottom, c_cs.y);
+                top    = Mathf.Max(top,    c_cs.y);
+            }
+
+            float halfH = camera.orthographicSize;
+            float halfW = halfH * camera.aspect;
+            left   = Mathf.Max(left,   -halfW);
+            right  = Mathf.Min(right,   halfW);
+            bottom = Mathf.Max(bottom, -halfH);
+            top    = Mathf.Min(top,     halfH);
+
+            if (left >= right || bottom >= top)
+                return camera.projectionMatrix;
+
+            return Matrix4x4.Ortho(
+                left - EdgePadding, right + EdgePadding,
+                bottom - EdgePadding, top + EdgePadding,
+                near, far);
+        }
+
         /// Tilt the near clip plane so it coincides with the water surface,
         /// eliminating any geometry rendered below the water.
-        private static Matrix4x4 ApplyObliqueClip(Matrix4x4 projection, Vector4 clipPlane_cs)
+        /// General formula: Q = M^-1 * (sgn(Cx), sgn(Cy), 1, 1), then M'[2] = c - M[3].
+        private static Matrix4x4 ApplyObliqueClip(
+            Matrix4x4 projection, Vector4 clipPlane_cs, bool orthographic)
         {
-            // Find the camera-space point that maps to the far corner of the clip plane's quadrant.
-            var q = new Vector4(
-                (Mathf.Sign(clipPlane_cs.x) + projection[0, 2]) / projection[0, 0],
-                (Mathf.Sign(clipPlane_cs.y) + projection[1, 2]) / projection[1, 1],
-                -1f,
-                (1f + projection[2, 2]) / projection[2, 3]);
+            // Q = M^{-1} * (sgn(Cx), sgn(Cy), 1, 1)
+            Vector4 q;
 
-            // Scale the clip plane so it passes through q, then replace row 2.
+            if (orthographic)
+            {
+                // Ortho M[3] = (0,0,0,1). Clamped ortho may be asymmetric, so account for M[0,3], M[1,3].
+                q = new Vector4(
+                    (Mathf.Sign(clipPlane_cs.x) - projection[0, 3]) / projection[0, 0],
+                    (Mathf.Sign(clipPlane_cs.y) - projection[1, 3]) / projection[1, 1],
+                    (1f - projection[2, 3]) / projection[2, 2],
+                    1f);
+            }
+            else
+            {
+                // Perspective M[3] = (0,0,-1,0). Asymmetry lives in M[0,2], M[1,2].
+                q = new Vector4(
+                    (Mathf.Sign(clipPlane_cs.x) + projection[0, 2]) / projection[0, 0],
+                    (Mathf.Sign(clipPlane_cs.y) + projection[1, 2]) / projection[1, 1],
+                    -1f,
+                    (1f + projection[2, 2]) / projection[2, 3]);
+            }
+
+            // Scale the clip plane so it passes through q, then replace row 2: M'[2] = c - M[3].
             var c = clipPlane_cs * (2f / Vector4.Dot(clipPlane_cs, q));
 
             projection[2, 0] = c.x;
             projection[2, 1] = c.y;
-            projection[2, 2] = c.z + 1f;
-            projection[2, 3] = c.w;
+
+            if (orthographic)
+            {
+                projection[2, 2] = c.z;        // M[3,2] = 0
+                projection[2, 3] = c.w - 1f;   // M[3,3] = 1
+            }
+            else
+            {
+                projection[2, 2] = c.z + 1f;   // M[3,2] = -1
+                projection[2, 3] = c.w;        // M[3,3] = 0
+            }
 
             return projection;
         }
