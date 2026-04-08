@@ -42,5 +42,13 @@ namespace Snm.Runtime.App.Unity
             _appHost?.Stop();
             _appHost = null;
         }
+
+#if UNITY_EDITOR
+        private void OnApplicationQuit()
+        {
+            _appHost?.Stop();
+            _appHost = null;
+        }
+#endif
     }
 }

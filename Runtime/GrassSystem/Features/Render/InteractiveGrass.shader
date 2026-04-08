@@ -7,8 +7,8 @@ Shader "Snm/InteractiveGrass"
     {
         _MainTex ("Albedo", 2D) = "white" {}
         _Cutoff ("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
-        [HDR] _TopColor ("Top Tint", Color) = (1, 1, 1, 1)
-        [HDR] _BottomColor ("Bottom Tint", Color) = (0.2, 0.3, 0.1, 1)
+        _TopColor ("Top Tint", Color) = (1, 1, 1, 1)
+        _BottomColor ("Bottom Tint", Color) = (0.2, 0.3, 0.1, 1)
     }
 
     SubShader

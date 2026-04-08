@@ -1,0 +1,17 @@
+{
+    "name": "Snm.CameraRig",
+    "rootNamespace": "",
+    "references": [
+        "GUID:856761b30a13ef848b4c3de5f11416ee",
+        "GUID:9e0dfe08b78ffcf41a3774b4b82afd08"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
