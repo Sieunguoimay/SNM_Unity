@@ -8,7 +8,6 @@ using Snm.WaterSystem.Shoreline;
 using Snm.WaterSystem.Sparkle;
 using Snm.WaterSystem.Surface;
 using Snm.WaterSystem.Buoyancy;
-using Snm.WaterSystem.IntersectionBands;
 using Snm.WaterSystem.Wave;
 
 namespace Snm.WaterSystem
@@ -26,6 +25,5 @@ namespace Snm.WaterSystem
         public SparkleConfig sparkle = new();
         public ScrollNormalConfig scrollNormal = new();
         public BuoyancyConfig buoyancy = new();
-        public IntersectionBandsConfig intersectionBands = new();
     }
 }

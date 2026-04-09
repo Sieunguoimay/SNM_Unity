@@ -17,7 +17,6 @@ using Snm.WaterSystem.Shoreline;
 using Snm.WaterSystem.Sparkle;
 using Snm.WaterSystem.Surface;
 using Snm.WaterSystem.Buoyancy;
-using Snm.WaterSystem.IntersectionBands;
 using Snm.WaterSystem.Wave;
 using UnityEngine;
 
@@ -54,7 +53,6 @@ namespace Snm.WaterSystem
             if (config.shoreline.enabled) surfaceMaterial.EnableKeyword("_SHORELINE_ON");
             if (config.sparkle.enabled) surfaceMaterial.EnableKeyword("_SPARKLE_ON");
             if (config.scrollNormal.enabled) surfaceMaterial.EnableKeyword("_SCROLL_NORMAL_ON");
-            if (config.intersectionBands.enabled) surfaceMaterial.EnableKeyword("_INTERSECTION_BANDS_ON");
             surfaceMaterial.EnableKeyword("_SPECULAR_ON");
 
             // ── features ──────────────────────────────────────────────────
@@ -89,7 +87,6 @@ namespace Snm.WaterSystem
             if (config.shoreline.enabled) composite.Add(new ShorelineFeature(ctx.SurfaceMaterial, ctx.Config.shoreline));
             if (config.sparkle.enabled) composite.Add(new SparkleFeature(ctx.SurfaceMaterial, ctx.Config.sparkle));
             if (config.scrollNormal.enabled) composite.Add(new ScrollNormalFeature(ctx.SurfaceMaterial, ctx.Config.scrollNormal));
-            if (config.intersectionBands.enabled) composite.Add(new IntersectionBandsFeature(ctx.SurfaceMaterial, ctx.Config.intersectionBands));
 
             WaveDisturberTracker disturberTracker = null;
             bool useDisturbers = config.wave.enabled && config.wave.disturber.enabled && disturbers != null;

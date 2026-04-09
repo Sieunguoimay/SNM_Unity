@@ -44,12 +44,6 @@ Shader "Custom/WaterSurface"
         _ScrollNormalStrength("Scroll Normal Strength", Float) = 0.5
         _ScrollNormalScale("Scroll Normal Scale", Float) = 0.2
 
-        // Intersection Bands
-        _BandCount("Band Count", Int) = 4
-        _BandSpeed("Band Speed", Float) = 0.5
-        _BandStrength("Band Strength", Float) = 0.5
-        _BandSharpness("Band Sharpness", Float) = 8
-        _BandMaxDepth("Band Max Depth", Float) = 5
 
     }
 
@@ -76,7 +70,6 @@ Shader "Custom/WaterSurface"
             #pragma multi_compile_local _ _SHORELINE_ON
             #pragma multi_compile_local _ _SPARKLE_ON
             #pragma multi_compile_local _ _SCROLL_NORMAL_ON
-            #pragma multi_compile_local _ _INTERSECTION_BANDS_ON
 
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -126,12 +119,6 @@ Shader "Custom/WaterSurface"
             float _ScrollNormalStrength;
             float _ScrollNormalScale;
 
-            // Intersection Bands
-            int   _BandCount;
-            float _BandSpeed;
-            float _BandStrength;
-            float _BandSharpness;
-            float _BandMaxDepth;
 
             CBUFFER_END
 
@@ -148,7 +135,6 @@ Shader "Custom/WaterSurface"
             #include "WaterShoreline.hlsl"
             #include "WaterSparkle.hlsl"
             #include "WaterScrollNormal.hlsl"
-            #include "WaterIntersectionBands.hlsl"
 
 
             struct Attributes
@@ -338,14 +324,6 @@ Shader "Custom/WaterSurface"
                 // ----------------------
                 // Surface sparkle (additive glints)
                 // ----------------------
-                // ----------------------
-                // Intersection bands (contour lines on water surface)
-                // ----------------------
-                #ifdef _INTERSECTION_BANDS_ON
-                float bands = ComputeIntersectionBands(thickness);
-                final = lerp(final, float3(1, 1, 1), bands);
-                #endif
-
                 #ifdef _SPARKLE_ON
                 float sparkle = ComputeSparkle(worldPos, normalWS, viewDir);
                 final += mainLight.color * sparkle * shadowAttenuation;
