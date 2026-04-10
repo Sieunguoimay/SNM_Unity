@@ -6,7 +6,7 @@ namespace Snm.GrassSystem
 {
     public class GrassSystem : MonoBehaviour
     {
-        [SerializeField] GrassSystemConfig config = new();
+        [SerializeField] GrassSystemConfig config;
 
         GrassSystemHandle _handle;
         IReadOnlyList<IGrassDisturber> _disturbers;
@@ -98,6 +98,7 @@ namespace Snm.GrassSystem
 
         bool ValidateLayers()
         {
+            if (config == null || config.layers == null) return false;
             foreach (var layer in config.layers)
             {
                 if (layer.mesh == null || layer.material == null) return false;
@@ -107,7 +108,7 @@ namespace Snm.GrassSystem
 
         public void UpdateGrassHeightFromMesh()
         {
-            if (config.grassMesh != null)
+            if (config != null && config.grassMesh != null)
             {
                 config.bladeHeight = config.grassMesh.bounds.size.y;
             }

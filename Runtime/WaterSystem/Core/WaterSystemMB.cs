@@ -7,7 +7,7 @@ namespace Snm.WaterSystem
 {
     public class WaterSystemMB : MonoBehaviour
     {
-        [SerializeField] private WaterConfig config;
+        [SerializeField] private WaterConfigSO configAsset;
         [SerializeField] private Camera sourceCamera;
 
         private WaterSystemHandle _handle;
@@ -54,7 +54,7 @@ namespace Snm.WaterSystem
             if (!isActiveAndEnabled) return;
             if (!ValidateConfig()) return;
 
-            _handle = WaterSystemFactory.Create(config, sourceCamera, _disturbers, _buoyants, transform);
+            _handle = WaterSystemFactory.Create(configAsset.Config, sourceCamera, _disturbers, _buoyants, transform);
         }
 
         [ContextMenu("Teardown")]
@@ -71,18 +71,28 @@ namespace Snm.WaterSystem
                 Debug.LogError("[WaterSystem] Source camera is not assigned.", this);
                 return false;
             }
+            if (configAsset == null)
+            {
+                Debug.LogError("[WaterSystem] WaterConfigSO is not assigned.", this);
+                return false;
+            }
+            var config = configAsset.Config;
             return config.surface.waterSurfaceShader != null || config.surface.waterSurfaceMaterial != null;
         }
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
+            if (!configAsset) return;
             Gizmos.matrix = transform.localToWorldMatrix;
-            Gizmos.DrawWireCube(Vector3.zero, new Vector3(config.surface.size.x, 0, config.surface.size.y));
+            Gizmos.DrawWireCube(Vector3.zero, new Vector3(configAsset.Config.surface.size.x, 0, configAsset.Config.surface.size.y));
         }
 
         [ContextMenu("Auto-assign config references")]
-        private void AutoAssignConfigReferences() => WaterSystemTestWindow.AutoAssignConfigReferences(config);
+        private void AutoAssignConfigReferences()
+        {
+            if (configAsset) WaterSystemTestWindow.AutoAssignConfigReferences(configAsset.Config);
+        }
 
 #endif
     }
