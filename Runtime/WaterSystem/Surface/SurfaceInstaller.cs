@@ -9,11 +9,16 @@ namespace Snm.WaterSystem.Surface
     {
         internal static (SurfaceCanvas canvas, Material material, IDisposable cleanup) Install(
             SurfaceConfig config,
-            Transform parent = null)
+            Transform parent = null,
+            Mesh meshOverride = null)
         {
-            var mesh = config.autoGenerateMesh
-                ? SurfaceMeshBuilder.CreateQuad(config.size)
-                : config.mesh;
+            Mesh mesh;
+            if (meshOverride != null)
+                mesh = meshOverride;
+            else if (config.autoGenerateMesh)
+                mesh = SurfaceMeshBuilder.CreateQuad(config.size);
+            else
+                mesh = config.mesh;
 
             bool ownsMaterial = config.waterSurfaceMaterial == null;
             var material = ownsMaterial ? new Material(config.waterSurfaceShader) : config.waterSurfaceMaterial;

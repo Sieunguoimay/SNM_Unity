@@ -1,30 +1,32 @@
 #ifndef WATER_SHORELINE_INCLUDED
 #define WATER_SHORELINE_INCLUDED
 
-float ComputeShoreline(float thickness)
+// shorelineUV.x = normalized distance to shore (0 at shore, 1 in deep water)
+// shorelineUV.y = normalized along-shore arc length (seamless across closed loops)
+// Both are baked into UV1 by WaterMeshGenerator.
+float ComputeShoreline(float2 shorelineUV)
 {
-    // Normalize depth into [0,1] range
-    float depthNorm = saturate(thickness / _ShorelineMaxDepth);
+    float shoreDist = saturate(shorelineUV.x);
+    float alongShore = shorelineUV.y;
 
     float shorelineFoam = 0.0;
 
-    // Layer multiple sine-based foam bands rolling toward shore
     for (int i = 0; i < _ShorelineWaveCount; i++)
     {
         float freq = (float)(i + 1) * _ShorelineFoamScale;
         float phase = _Time.y * _ShorelineSpeed * (1.0 + (float)i * 0.3);
 
-        // Sine wave mapped to depth — rolls toward shore (depthNorm=0)
-        float wave = sin(depthNorm * freq * PI * 2.0 - phase);
+        // Sine band rolling from deep water toward shore. The along-shore term
+        // wobbles the band so it doesn't read as a perfectly parallel stripe.
+        float wave = sin(shoreDist * freq * PI * 2.0 - phase + alongShore * PI * 2.0);
 
-        // Sharpen into a narrow foam band
         wave = saturate(wave);
         wave = pow(wave, 8.0);
 
-        // Fade out at deeper water
-        float depthFade = 1.0 - depthNorm;
+        // Concentrate the foam near the shore.
+        float shoreFade = 1.0 - shoreDist;
 
-        shorelineFoam += wave * depthFade;
+        shorelineFoam += wave * shoreFade;
     }
 
     return saturate(shorelineFoam) * _ShorelineFoamStrength;

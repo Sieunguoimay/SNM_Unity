@@ -19,9 +19,5 @@ namespace Snm.WaterSystem.Shoreline
 
         [Range(0.1f, 5f)]
         public float foamScale = 1f;
-
-        [Tooltip("Maximum depth where shoreline waves appear.")]
-        [Range(0.5f, 10f)]
-        public float maxDepth = 3f;
     }
 }

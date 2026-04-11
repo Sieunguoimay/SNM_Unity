@@ -19,8 +19,7 @@ namespace Snm.WaterSystem.Shoreline
                 _config.waveCount,
                 _config.speed,
                 _config.foamStrength,
-                _config.foamScale,
-                _config.maxDepth);
+                _config.foamScale);
         }
 
         public void Dispose() { }

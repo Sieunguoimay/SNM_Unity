@@ -34,10 +34,11 @@ namespace Snm.WaterSystem
             Camera sourceCamera,
             IEnumerable<IWaveDisturber> disturbers = null,
             IEnumerable<IBuoyant> buoyants = null,
-            Transform parent = null)
+            Transform parent = null,
+            Mesh meshOverride = null)
         {
             var updater = new GameObject("[WaterUpdater]").AddComponent<UpdateDispatcher>();
-            var (canvas, surfaceMaterial, surfaceCleanup) = SurfaceInstaller.Install(config.surface, parent);
+            var (canvas, surfaceMaterial, surfaceCleanup) = SurfaceInstaller.Install(config.surface, parent, meshOverride);
 
             var ctx = new WaterFeatureContext(
                 config,

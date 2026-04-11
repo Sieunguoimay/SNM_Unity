@@ -8,7 +8,6 @@ namespace Snm.WaterSystem.Shoreline
         private static readonly int SpeedID = Shader.PropertyToID("_ShorelineSpeed");
         private static readonly int FoamStrengthID = Shader.PropertyToID("_ShorelineFoamStrength");
         private static readonly int FoamScaleID = Shader.PropertyToID("_ShorelineFoamScale");
-        private static readonly int MaxDepthID = Shader.PropertyToID("_ShorelineMaxDepth");
 
         private readonly Material _material;
 
@@ -17,13 +16,12 @@ namespace Snm.WaterSystem.Shoreline
             _material = material;
         }
 
-        public void Bind(int waveCount, float speed, float foamStrength, float foamScale, float maxDepth)
+        public void Bind(int waveCount, float speed, float foamStrength, float foamScale)
         {
             _material.SetInt(WaveCountID, waveCount);
             _material.SetFloat(SpeedID, speed);
             _material.SetFloat(FoamStrengthID, foamStrength);
             _material.SetFloat(FoamScaleID, foamScale);
-            _material.SetFloat(MaxDepthID, maxDepth);
         }
     }
 }

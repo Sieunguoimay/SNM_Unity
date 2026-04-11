@@ -27,12 +27,11 @@ Shader "Custom/WaterSurface"
         _FoamScale("Foam Scale", Float) = 0.5
         _FoamSpeed("Foam Speed", Float) = 0.05
 
-        // Shoreline
+        // Shoreline (driven by UV1 baked by WaterMeshGenerator)
         _ShorelineWaveCount("Shoreline Wave Count", Int) = 3
         _ShorelineSpeed("Shoreline Speed", Float) = 0.5
         _ShorelineFoamStrength("Shoreline Foam Strength", Float) = 1
         _ShorelineFoamScale("Shoreline Foam Scale", Float) = 1
-        _ShorelineMaxDepth("Shoreline Max Depth", Float) = 3
 
         // Sparkle
         _SparkleIntensity("Sparkle Intensity", Float) = 1
@@ -108,7 +107,6 @@ Shader "Custom/WaterSurface"
             float _ShorelineSpeed;
             float _ShorelineFoamStrength;
             float _ShorelineFoamScale;
-            float _ShorelineMaxDepth;
 
             // Sparkle
             float _SparkleIntensity;
@@ -141,14 +139,16 @@ Shader "Custom/WaterSurface"
             {
                 float4 positionOS : POSITION;
                 float2 uv         : TEXCOORD0;
+                float2 uv1        : TEXCOORD1;
             };
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float4 screenPos  : TEXCOORD0;
-                float3 worldPos : TEXCOORD1;
-                float2 uv : TEXCOORD2;
+                float3 worldPos   : TEXCOORD1;
+                float2 uv         : TEXCOORD2;
+                float2 uv1        : TEXCOORD3;
             };
 
             float SampleWaveHeight(float2 uv)
@@ -210,6 +210,7 @@ Shader "Custom/WaterSurface"
                 o.screenPos  = ComputeScreenPos(o.positionCS);
                 o.worldPos  = TransformObjectToWorld(v.positionOS.xyz);
                 o.uv = v.uv;
+                o.uv1 = v.uv1;
                 return o;
             }
 
@@ -296,7 +297,7 @@ Shader "Custom/WaterSurface"
                 // Shoreline waves (animated foam bands rolling to shore)
                 // ----------------------
                 #ifdef _SHORELINE_ON
-                float shorelineFoam = ComputeShoreline(thickness);
+                float shorelineFoam = ComputeShoreline(i.uv1);
                 waterColor = lerp(waterColor, float3(1, 1, 1), shorelineFoam);
                 #endif
 
