@@ -94,11 +94,21 @@ namespace Snm.Tools.Finders
 
             YamlIndexDatabase.EnsureIndexReady();
 
+            var matcher = BuildLineMatcher();
+            if (matcher == null)
+                return;
+
+            BuildScope(out var fileScope, out var folderScope);
+            bool hasScope = fileScope.Count > 0 || folderScope.Count > 0;
+
             foreach (var entry in YamlIndexDatabase.Entries)
             {
+                if (hasScope && !InScope(entry.path, fileScope, folderScope))
+                    continue;
+
                 foreach (var line in entry.lines)
                 {
-                    if (MatchLine(line))
+                    if (matcher(line))
                     {
                         results.Add(new Result
                         {
@@ -108,49 +118,6 @@ namespace Snm.Tools.Finders
                     }
                 }
             }
-            // foreach (var path in GetScopePaths())
-            // {
-            //     var full =
-            //         Path.Combine(Application.dataPath,
-            //         path["Assets/".Length..]);
-
-            //     if (!File.Exists(full))
-            //         continue;
-
-            //     var lines = File.ReadAllLines(full);
-
-            //     for (int i = 0; i < lines.Length; i++)
-            //     {
-            //         if (MatchLine(lines[i]))
-            //         {
-            //             results.Add(new Result
-            //             {
-            //                 path = path,
-            //                 preview = lines[i].Trim()
-            //             });
-            //         }
-            //     }
-            // }
-        }
-
-        bool MatchLine(string line)
-        {
-            switch (_mode)
-            {
-                case Mode.String:
-                    return Match(line, searchText);
-
-                case Mode.FieldName:
-                    return Match(line, searchText + ":");
-
-                case Mode.EmptyString:
-                    return Regex.IsMatch(line, @":\s*""""");
-
-                case Mode.MissingReferences:
-                    return IsMissingReference(line);
-            }
-
-            return false;
         }
 
         bool ModeNeedsSearchText()
@@ -163,69 +130,94 @@ namespace Snm.Tools.Finders
             };
         }
 
-        bool Match(string source, string value)
+        Func<string, bool> BuildLineMatcher()
         {
+            switch (_mode)
+            {
+                case Mode.String:
+                    return BuildTextMatcher(searchText);
+
+                case Mode.FieldName:
+                    return BuildTextMatcher(searchText + ":");
+
+                case Mode.EmptyString:
+                    var emptyRegex = new Regex(@":\s*""""", RegexOptions.Compiled);
+                    return emptyRegex.IsMatch;
+
+                case Mode.MissingReferences:
+                    var guidRegex = new Regex(@"guid:\s*([a-fA-F0-9]{32})", RegexOptions.Compiled);
+                    return line =>
+                    {
+                        var m = guidRegex.Match(line);
+                        if (!m.Success) return false;
+                        return string.IsNullOrEmpty(
+                            AssetDatabase.GUIDToAssetPath(m.Groups[1].Value));
+                    };
+            }
+
+            return null;
+        }
+
+        Func<string, bool> BuildTextMatcher(string needle)
+        {
+            if (string.IsNullOrEmpty(needle))
+                return _ => false;
+
             if (regex)
             {
                 var r = new Regex(
-                    value,
-                    caseSensitive
-                        ? RegexOptions.None
-                        : RegexOptions.IgnoreCase);
+                    needle,
+                    RegexOptions.Compiled |
+                    (caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase));
 
-                return r.IsMatch(source);
+                return r.IsMatch;
             }
 
-            return caseSensitive
-                ? source.Contains(value)
-                : source.IndexOf(
-                    value,
-                    StringComparison.OrdinalIgnoreCase) >= 0;
+            if (caseSensitive)
+                return line => line.Contains(needle);
+
+            return line => line.IndexOf(
+                needle,
+                StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        bool IsMissingReference(string line)
+        void BuildScope(out HashSet<string> files, out List<string> folders)
         {
-            var match =
-                Regex.Match(line,
-                @"guid:\s*([a-fA-F0-9]{32})");
+            files = new HashSet<string>();
+            folders = new List<string>();
 
-            if (!match.Success)
-                return false;
-
-            var guid = match.Groups[1].Value;
-
-            return string.IsNullOrEmpty(
-                AssetDatabase.GUIDToAssetPath(guid));
-        }
-
-        IEnumerable<string> GetScopePaths()
-        {
-            if (targets == null ||
-                targets.Length == 0)
-            {
-                foreach (var guid in AssetDatabase.FindAssets(""))
-                {
-                    yield return AssetDatabase.GUIDToAssetPath(guid);
-                }
-            }
+            if (targets == null)
+                return;
 
             foreach (var obj in targets)
             {
-                var path =
-                    AssetDatabase.GetAssetPath(obj);
+                if (obj == null) continue;
+
+                var path = AssetDatabase.GetAssetPath(obj);
+                if (string.IsNullOrEmpty(path)) continue;
 
                 if (Directory.Exists(path))
-                {
-                    foreach (var g in
-                        AssetDatabase.FindAssets("", new[] { path }))
-                    {
-                        yield return
-                            AssetDatabase.GUIDToAssetPath(g);
-                    }
-                }
+                    folders.Add(path);
                 else
-                    yield return path;
+                    files.Add(path);
             }
+        }
+
+        static bool InScope(string entryPath, HashSet<string> files, List<string> folders)
+        {
+            if (files.Contains(entryPath))
+                return true;
+
+            foreach (var folder in folders)
+            {
+                if (entryPath == folder)
+                    return true;
+
+                if (entryPath.StartsWith(folder + "/", StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
         }
 
         void DrawResults()

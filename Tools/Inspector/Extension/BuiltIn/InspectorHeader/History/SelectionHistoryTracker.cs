@@ -11,6 +11,7 @@ namespace Snm.Tools.InspectorExtensions
         private readonly List<UnityEngine.Object> history = new();
         private int cursor = -1;
         private bool navigating;
+        private bool saveScheduled;
 
         private const int MaxHistory = 100;
 
@@ -30,8 +31,22 @@ namespace Snm.Tools.InspectorExtensions
         public void Dispose()
         {
             Selection.selectionChanged -= OnSelectionChanged;
-            SaveHistory();
+            FlushPendingSave();
             history.Clear();
+        }
+
+        private void ScheduleSave()
+        {
+            if (saveScheduled) return;
+            saveScheduled = true;
+            EditorApplication.delayCall += FlushPendingSave;
+        }
+
+        private void FlushPendingSave()
+        {
+            if (!saveScheduled) return;
+            saveScheduled = false;
+            SaveHistory();
         }
 
         private void OnSelectionChanged()
@@ -62,7 +77,7 @@ namespace Snm.Tools.InspectorExtensions
             cursor = history.Count - 1;
 
             OnHistoryChanged?.Invoke();
-            SaveHistory();
+            ScheduleSave();
         }
 
         public void GoBack()
@@ -104,7 +119,7 @@ namespace Snm.Tools.InspectorExtensions
             history.Clear();
             cursor = -1;
             OnHistoryChanged?.Invoke();
-            SaveHistory();
+            ScheduleSave();
         }
 
         private void CleanNulls()

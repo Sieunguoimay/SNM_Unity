@@ -58,24 +58,18 @@ namespace Snm.Tools.InspectorExtensions
 
         private static List<string> FindIncomingReferences(string assetPath)
         {
-            var result = new List<string>();
+            var guid = AssetDatabase.AssetPathToGUID(assetPath);
+            if (string.IsNullOrEmpty(guid))
+                return new List<string>();
 
-            foreach (var path in AssetDatabase.GetAllAssetPaths())
-            {
-                if (path == assetPath || !path.StartsWith("Assets/")) continue;
+            var entries = Snm.Tools.YamlIndexDatabase.GetIncomingReferences(guid);
+            var result = entries
+                .Select(e => e.path)
+                .Where(p => !string.IsNullOrEmpty(p) && p != assetPath)
+                .Distinct()
+                .OrderBy(p => p)
+                .ToList();
 
-                var deps = AssetDatabase.GetDependencies(path, false);
-                foreach (var dep in deps)
-                {
-                    if (dep == assetPath)
-                    {
-                        result.Add(path);
-                        break;
-                    }
-                }
-            }
-
-            result.Sort();
             return result;
         }
 
