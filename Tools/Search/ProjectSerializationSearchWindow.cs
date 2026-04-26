@@ -19,18 +19,27 @@ namespace Snm.Tools.Finders
             EmptyString
         }
 
+        const int MaxResults = 1000;
+        const int ProgressUpdateEvery = 50;
+
+        // Built-in resources and the null reference both have GUIDs whose first
+        // 16 hex chars are zero. Real project assets are 128-bit random and
+        // effectively never collide with this prefix.
+        const string BuiltInOrNullGuidPrefix = "0000000000000000";
 
         [SerializeField] string searchText;
         [SerializeField] bool regex;
         [SerializeField] bool caseSensitive;
         [SerializeField] UnityEngine.Object[] targets;
+        [SerializeField] Mode _mode;
 
-        Mode _mode;
         Vector2 _scroll;
+        bool truncated;
 
         struct Result
         {
             public string path;
+            public int lineNumber;
             public string preview;
         }
 
@@ -41,8 +50,20 @@ namespace Snm.Tools.Finders
         {
             var window = GetWindow<ProjectSerializationSearchWindow>();
             window.titleContent = new GUIContent("Serialization Search");
-            window.targets = new[] { AssetDatabase.LoadAssetAtPath<UnityEngine.Object>("Assets") };
             window.Show();
+        }
+
+        void OnEnable()
+        {
+            // Seed scope only when nothing is persisted, so reopening the window
+            // doesn't trample whatever the user last selected.
+            if (targets == null || targets.Length == 0)
+            {
+                targets = new[]
+                {
+                    AssetDatabase.LoadAssetAtPath<UnityEngine.Object>("Assets")
+                };
+            }
         }
 
         void OnGUI()
@@ -57,7 +78,6 @@ namespace Snm.Tools.Finders
 
             if (ModeNeedsSearchText())
             {
-
                 regex =
                     EditorGUILayout.Toggle("Regex", regex);
 
@@ -66,10 +86,29 @@ namespace Snm.Tools.Finders
 
                 searchText =
                     EditorGUILayout.TextField("Search", searchText);
-
             }
-            if (GUILayout.Button("Search"))
-                ExecuteSearch();
+
+            bool needsText = ModeNeedsSearchText();
+            bool canSearch = !needsText || !string.IsNullOrEmpty(searchText);
+
+            EditorGUILayout.BeginHorizontal();
+            using (new EditorGUI.DisabledScope(!canSearch))
+            {
+                if (GUILayout.Button("Search"))
+                    ExecuteSearch();
+            }
+            if (GUILayout.Button("Rebuild Index", GUILayout.Width(120)))
+            {
+                YamlIndexerBuilder.Rebuild();
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (needsText && string.IsNullOrEmpty(searchText))
+            {
+                EditorGUILayout.HelpBox(
+                    "Enter search text to run.",
+                    MessageType.Info);
+            }
 
             DrawResults();
         }
@@ -91,6 +130,7 @@ namespace Snm.Tools.Finders
         void ExecuteSearch()
         {
             results.Clear();
+            truncated = false;
 
             YamlIndexDatabase.EnsureIndexReady();
 
@@ -101,22 +141,62 @@ namespace Snm.Tools.Finders
             BuildScope(out var fileScope, out var folderScope);
             bool hasScope = fileScope.Count > 0 || folderScope.Count > 0;
 
-            foreach (var entry in YamlIndexDatabase.Entries)
-            {
-                if (hasScope && !InScope(entry.path, fileScope, folderScope))
-                    continue;
+            // Snapshot so the count is stable for the progress bar even if the
+            // index mutates underneath us mid-scan.
+            var entries = new List<YamlAssetIndex.Entry>(YamlIndexDatabase.Entries);
+            int total = entries.Count;
+            bool cancelled = false;
 
-                foreach (var line in entry.lines)
+            try
+            {
+                for (int i = 0; i < total; i++)
                 {
-                    if (matcher(line))
+                    if (i % ProgressUpdateEvery == 0)
                     {
+                        if (EditorUtility.DisplayCancelableProgressBar(
+                            "Serialization Search",
+                            $"Scanning {i}/{total}",
+                            i / (float)total))
+                        {
+                            cancelled = true;
+                            break;
+                        }
+                    }
+
+                    var entry = entries[i];
+                    if (hasScope && !InScope(entry.path, fileScope, folderScope))
+                        continue;
+
+                    for (int lineIdx = 0; lineIdx < entry.lines.Length; lineIdx++)
+                    {
+                        var line = entry.lines[lineIdx];
+                        if (!matcher(line)) continue;
+
                         results.Add(new Result
                         {
                             path = entry.path,
+                            lineNumber = lineIdx + 1,
                             preview = line.Trim()
                         });
+
+                        if (results.Count >= MaxResults)
+                        {
+                            truncated = true;
+                            break;
+                        }
                     }
+
+                    if (truncated) break;
                 }
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
+
+            if (cancelled)
+            {
+                Debug.Log($"Serialization Search cancelled after scanning entries; partial results: {results.Count}");
             }
         }
 
@@ -150,8 +230,17 @@ namespace Snm.Tools.Finders
                     {
                         var m = guidRegex.Match(line);
                         if (!m.Success) return false;
+
+                        var guid = m.Groups[1].Value;
+
+                        // Skip Unity's null sentinel and built-in resource GUIDs —
+                        // they legitimately resolve to empty paths and would otherwise
+                        // flood results with false positives.
+                        if (guid.StartsWith(BuiltInOrNullGuidPrefix, StringComparison.Ordinal))
+                            return false;
+
                         return string.IsNullOrEmpty(
-                            AssetDatabase.GUIDToAssetPath(m.Groups[1].Value));
+                            AssetDatabase.GUIDToAssetPath(guid));
                     };
             }
 
@@ -222,9 +311,11 @@ namespace Snm.Tools.Finders
 
         void DrawResults()
         {
-            GUILayout.Label(
-                $"Results ({results.Count})",
-                EditorStyles.boldLabel);
+            var header = truncated
+                ? $"Results ({results.Count}, truncated — narrow your search)"
+                : $"Results ({results.Count})";
+
+            GUILayout.Label(header, EditorStyles.boldLabel);
 
             _scroll =
                 EditorGUILayout.BeginScrollView(_scroll);
@@ -232,7 +323,7 @@ namespace Snm.Tools.Finders
             foreach (var r in results)
             {
                 if (GUILayout.Button(
-                    $"{r.path}   ▶   {r.preview}",
+                    $"{r.path}:{r.lineNumber}   ▶   {r.preview}",
                     EditorStyles.linkLabel))
                 {
                     var obj =

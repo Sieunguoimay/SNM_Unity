@@ -72,9 +72,15 @@ namespace Snm.GrassSystem
                 return;
             }
 
-            // --- Legacy grid-based path ---
+            // --- Legacy grid-based path (deprecated) ---
             _usingPatches = false;
 
+            Debug.LogWarning(
+                $"[GrassSystem] '{name}' is using the deprecated grid path. " +
+                "Run Tools > Grass > Migrate GrassSystem to Patches. The grid path will be removed in a future release.",
+                this);
+
+#pragma warning disable 618
             if (!config.HasLayers && (config.grassMesh == null || config.grassMaterial == null)) return;
             if (config.HasLayers && !ValidateLayers()) return;
 
@@ -85,6 +91,7 @@ namespace Snm.GrassSystem
             _grid = GrassGridBuilder.Build(config, transform);
 
             _handle = GrassSystemFactory.Create(config, _grid.Matrices, _grid.LayerMatrices, _grid.Canvas, _grid.WorldBounds);
+#pragma warning restore 618
 
             if (_disturbers != null)
                 _handle?.Trample?.SetDisturbers(_disturbers);
@@ -98,20 +105,24 @@ namespace Snm.GrassSystem
 
         bool ValidateLayers()
         {
+#pragma warning disable 618
             if (config == null || config.layers == null) return false;
             foreach (var layer in config.layers)
             {
                 if (layer.mesh == null || layer.material == null) return false;
             }
+#pragma warning restore 618
             return true;
         }
 
         public void UpdateGrassHeightFromMesh()
         {
+#pragma warning disable 618
             if (config != null && config.grassMesh != null)
             {
                 config.bladeHeight = config.grassMesh.bounds.size.y;
             }
+#pragma warning restore 618
         }
     }
 }

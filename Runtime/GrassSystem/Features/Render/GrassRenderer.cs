@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -7,10 +8,7 @@ namespace Snm.GrassSystem
     public class GrassRenderer : IDisposable
     {
         static readonly int ID_LocalToWorldMatrices = Shader.PropertyToID("_LocalToWorldMatrices");
-        static readonly int ID_WindMap = Shader.PropertyToID("_WindMap");
-        static readonly int ID_WindParams = Shader.PropertyToID("_WindParams");
         static readonly int ID_WorldCanvas = Shader.PropertyToID("_WorldCanvas");
-        static readonly int ID_TrampleMap = Shader.PropertyToID("_TrampleMap");
         static readonly int ID_BladeHeight = Shader.PropertyToID("_BladeHeight");
 
         public Material Material => _material;
@@ -22,6 +20,8 @@ namespace Snm.GrassSystem
         Bounds _worldBounds;
         Matrix4x4[] _allMatrices;
         uint _indexCountPerInstance;
+
+        readonly GraphicsBuffer.IndirectDrawIndexedArgs[] _argsScratch = new GraphicsBuffer.IndirectDrawIndexedArgs[1];
 
         public void Setup(Mesh mesh, Material material, Matrix4x4[] matrices, Bounds worldBounds)
         {
@@ -40,7 +40,7 @@ namespace Snm.GrassSystem
             _material.SetBuffer(ID_LocalToWorldMatrices, _instanceBuffer);
 
             _indexCountPerInstance = mesh.GetIndexCount(0);
-            var args = new GraphicsBuffer.IndirectDrawIndexedArgs
+            _argsScratch[0] = new GraphicsBuffer.IndirectDrawIndexedArgs
             {
                 indexCountPerInstance = _indexCountPerInstance,
                 instanceCount = (uint)count,
@@ -53,13 +53,7 @@ namespace Snm.GrassSystem
                 GraphicsBuffer.Target.IndirectArguments,
                 1,
                 GraphicsBuffer.IndirectDrawIndexedArgs.size);
-            _argsBuffer.SetData(new[] { args });
-        }
-
-        public void SetWind(Texture2D map, float strength, float speed, Vector2 scale)
-        {
-            _material.SetTexture(ID_WindMap, map);
-            _material.SetVector(ID_WindParams, new Vector4(strength, speed, scale.x, scale.y));
+            _argsBuffer.SetData(_argsScratch);
         }
 
         public void SetWorldCanvas(Vector4 canvas)
@@ -67,24 +61,19 @@ namespace Snm.GrassSystem
             _material.SetVector(ID_WorldCanvas, canvas);
         }
 
-        public void SetTrampleMap(Texture texture)
-        {
-            _material.SetTexture(ID_TrampleMap, texture);
-        }
-
         public void SetBladeHeight(float height)
         {
             _material.SetFloat(ID_BladeHeight, height);
         }
 
-        public Matrix4x4[] AllMatrices => _allMatrices;
+        public IReadOnlyList<Matrix4x4> AllMatrices => _allMatrices;
 
         public void UpdateVisibleInstances(Matrix4x4[] matrices, int count)
         {
             if (_instanceBuffer == null || count == 0) return;
             _instanceBuffer.SetData(matrices, 0, 0, count);
 
-            var args = new GraphicsBuffer.IndirectDrawIndexedArgs
+            _argsScratch[0] = new GraphicsBuffer.IndirectDrawIndexedArgs
             {
                 indexCountPerInstance = _indexCountPerInstance,
                 instanceCount = (uint)count,
@@ -92,7 +81,7 @@ namespace Snm.GrassSystem
                 baseVertexIndex = _mesh.GetBaseVertex(0),
                 startInstance = 0
             };
-            _argsBuffer.SetData(new[] { args });
+            _argsBuffer.SetData(_argsScratch);
         }
 
         public void Render()

@@ -6,22 +6,33 @@ namespace Snm.GrassSystem
     {
         readonly GrassFeatureContext _ctx;
 
+        bool _applied;
+        Color _lastColorA;
+        Color _lastColorB;
+
         public ColorVariationFeature(GrassFeatureContext ctx)
         {
             _ctx = ctx;
-            BindConfig();
+            BindIfDirty();
         }
 
         public void OnUpdate(float deltaTime)
         {
-            BindConfig();
+            BindIfDirty();
         }
 
         public void Dispose() { }
 
-        void BindConfig()
+        void BindIfDirty()
         {
             var config = _ctx.Config.colorVariation;
+            if (_applied && _lastColorA == config.colorA && _lastColorB == config.colorB)
+                return;
+
+            _lastColorA = config.colorA;
+            _lastColorB = config.colorB;
+            _applied = true;
+
             foreach (var mat in _ctx.AllMaterials)
             {
                 mat.SetColor(ShaderIDs.ColorVariationA, config.colorA);

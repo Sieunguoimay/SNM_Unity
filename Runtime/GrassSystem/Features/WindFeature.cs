@@ -7,38 +7,50 @@ namespace Snm.GrassSystem
     {
         readonly GrassFeatureContext _ctx;
 
+        bool _applied;
+        Texture _lastMap;
+        Vector4 _lastParams;
+        Vector4 _lastParams2;
+
         public WindFeature(GrassFeatureContext ctx)
         {
             _ctx = ctx;
-            BindConfig();
+            BindIfDirty();
         }
 
         public void OnUpdate(float deltaTime)
         {
-            BindConfig();
+            BindIfDirty();
         }
 
         public void Dispose() { }
 
-        void BindConfig()
+        void BindIfDirty()
         {
             var config = _ctx.Config.wind;
-            var windParams = new Vector4(
+            var p1 = new Vector4(
                 config.windStrength,
                 config.windScrollSpeed,
                 config.windMapScale.x,
                 config.windMapScale.y);
-
-            var windParams2 = new Vector4(
+            var p2 = new Vector4(
                 config.swayVariation,
                 config.amplitudeVariation,
                 0, 0);
 
+            if (_applied && _lastMap == config.windMap && _lastParams == p1 && _lastParams2 == p2)
+                return;
+
+            _lastMap = config.windMap;
+            _lastParams = p1;
+            _lastParams2 = p2;
+            _applied = true;
+
             foreach (var mat in _ctx.AllMaterials)
             {
                 mat.SetTexture(ShaderIDs.WindMap, config.windMap);
-                mat.SetVector(ShaderIDs.WindParams, windParams);
-                mat.SetVector(ShaderIDs.WindParams2, windParams2);
+                mat.SetVector(ShaderIDs.WindParams, p1);
+                mat.SetVector(ShaderIDs.WindParams2, p2);
             }
         }
 

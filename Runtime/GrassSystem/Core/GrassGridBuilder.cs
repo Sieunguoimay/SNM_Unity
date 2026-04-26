@@ -2,8 +2,11 @@ using System.Collections.Generic;
 using Snm.SurfaceInteraction;
 using UnityEngine;
 
+#pragma warning disable 618
+
 namespace Snm.GrassSystem
 {
+    [System.Obsolete("GrassGridBuilder is part of the deprecated grid path. Use GrassPatch children and GrassPatchCollector instead. Will be removed in a future release.")]
     public static class GrassGridBuilder
     {
         public struct Result

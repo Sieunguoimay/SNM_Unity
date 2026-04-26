@@ -5,20 +5,36 @@ namespace Snm.GrassSystem
 {
     public class GrassSystemConfig : ScriptableObject
     {
-        [Header("Grid")]
+        const string GridDeprecationMsg =
+            "Grid path is deprecated. Migrate via Tools > Grass > Migrate GrassSystem to Patches. Field will be removed in a future release.";
+
+        [Header("Grid (deprecated — use GrassPatch children)")]
+        [Obsolete(GridDeprecationMsg)]
         public Vector2Int gridSize = new(50, 50);
+
+        [Obsolete(GridDeprecationMsg)]
         public Vector2 cellSpacing = new(0.5f, 0.5f);
 
-        [Header("Placement")]
+        [Header("Placement (deprecated — use GrassPatch.placementMap)")]
         [Tooltip("Optional painted texture controlling grass placement. Each pixel = one grid cell. When assigned, gridSize is derived from texture dimensions.")]
+        [Obsolete(GridDeprecationMsg)]
         public Texture2D placementMap;
+
         [Range(0f, 1f)]
+        [Obsolete(GridDeprecationMsg)]
         public float densityThreshold = 0.1f;
+
+        [Obsolete(GridDeprecationMsg)]
         public float minScale = 0.8f;
+
+        [Obsolete(GridDeprecationMsg)]
         public float maxScale = 1.2f;
 
-        [Header("Rendering (single-layer fallback)")]
+        [Header("Rendering (deprecated — use GrassPatch.mesh/material)")]
+        [Obsolete(GridDeprecationMsg)]
         public Mesh grassMesh;
+
+        [Obsolete(GridDeprecationMsg)]
         public Material grassMaterial;
 
         [Tooltip("Height of the grass blade mesh in world units. Used by the shader to normalize vertex height for bending. Auto-derived from mesh bounds.")]
@@ -27,9 +43,14 @@ namespace Snm.GrassSystem
         [Tooltip("Height of the grass surface for interaction detection (trample, proximity). Can differ from blade height to fine-tune when disturbers trigger bending.")]
         public float interactionHeight = 1f;
 
-        [Header("Layers (multi-mesh)")]
-        [Tooltip("When populated, each layer renders a separate grass mesh. Each layer reads a different channel from the placement map for density. Leave empty to use single grassMesh/grassMaterial.")]
+        [Header("Layers (deprecated — spawn one GrassPatch per layer)")]
+        [Tooltip("When populated, each layer renders a separate grass mesh. Each layer reads a different channel from the placement map for density.")]
+        [Obsolete(GridDeprecationMsg)]
         public GrassLayerConfig[] layers;
+
+        [Header("Trample Resolution")]
+        [Tooltip("Resolution of the trample render texture used when placementMap is null. Higher = sharper trample footprints at greater memory cost.")]
+        public Vector2Int trampleResolution = new(256, 256);
 
         public FrustumCullingConfig frustumCulling = new();
         public AmbientOcclusionConfig ambientOcclusion = new();
@@ -37,10 +58,13 @@ namespace Snm.GrassSystem
         public WindConfig wind = new();
         public TrampleConfig trample = new();
 
+#pragma warning disable 618
         public bool HasLayers => layers != null && layers.Length > 0;
+#pragma warning restore 618
     }
 
     [Serializable]
+    [Obsolete("GrassLayerConfig is part of the deprecated grid path. Use multiple GrassPatch children instead.")]
     public class GrassLayerConfig
     {
         public string name;

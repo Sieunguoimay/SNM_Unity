@@ -20,10 +20,10 @@ namespace Snm.GrassSystem
 
             EditorGUILayout.Space();
 
-            if (_patch.cellSpacing > 0f)
+            if (_patch.cellSpacing.x > 0f && _patch.cellSpacing.y > 0f)
             {
-                int countX = Mathf.Max(1, Mathf.FloorToInt(_patch.areaSize.x / _patch.cellSpacing));
-                int countZ = Mathf.Max(1, Mathf.FloorToInt(_patch.areaSize.y / _patch.cellSpacing));
+                int countX = Mathf.Max(1, Mathf.FloorToInt(_patch.areaSize.x / _patch.cellSpacing.x));
+                int countZ = Mathf.Max(1, Mathf.FloorToInt(_patch.areaSize.y / _patch.cellSpacing.y));
                 EditorGUILayout.HelpBox($"Estimated blades: {countX * countZ}\nGrid: {countX} x {countZ}", MessageType.Info);
             }
 
@@ -66,22 +66,22 @@ namespace Snm.GrassSystem
             }
 
             // Sample dot grid (show up to ~200 dots for perf)
-            if (_patch.cellSpacing > 0f)
+            if (_patch.cellSpacing.x > 0f && _patch.cellSpacing.y > 0f)
             {
-                int countX = Mathf.Max(1, Mathf.FloorToInt(_patch.areaSize.x / _patch.cellSpacing));
-                int countZ = Mathf.Max(1, Mathf.FloorToInt(_patch.areaSize.y / _patch.cellSpacing));
+                int countX = Mathf.Max(1, Mathf.FloorToInt(_patch.areaSize.x / _patch.cellSpacing.x));
+                int countZ = Mathf.Max(1, Mathf.FloorToInt(_patch.areaSize.y / _patch.cellSpacing.y));
 
                 int step = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(countX * countZ / 200f)));
 
                 Handles.color = new Color(0.3f, 0.9f, 0.3f, 0.5f);
-                float dotSize = _patch.cellSpacing * 0.1f;
+                float dotSize = Mathf.Min(_patch.cellSpacing.x, _patch.cellSpacing.y) * 0.1f;
 
                 for (int z = 0; z < countZ; z += step)
                 {
                     for (int x = 0; x < countX; x += step)
                     {
-                        float localX = -halfX + (x + 0.5f) * _patch.cellSpacing;
-                        float localZ = -halfZ + (z + 0.5f) * _patch.cellSpacing;
+                        float localX = -halfX + (x + 0.5f) * _patch.cellSpacing.x;
+                        float localZ = -halfZ + (z + 0.5f) * _patch.cellSpacing.y;
                         var localPos = new Vector3(localX, 0f, localZ);
                         var worldPos = t.TransformPoint(localPos);
 

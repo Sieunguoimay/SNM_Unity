@@ -11,9 +11,13 @@ namespace Snm.Tools.InspectorExtensions
         private readonly List<UnityEngine.Object> history = new();
         private int cursor = -1;
         private bool navigating;
-        private bool saveScheduled;
 
         private const int MaxHistory = 100;
+
+        // Legacy EditorPrefs keys from when history was persisted across sessions.
+        // Deleted on construction so old data doesn't sit in EditorPrefs forever.
+        private const string LegacyHistoryKey = "SelectionHistoryTracker.History";
+        private const string LegacyCursorKey = "SelectionHistoryTracker.Cursor";
 
         public IReadOnlyList<UnityEngine.Object> History => history;
         public int Cursor => cursor;
@@ -24,29 +28,15 @@ namespace Snm.Tools.InspectorExtensions
 
         public SelectionHistoryTracker()
         {
+            EditorPrefs.DeleteKey(LegacyHistoryKey);
+            EditorPrefs.DeleteKey(LegacyCursorKey);
             Selection.selectionChanged += OnSelectionChanged;
-            LoadHistory();
         }
 
         public void Dispose()
         {
             Selection.selectionChanged -= OnSelectionChanged;
-            FlushPendingSave();
             history.Clear();
-        }
-
-        private void ScheduleSave()
-        {
-            if (saveScheduled) return;
-            saveScheduled = true;
-            EditorApplication.delayCall += FlushPendingSave;
-        }
-
-        private void FlushPendingSave()
-        {
-            if (!saveScheduled) return;
-            saveScheduled = false;
-            SaveHistory();
         }
 
         private void OnSelectionChanged()
@@ -77,7 +67,6 @@ namespace Snm.Tools.InspectorExtensions
             cursor = history.Count - 1;
 
             OnHistoryChanged?.Invoke();
-            ScheduleSave();
         }
 
         public void GoBack()
@@ -119,7 +108,6 @@ namespace Snm.Tools.InspectorExtensions
             history.Clear();
             cursor = -1;
             OnHistoryChanged?.Invoke();
-            ScheduleSave();
         }
 
         private void CleanNulls()
@@ -133,55 +121,6 @@ namespace Snm.Tools.InspectorExtensions
                 }
             }
 
-            if (cursor >= history.Count) cursor = history.Count - 1;
-        }
-
-        private void SaveHistory()
-        {
-            var guids = new List<string>();
-            var savedCursor = cursor;
-            var offset = 0;
-
-            for (int i = 0; i < history.Count; i++)
-            {
-                var obj = history[i];
-                if (obj == null) { if (i <= cursor) offset++; continue; }
-
-                var path = AssetDatabase.GetAssetPath(obj);
-                if (string.IsNullOrEmpty(path)) { if (i <= cursor) offset++; continue; }
-
-                var guid = AssetDatabase.AssetPathToGUID(path);
-                if (!string.IsNullOrEmpty(guid))
-                    guids.Add(guid);
-            }
-
-            savedCursor -= offset;
-            if (savedCursor < 0) savedCursor = guids.Count - 1;
-            if (savedCursor >= guids.Count) savedCursor = guids.Count - 1;
-
-            EditorPrefs.SetString("SelectionHistoryTracker.History", string.Join("|", guids));
-            EditorPrefs.SetInt("SelectionHistoryTracker.Cursor", savedCursor);
-        }
-
-        private void LoadHistory()
-        {
-            history.Clear();
-            var data = EditorPrefs.GetString("SelectionHistoryTracker.History", "");
-
-            if (!string.IsNullOrEmpty(data))
-            {
-                var guids = data.Split('|');
-                foreach (var guid in guids)
-                {
-                    if (string.IsNullOrEmpty(guid)) continue;
-                    var path = AssetDatabase.GUIDToAssetPath(guid);
-                    var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
-                    if (obj != null)
-                        history.Add(obj);
-                }
-            }
-
-            cursor = EditorPrefs.GetInt("SelectionHistoryTracker.Cursor", history.Count - 1);
             if (cursor >= history.Count) cursor = history.Count - 1;
         }
     }

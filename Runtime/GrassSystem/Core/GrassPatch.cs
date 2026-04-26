@@ -19,8 +19,8 @@ namespace Snm.GrassSystem
         public Vector2 areaSize = new(5f, 5f);
 
         [Header("Distribution")]
-        [Tooltip("Distance between blade grid cells in world units.")]
-        public float cellSpacing = 0.5f;
+        [Tooltip("Distance between blade grid cells in world units. X = along patch X, Y = along patch Z.")]
+        public Vector2 cellSpacing = new(0.5f, 0.5f);
 
         [Range(0f, 1f)]
         [Tooltip("Random XZ offset per blade as a fraction of cellSpacing. 0 = perfect grid, 1 = max scatter.")]
@@ -43,10 +43,18 @@ namespace Snm.GrassSystem
         [Tooltip("Optional texture controlling density (R), rotation (G), scale (B) per cell. " +
                  "When assigned, grid size is derived from texture dimensions within the area.")]
         public Texture2D placementMap;
+
+        [Tooltip("Which placement map channel controls density. 0=R, 1=G, 2=B, 3=A.")]
+        [Range(0, 3)]
+        public int densityChannel;
+
         [Range(0f, 1f)]
         public float densityThreshold = 0.1f;
 
         [Header("Terrain Height Snapping")]
+        [Tooltip("When enabled, raycasts downward per blade and snaps Y to the hit surface. When disabled, blades sit at the patch's local Y plane.")]
+        public bool snapToTerrain = true;
+
         [Tooltip("Layer mask for terrain raycast. Only surfaces on these layers will receive grass.")]
         public LayerMask raycastMask = ~0;
 
@@ -67,8 +75,8 @@ namespace Snm.GrassSystem
             float halfX = areaSize.x * 0.5f;
             float halfZ = areaSize.y * 0.5f;
 
-            int countX = Mathf.Max(1, Mathf.FloorToInt(areaSize.x / cellSpacing));
-            int countZ = Mathf.Max(1, Mathf.FloorToInt(areaSize.y / cellSpacing));
+            int countX = Mathf.Max(1, Mathf.FloorToInt(areaSize.x / cellSpacing.x));
+            int countZ = Mathf.Max(1, Mathf.FloorToInt(areaSize.y / cellSpacing.y));
 
             Color32[] pixels = null;
             int texW = 0, texH = 0;
@@ -88,13 +96,14 @@ namespace Snm.GrassSystem
                 for (int x = 0; x < countX; x++)
                 {
                     // Grid position in local space (centered on patch)
-                    float localX = -halfX + (x + 0.5f) * cellSpacing;
-                    float localZ = -halfZ + (z + 0.5f) * cellSpacing;
+                    float localX = -halfX + (x + 0.5f) * cellSpacing.x;
+                    float localZ = -halfZ + (z + 0.5f) * cellSpacing.y;
 
                     // Jitter
-                    float jitterRange = cellSpacing * jitter * 0.5f;
-                    localX += (float)(rng.NextDouble() * 2.0 - 1.0) * jitterRange;
-                    localZ += (float)(rng.NextDouble() * 2.0 - 1.0) * jitterRange;
+                    float jitterRangeX = cellSpacing.x * jitter * 0.5f;
+                    float jitterRangeZ = cellSpacing.y * jitter * 0.5f;
+                    localX += (float)(rng.NextDouble() * 2.0 - 1.0) * jitterRangeX;
+                    localZ += (float)(rng.NextDouble() * 2.0 - 1.0) * jitterRangeZ;
 
                     // Placement map sampling
                     float density = 1f;
@@ -109,23 +118,25 @@ namespace Snm.GrassSystem
                         int pz = Mathf.Clamp(Mathf.FloorToInt(v * texH), 0, texH - 1);
                         var c = pixels[pz * texW + px];
 
-                        density = c.r / 255f;
+                        density = GetChannel(c, densityChannel);
                         if (density < densityThreshold) continue;
 
                         yawNorm = c.g / 255f;
                         scaleNorm = c.b / 255f;
                     }
 
-                    // Transform to world space (XZ only, Y comes from raycast)
+                    // Transform to world space
                     var localPos = new Vector3(localX, 0f, localZ);
                     var worldPos = patchTransform.TransformPoint(localPos);
 
-                    // Raycast down to snap to terrain
-                    var rayOrigin = worldPos + Vector3.up * raycastOriginHeight;
-                    if (!Physics.Raycast(rayOrigin, Vector3.down, out var hit, raycastMaxDistance, raycastMask))
-                        continue; // No terrain below — skip this blade
+                    if (snapToTerrain)
+                    {
+                        var rayOrigin = worldPos + Vector3.up * raycastOriginHeight;
+                        if (!Physics.Raycast(rayOrigin, Vector3.down, out var hit, raycastMaxDistance, raycastMask))
+                            continue; // No terrain below — skip this blade
 
-                    worldPos.y = hit.point.y;
+                        worldPos.y = hit.point.y;
+                    }
 
                     // Yaw rotation
                     float yaw;
@@ -148,6 +159,18 @@ namespace Snm.GrassSystem
             }
 
             return list.ToArray();
+        }
+
+        static float GetChannel(Color32 c, int channel)
+        {
+            return channel switch
+            {
+                0 => c.r / 255f,
+                1 => c.g / 255f,
+                2 => c.b / 255f,
+                3 => c.a / 255f,
+                _ => c.r / 255f
+            };
         }
 
 #if UNITY_EDITOR
@@ -175,10 +198,10 @@ namespace Snm.GrassSystem
             }
 
             // Estimated blade count label
-            if (cellSpacing > 0f)
+            if (cellSpacing.x > 0f && cellSpacing.y > 0f)
             {
-                int countX = Mathf.Max(1, Mathf.FloorToInt(areaSize.x / cellSpacing));
-                int countZ = Mathf.Max(1, Mathf.FloorToInt(areaSize.y / cellSpacing));
+                int countX = Mathf.Max(1, Mathf.FloorToInt(areaSize.x / cellSpacing.x));
+                int countZ = Mathf.Max(1, Mathf.FloorToInt(areaSize.y / cellSpacing.y));
 #if UNITY_EDITOR
                 UnityEditor.Handles.color = Color.white;
                 UnityEditor.Handles.Label(center + Vector3.up * 0.5f,

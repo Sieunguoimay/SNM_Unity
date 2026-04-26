@@ -10,21 +10,23 @@ namespace Snm.GrassSystem
         readonly Plane[] _frustumPlanes = new Plane[6];
         readonly Dictionary<GrassRenderer, Matrix4x4[]> _tempBuffers = new();
 
+        Camera _camera;
+
         public FrustumCullingFeature(List<GrassRenderer> renderers, float margin)
         {
             _renderers = renderers;
             _margin = margin;
 
             foreach (var r in renderers)
-                _tempBuffers[r] = new Matrix4x4[r.AllMatrices.Length];
+                _tempBuffers[r] = new Matrix4x4[r.AllMatrices.Count];
         }
 
         public void OnUpdate(float deltaTime)
         {
-            var cam = Camera.main;
-            if (cam == null) return;
+            if (_camera == null) _camera = Camera.main;
+            if (_camera == null) return;
 
-            GeometryUtility.CalculateFrustumPlanes(cam, _frustumPlanes);
+            GeometryUtility.CalculateFrustumPlanes(_camera, _frustumPlanes);
 
             foreach (var renderer in _renderers)
             {
@@ -32,11 +34,12 @@ namespace Snm.GrassSystem
                 var temp = _tempBuffers[renderer];
                 int visibleCount = 0;
 
-                for (int i = 0; i < allMatrices.Length; i++)
+                for (int i = 0; i < allMatrices.Count; i++)
                 {
-                    var pos = new Vector3(allMatrices[i].m03, allMatrices[i].m13, allMatrices[i].m23);
+                    var m = allMatrices[i];
+                    var pos = new Vector3(m.m03, m.m13, m.m23);
                     if (IsPointInFrustum(pos, _margin))
-                        temp[visibleCount++] = allMatrices[i];
+                        temp[visibleCount++] = m;
                 }
 
                 renderer.UpdateVisibleInstances(temp, visibleCount);
