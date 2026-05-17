@@ -10,7 +10,6 @@ namespace Snm.Graphics3D.GPUSkinning
     public class BakedAnimationPlayer
     {
         private readonly List<AnimationInfo> _animInfoList;
-        private readonly AnimationInfo.ComparerHash _comparer = new();
 
         private float _curFrame;
         private float _preAniFrame;
@@ -76,10 +75,10 @@ namespace Snm.Graphics3D.GPUSkinning
 
         public void Play(string animName)
         {
-            int hash = animName.GetHashCode();
-            _comparer.CompareTarget.animationNameHash = hash;
-            int index = _animInfoList.BinarySearch(_comparer.CompareTarget, _comparer);
-            Play(index);
+            // Linear search by name — the bake side stores the Animator-state nameHash, which is
+            // Animator.StringToHash(state.name), not string.GetHashCode(animName), so the earlier
+            // BinarySearch path returned garbage indices for anything but accidental collisions.
+            Play(FindAnimationIndex(animName));
         }
 
         public void Play(int animationIndex)
@@ -102,10 +101,17 @@ namespace Snm.Graphics3D.GPUSkinning
 
         public void CrossFade(string animName, float duration)
         {
-            int hash = animName.GetHashCode();
-            _comparer.CompareTarget.animationNameHash = hash;
-            int index = _animInfoList.BinarySearch(_comparer.CompareTarget, _comparer);
-            CrossFade(index, duration);
+            CrossFade(FindAnimationIndex(animName), duration);
+        }
+
+        private int FindAnimationIndex(string animName)
+        {
+            if (_animInfoList == null || string.IsNullOrEmpty(animName)) return -1;
+            for (int i = 0; i < _animInfoList.Count; i++)
+            {
+                if (_animInfoList[i].animationName == animName) return i;
+            }
+            return -1;
         }
 
         public void CrossFade(int animationIndex, float duration)

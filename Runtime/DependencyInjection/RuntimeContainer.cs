@@ -31,6 +31,15 @@ namespace Snm.DependencyInjection
         public T Resolve<T>(string id = null)
             where T : class
         {
+            // Implicit self-binding: every container resolves IScope/IResolver to itself.
+            // Avoids the closure-capture race where a factory tries to return a scope reference
+            // that hasn't been assigned yet (during container construction).
+            if (id == null)
+            {
+                if (typeof(T) == typeof(IScope)) return (T)(object)this;
+                if (typeof(T) == typeof(IResolver)) return (T)(object)this;
+            }
+
             var binding = GetBinding(typeof(T), id);
 
             var instance = (T)ResolveBinding(binding);
@@ -99,10 +108,8 @@ namespace Snm.DependencyInjection
             var builder = new ContainerBuilder();
             configure(builder);
 
-            RuntimeContainer scope = null;
-            builder.Bind<IScope>().ToFactory(_ => scope).AsScoped();
-
-            scope = builder.Build(this);
+            // IScope/IResolver are resolved implicitly by RuntimeContainer.Resolve — no explicit binding needed.
+            var scope = builder.Build(this);
 
             children.Add(scope);
             return scope;

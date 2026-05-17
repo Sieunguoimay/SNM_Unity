@@ -31,7 +31,12 @@ namespace Snm.Tools.GraphPresentation
             if (target == null)
                 return;
 
+            // Cycle guard: if target is already in nodes, we've recursed through it before.
+            // Without this, any prefab/SO with a back-reference stack-overflows.
+            bool alreadyVisited = nodes.ContainsKey(target);
             var node = TryGetNode(target, nodes);
+            if (alreadyVisited)
+                return;
 
             foreach (var a in AssetReferenceExtractor.FindAssetsReferencedBy(target))
             {

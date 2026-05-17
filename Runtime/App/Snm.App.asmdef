@@ -2,7 +2,6 @@
     "name": "GrabAndToss.App",
     "rootNamespace": "",
     "references": [
-        "GUID:00db088c75278074db53ad124dba7331",
         "GUID:b8cbe0a282195344da4c1f299dcc12c4",
         "GUID:9e0dfe08b78ffcf41a3774b4b82afd08"
     ],

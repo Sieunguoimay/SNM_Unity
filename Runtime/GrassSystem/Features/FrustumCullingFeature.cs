@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Snm.Runtime.Foundation;
 using UnityEngine;
 
 namespace Snm.GrassSystem
@@ -9,13 +10,13 @@ namespace Snm.GrassSystem
         readonly float _margin;
         readonly Plane[] _frustumPlanes = new Plane[6];
         readonly Dictionary<GrassRenderer, Matrix4x4[]> _tempBuffers = new();
+        readonly IMainCameraProvider _cameraProvider;
 
-        Camera _camera;
-
-        public FrustumCullingFeature(List<GrassRenderer> renderers, float margin)
+        public FrustumCullingFeature(List<GrassRenderer> renderers, float margin, IMainCameraProvider cameraProvider)
         {
             _renderers = renderers;
             _margin = margin;
+            _cameraProvider = cameraProvider ?? MainCameraProvider.Default;
 
             foreach (var r in renderers)
                 _tempBuffers[r] = new Matrix4x4[r.AllMatrices.Count];
@@ -23,10 +24,10 @@ namespace Snm.GrassSystem
 
         public void OnUpdate(float deltaTime)
         {
-            if (_camera == null) _camera = Camera.main;
-            if (_camera == null) return;
+            var camera = _cameraProvider.Current;
+            if (camera == null) return;
 
-            GeometryUtility.CalculateFrustumPlanes(_camera, _frustumPlanes);
+            GeometryUtility.CalculateFrustumPlanes(camera, _frustumPlanes);
 
             foreach (var renderer in _renderers)
             {

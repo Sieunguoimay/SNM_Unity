@@ -116,7 +116,7 @@ namespace Snm.GrassSystem
                 composite.Add(new RecoverySpringFeature(ctx));
 
             if (config.frustumCulling.enabled)
-                composite.Add(new FrustumCullingFeature(renderers, config.frustumCulling.margin));
+                composite.Add(new FrustumCullingFeature(renderers, config.frustumCulling.margin, ctx.MainCameraProvider));
 
             // Render must be last — all features update before draw
             foreach (var r in renderers)

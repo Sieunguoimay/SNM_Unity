@@ -102,7 +102,10 @@ namespace Snm.WaterSystem.Wave
 
                     float worldDist = Vector3.Distance(disturber.WorldPosition, state.lastPosition);
                     float speed = disturber.WorldVelocity.magnitude;
-                    float speedT = Mathf.Clamp01((speed - _config.wakeMinSpeed) / (_config.wakeMaxSpeed - _config.wakeMinSpeed));
+                    float speedRange = _config.wakeMaxSpeed - _config.wakeMinSpeed;
+                    float speedT = speedRange > 0f
+                        ? Mathf.Clamp01((speed - _config.wakeMinSpeed) / speedRange)
+                        : (speed >= _config.wakeMinSpeed ? 1f : 0f);
                     float curveT = _config.wakeSpeedCurve.Evaluate(speedT);
                     float stepThreshold = Mathf.Lerp(_config.wakeSpacingAtMinSpeed, _config.wakeSpacingAtFullSpeed, curveT);
 

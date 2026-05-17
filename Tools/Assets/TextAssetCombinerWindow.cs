@@ -1,10 +1,11 @@
-#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
 
+namespace Snm.Tools
+{
 public class TextAssetCombinerWindow : EditorWindow
 {
     // ── Data ───────────────────────────────────────────────────────────────
@@ -365,4 +366,4 @@ public class TextAssetCombinerWindow : EditorWindow
         return n;
     }
 }
-#endif
+}

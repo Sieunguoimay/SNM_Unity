@@ -9,7 +9,7 @@ namespace Snm.Tools.InspectorExtensions
 {
     public class InspectorWindowTracker
     {
-        private EditorWindow[] _inspectorWindows;
+        private EditorWindow[] _inspectorWindows = Array.Empty<EditorWindow>();
 
         public IReadOnlyList<EditorWindow> InspectorWindows => _inspectorWindows;
         public event Action<InspectorWindowTracker> OnInspectorWindowsChanged;

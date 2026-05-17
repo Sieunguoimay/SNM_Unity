@@ -72,6 +72,15 @@ namespace Snm.WaterSystem.Wave
 
         public void Dispose()
         {
+            // Display owns its blit material; dispose before simulation so any
+            // shader references the display still holds are released first.
+            display?.Dispose();
+
+            // Simulation owns the sim material + ping-pong RTs + stamp buffer
+            // (StampTextureBuffer is also referenced by the controller field,
+            // but WaveSimulationPass.Dispose is the single owner — see Factory).
+            simulation?.Dispose();
+
             if (displayTexture != null)
             {
                 displayTexture.Release();

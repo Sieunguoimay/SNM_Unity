@@ -14,6 +14,10 @@ namespace Snm.Runtime.DebugDraw
         private readonly Queue<LineRenderer> _linePool = new();
         private readonly Queue<MeshSlot>     _meshPool = new();
 
+        // Tracks every mesh slot ever created so Dispose can also destroy the
+        // per-slot materials of currently-leased (active) slots, not just pooled ones.
+        private readonly List<MeshSlot>      _allMeshSlots = new();
+
         // Unit meshes — each shape is scaled via transform at draw time
         private readonly Mesh _sphere;
         private readonly Mesh _box;
@@ -216,7 +220,9 @@ namespace Snm.Runtime.DebugDraw
             r.material          = new Material(_mat) {  };
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             r.receiveShadows    = false;
-            return new MeshSlot(go, f, r);
+            var slot = new MeshSlot(go, f, r);
+            _allMeshSlots.Add(slot);
+            return slot;
         }
 
         // ── Unit mesh builders ────────────────────────────────────────────────
@@ -316,18 +322,21 @@ namespace Snm.Runtime.DebugDraw
 
         public void Dispose()
         {
-            // Destroy per-slot instance materials (use sharedMaterial to avoid
-            // creating a new instance — .material leaks in edit mode)
-            while (_meshPool.Count > 0)
+            // Destroy per-slot instance materials for EVERY slot ever created —
+            // both pooled and currently-leased (active) — otherwise outstanding
+            // DrawHandles' materials leak on system shutdown.
+            // Use sharedMaterial to avoid creating a new instance via .material.
+            foreach (var slot in _allMeshSlots)
             {
-                var slot = _meshPool.Dequeue();
                 if (slot.Renderer)
                 {
                     var mat = slot.Renderer.sharedMaterial;
                     slot.Renderer.sharedMaterial = null;
-                    UnityEngineUtility.DestroyObject(mat);
+                    if (mat) UnityEngineUtility.DestroyObject(mat);
                 }
             }
+            _allMeshSlots.Clear();
+            _meshPool.Clear();
 
             if (_root) UnityEngineUtility.DestroyObject(_root);
             if (_mat)  UnityEngineUtility.DestroyObject(_mat);

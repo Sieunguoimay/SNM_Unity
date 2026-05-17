@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Snm.Runtime.Foundation;
 using UnityEngine;
 
 namespace Snm.Graphics3D.GPUSkinning
@@ -11,6 +12,20 @@ namespace Snm.Graphics3D.GPUSkinning
     [ExecuteInEditMode]
     public partial class GPUSkinRendererMB : MonoBehaviour
     {
+        IMainCameraProvider _cameraProvider;
+
+        /// <summary>
+        /// Inject a camera provider to avoid calling <see cref="Camera.main"/> directly
+        /// every frame. If not set, falls back to <see cref="MainCameraProvider.Default"/>.
+        /// Pragmatic compromise: MonoBehaviours have no constructor DI seam.
+        /// </summary>
+        public void SetMainCameraProvider(IMainCameraProvider provider)
+        {
+            _cameraProvider = provider;
+        }
+
+        IMainCameraProvider CameraProvider => _cameraProvider ??= MainCameraProvider.Default;
+
         [SerializeField] private Mesh mesh;
         [SerializeField] private SkeletonAsset skeleton;
         [SerializeField] private Material material;
@@ -92,8 +107,9 @@ namespace Snm.Graphics3D.GPUSkinning
 
         private bool IsVisible()
         {
-            if (Camera.main == null) return true;
-            var planes = GeometryUtility.CalculateFrustumPlanes(Camera.main);
+            var cam = CameraProvider.Current;
+            if (cam == null) return true;
+            var planes = GeometryUtility.CalculateFrustumPlanes(cam);
             var worldBounds = TransformBounds(_localBounds);
             return GeometryUtility.TestPlanesAABB(planes, worldBounds);
         }

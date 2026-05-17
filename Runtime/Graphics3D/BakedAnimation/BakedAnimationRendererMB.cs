@@ -92,12 +92,25 @@ namespace Snm.Graphics3D.GPUSkinning
         private static Dictionary<long, Material> SharedMaterials = new();
         private static Dictionary<long, int> SharedMaterialRefCounts = new();
         private long _materialKey;
+        private bool _holdsMaterialRef;
+
+        // --- Shared runtime-mesh pool ---
+        // The runtime mesh has the source mesh's bone weights packed into UV1/UV2; that data
+        // depends only on the source mesh, not on the instance. Sharing one runtime mesh per
+        // source mesh is what makes DrawMeshInstanced actually batch — per-instance clones
+        // produced one bucket per character in GPUSkinInstanceBatcher.
+        private static Dictionary<Mesh, Mesh> SharedRuntimeMeshes = new();
+        private static Dictionary<Mesh, int> SharedRuntimeMeshRefCounts = new();
+        private Mesh _runtimeMeshKey;
+        private bool _holdsRuntimeMeshRef;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticPool()
         {
             SharedMaterials = new Dictionary<long, Material>();
             SharedMaterialRefCounts = new Dictionary<long, int>();
+            SharedRuntimeMeshes = new Dictionary<Mesh, Mesh>();
+            SharedRuntimeMeshRefCounts = new Dictionary<Mesh, int>();
         }
 
         private void OnEnable()
@@ -121,9 +134,7 @@ namespace Snm.Graphics3D.GPUSkinning
         {
             if (mesh == null || material == null || bakedData == null) return;
 
-            _runtimeMesh = Instantiate(mesh);
-            _runtimeMesh.name = mesh.name + "_BakedRuntime";
-            UploadBoneWeightsToUV(_runtimeMesh);
+            _runtimeMesh = GetOrRetainSharedRuntimeMesh(mesh);
 
             _textureData = bakedData.animationTextureData;
             _runtimeMaterial = GetOrRetainSharedMaterial(material, bakedData, _textureData);
@@ -135,10 +146,19 @@ namespace Snm.Graphics3D.GPUSkinning
 
         private void Cleanup()
         {
-            ReleaseSharedMaterial(_materialKey);
+            if (_holdsMaterialRef)
+            {
+                ReleaseSharedMaterial(_materialKey);
+                _holdsMaterialRef = false;
+            }
+            if (_holdsRuntimeMeshRef)
+            {
+                ReleaseSharedRuntimeMesh(_runtimeMeshKey);
+                _holdsRuntimeMeshRef = false;
+            }
             _runtimeMaterial = null;
+            _runtimeMesh = null;
             if (_overrideMaterial != null) { SafeDestroy(_overrideMaterial); _overrideMaterial = null; }
-            if (_runtimeMesh != null) { SafeDestroy(_runtimeMesh); _runtimeMesh = null; }
             _player = null;
             _propertyBlock = null;
             _bindposes = null;
@@ -377,6 +397,7 @@ namespace Snm.Graphics3D.GPUSkinning
             }
 
             SharedMaterialRefCounts[_materialKey]++;
+            _holdsMaterialRef = true;
             return mat;
         }
 
@@ -388,7 +409,7 @@ namespace Snm.Graphics3D.GPUSkinning
             if (SharedMaterialRefCounts[key] <= 0)
             {
                 if (SharedMaterials.TryGetValue(key, out var mat) && mat != null)
-                    DestroyImmediate(mat);
+                    SafeDestroy(mat);
                 SharedMaterials.Remove(key);
                 SharedMaterialRefCounts.Remove(key);
             }
@@ -399,6 +420,43 @@ namespace Snm.Graphics3D.GPUSkinning
             unchecked
             {
                 return ((long)baseMaterial.GetInstanceID() << 32) | (uint)data.GetInstanceID();
+            }
+        }
+
+        // =============================================
+        // Shared runtime-mesh management
+        // =============================================
+
+        private Mesh GetOrRetainSharedRuntimeMesh(Mesh sourceMesh)
+        {
+            _runtimeMeshKey = sourceMesh;
+
+            if (!SharedRuntimeMeshes.TryGetValue(_runtimeMeshKey, out var runtimeMesh) || runtimeMesh == null)
+            {
+                runtimeMesh = Instantiate(sourceMesh);
+                runtimeMesh.name = sourceMesh.name + "_BakedRuntime";
+                UploadBoneWeightsToUV(runtimeMesh);
+
+                SharedRuntimeMeshes[_runtimeMeshKey] = runtimeMesh;
+                SharedRuntimeMeshRefCounts[_runtimeMeshKey] = 0;
+            }
+
+            SharedRuntimeMeshRefCounts[_runtimeMeshKey]++;
+            _holdsRuntimeMeshRef = true;
+            return runtimeMesh;
+        }
+
+        private static void ReleaseSharedRuntimeMesh(Mesh key)
+        {
+            if (key == null || !SharedRuntimeMeshRefCounts.ContainsKey(key)) return;
+
+            SharedRuntimeMeshRefCounts[key]--;
+            if (SharedRuntimeMeshRefCounts[key] <= 0)
+            {
+                if (SharedRuntimeMeshes.TryGetValue(key, out var m) && m != null)
+                    SafeDestroy(m);
+                SharedRuntimeMeshes.Remove(key);
+                SharedRuntimeMeshRefCounts.Remove(key);
             }
         }
     }

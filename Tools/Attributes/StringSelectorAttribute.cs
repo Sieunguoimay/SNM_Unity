@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -38,21 +39,37 @@ namespace Snm.Tools
     {
         private static readonly BindingFlags flag = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
 
-        private string[] _strings;
-        private bool _valid;
-        private bool _firstTime = true;
+        // Unity reuses one drawer instance across sibling properties (e.g. array elements);
+        // per-instance fields would be stomped. Key all per-property state by propertyPath.
+        private sealed class State
+        {
+            public string[] Strings;
+            public bool Valid;
+            public bool FirstTime = true;
+            public object Target;
+            public MethodInfo MaskFunction;
+        }
+        private readonly Dictionary<string, State> _stateByPath = new();
         private StringSelectorAttribute _att;
-        private object _target;
-        public MethodInfo _maskFunction;
+
+        private State GetState(SerializedProperty property)
+        {
+            var path = property.propertyPath;
+            if (!_stateByPath.TryGetValue(path, out var s))
+            {
+                _att ??= attribute as StringSelectorAttribute;
+                s = new State();
+                s.Target = _att.IsPropertyInRootObject ? property.serializedObject.targetObject : GetDirectTargetObject(property);
+                s.MaskFunction = s.Target?.GetType().GetMethod(_att.MaskFunction, flag);
+                _stateByPath[path] = s;
+            }
+            return s;
+        }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            if (_att == null)
-            {
-                _att = attribute as StringSelectorAttribute;
-                _target = _att.IsPropertyInRootObject ? property.serializedObject.targetObject : GetDirectTargetObject(property);
-                _maskFunction = _target.GetType().GetMethod(_att.MaskFunction, flag);
-            }
+            _att ??= attribute as StringSelectorAttribute;
+            var s = GetState(property);
 
             EditorGUI.BeginProperty(position, label, property);
 
@@ -63,41 +80,33 @@ namespace Snm.Tools
                 position.width -= EditorGUIUtility.labelWidth;
             }
 
-            if (_firstTime)
+            if (s.FirstTime)
             {
-                _strings = GetStrings(property).ToArray();
-                _valid = _strings.Contains(property.stringValue);
+                s.Strings = GetStrings(property, s).ToArray();
+                s.Valid = s.Strings.Contains(property.stringValue);
             }
 
             var show = false;
 
             var color = GUI.color;
-            GUI.color = _valid ? color : Color.red;
+            GUI.color = s.Valid ? color : Color.red;
             position.width -= 25;
 
 
-            if (EditorGUI.DropdownButton(position, new GUIContent(Mask(property.stringValue)), FocusType.Passive))
+            if (EditorGUI.DropdownButton(position, new GUIContent(Mask(s, property.stringValue)), FocusType.Passive))
             {
-                if (_strings.Length < 20)
+                if (s.Strings.Length < 20)
                 {
-                    ShowGenericMenu(_strings, property.stringValue, newValue =>
+                    ShowGenericMenu(s, s.Strings, property.stringValue, newValue =>
                         {
                             property.serializedObject.Update();
                             property.stringValue = newValue;
                             property.serializedObject.ApplyModifiedProperties();
-                            _valid = _strings.Contains(property.stringValue);
+                            s.Valid = s.Strings.Contains(property.stringValue);
                         });
                 }
                 else
                 {
-                    // var newValue = EditorGUI.TextField(position, property.stringValue);
-                    // if (newValue != property.stringValue)
-                    // {
-                    //     property.serializedObject.Update();
-                    //     property.stringValue = newValue;
-                    //     property.serializedObject.ApplyModifiedProperties();
-                    //     _valid = _strings.Contains(property.stringValue);
-                    // }
                     show = true;
                 }
             }
@@ -110,28 +119,28 @@ namespace Snm.Tools
 
             if (show)
             {
-                SearchWindow.Show(_strings, result =>
+                SearchWindow.Show(s.Strings, result =>
             {
                 property.serializedObject.Update();
                 property.stringValue = result;
                 property.serializedObject.ApplyModifiedProperties();
-                _valid = _strings.Contains(property.stringValue);
+                s.Valid = s.Strings.Contains(property.stringValue);
             });
             }
-            _firstTime = false;
+            s.FirstTime = false;
         }
 
-        private string Mask(string value)
+        private string Mask(State s, string value)
         {
-            return _maskFunction != null
-                ? _maskFunction.Invoke(_target, new object[] { value }) as string
+            return s.MaskFunction != null
+                ? s.MaskFunction.Invoke(s.Target, new object[] { value }) as string
                 : value;
         }
 
-        private IEnumerable<string> GetStrings(SerializedProperty property)
+        private IEnumerable<string> GetStrings(SerializedProperty property, State s)
         {
             var att = attribute as StringSelectorAttribute;
-            var shouldCreateNewStrings = !att.ShouldCacheStrings || (att.ShouldCacheStrings && _strings == null);
+            var shouldCreateNewStrings = !att.ShouldCacheStrings || (att.ShouldCacheStrings && s.Strings == null);
 
             if (shouldCreateNewStrings)
             {
@@ -148,15 +157,15 @@ namespace Snm.Tools
                     };
                     var strings = (value as IEnumerable<string>) ?? Enumerable.Empty<string>();
 
-                    _strings = strings.ToArray();
+                    s.Strings = strings.ToArray();
                 }
                 catch (Exception)
                 {
-                    _strings = Array.Empty<string>();
+                    s.Strings = Array.Empty<string>();
                 }
             }
 
-            return _strings;
+            return s.Strings;
         }
 
         public static object GetDirectTargetObject(SerializedProperty property)
@@ -174,7 +183,11 @@ namespace Snm.Tools
                 {
                     if (int.TryParse(regex.Match(p).Groups[1].Value, out int arrIndex))
                     {
-                        currentObject = (currentObject as object[])[arrIndex];
+                        // Use IList so List<T> and T[] both work; original cast to object[] failed for List<T>.
+                        if (currentObject is IList list)
+                            currentObject = list[arrIndex];
+                        else
+                            return null;
                     }
                 }
                 else
@@ -199,12 +212,12 @@ namespace Snm.Tools
             return currentObject;
         }
 
-        private void ShowGenericMenu(IEnumerable<string> strings, string currentValue, System.Action<string> onNewValue)
+        private void ShowGenericMenu(State s, IEnumerable<string> strings, string currentValue, System.Action<string> onNewValue)
         {
             var menu = new GenericMenu();
             foreach (var i in strings)
             {
-                menu.AddItem(new GUIContent(Mask(i)), i == currentValue, () =>
+                menu.AddItem(new GUIContent(Mask(s, i)), i == currentValue, () =>
                 {
                     onNewValue?.Invoke(i);
                 });

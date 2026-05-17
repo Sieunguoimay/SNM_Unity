@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Snm.Runtime.Unity;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -26,7 +27,9 @@ namespace Snm.GrassSystem
         public void Setup(Mesh mesh, Material material, Matrix4x4[] matrices, Bounds worldBounds)
         {
             _mesh = mesh;
-            _material = new Material(material);
+            // HideAndDontSave keeps the editor from leaking this clone into the
+            // scene/asset graph during domain reloads. Dispose still tears it down.
+            _material = new Material(material) { hideFlags = HideFlags.HideAndDontSave };
             _worldBounds = worldBounds;
 
             int count = matrices.Length;
@@ -100,7 +103,9 @@ namespace Snm.GrassSystem
             _argsBuffer = null;
             if (_material != null)
             {
-                UnityEngine.Object.Destroy(_material);
+                // Use the editor-safe destroy helper — OnDisable/Rebuild runs
+                // in edit mode too, so plain Object.Destroy would silently leak.
+                UnityEngineUtility.DestroyObject(_material);
                 _material = null;
             }
         }

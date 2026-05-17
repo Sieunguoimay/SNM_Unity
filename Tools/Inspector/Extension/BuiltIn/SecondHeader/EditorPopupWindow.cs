@@ -12,6 +12,18 @@ namespace Snm.Tools.InspectorExtensions
     public class EditorPopupWindow : EditorWindow
     {
         [SerializeField] private Object target;
+        private Editor _editor;
+
+        private void OnDestroy()
+        {
+            // Editor.CreateEditor returns an instance that must be DestroyImmediate'd;
+            // otherwise the editor + its SerializedObject leak every time the popup closes.
+            if (_editor != null)
+            {
+                DestroyImmediate(_editor);
+                _editor = null;
+            }
+        }
 
         public static void Open(Object target)
         {
@@ -43,12 +55,20 @@ namespace Snm.Tools.InspectorExtensions
 
         private void UpdateVE()
         {
+            // Releasing the previous Editor before rebuilding — UpdateVE can run twice
+            // (Open() then CreateGUI()) and would otherwise orphan the first editor.
+            if (_editor != null)
+            {
+                DestroyImmediate(_editor);
+                _editor = null;
+            }
             rootVisualElement.Clear();
-            rootVisualElement.Add(CreateVE(target, this));
+            rootVisualElement.Add(CreateVE(target, this, out _editor));
         }
 
-        private static VisualElement CreateVE(Object target, EditorWindow window)
+        private static VisualElement CreateVE(Object target, EditorWindow window, out Editor editor)
         {
+            editor = null;
             var root = new VisualElement();
 
             if (target == null) return root;
@@ -59,7 +79,7 @@ namespace Snm.Tools.InspectorExtensions
             var button_Select = new Button(() => Selection.activeObject = target) { text = "Select" };
             var button_Close = new Button(window.Close) { text = "Close" };
 
-            var editor = Editor.CreateEditor(new[] { target });
+            editor = Editor.CreateEditor(new[] { target });
             var editorVE = new InspectorElement(editor) { name = $"editor-{target.name}", style = { marginLeft = 10f, marginRight = 5f, flexGrow = 1 }, };
 
             horizontal.Add(space);

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -22,33 +24,40 @@ namespace Snm.Tools
     [CustomPropertyDrawer(typeof(PropertyGUIAttribute))]
     public class PropertyGUIDrawer : PropertyDrawer
     {
+        // Unity reuses one drawer instance across sibling properties — key state by propertyPath.
+        // MethodInfo can be shared per-Type (not per-path) since siblings of an array share a type.
         private PropertyGUIAttribute _att;
-        private MethodInfo _methodInfo;
-        private object _target;
+        private readonly Dictionary<string, object> _targetByPath = new();
+        private readonly Dictionary<Type, MethodInfo> _methodByType = new();
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.PropertyField(position, property, label, true);
 
             _att ??= attribute as PropertyGUIAttribute;
-            _target ??= _att.IsPropertyInRootObject ? property.serializedObject.targetObject : SerializeUtility.GetObjectToWhichPropertyBelong(property);
-            if (_methodInfo == null)
+            var path = property.propertyPath;
+            if (!_targetByPath.TryGetValue(path, out var target))
             {
-                var t = _target.GetType();
+                target = _att.IsPropertyInRootObject
+                    ? property.serializedObject.targetObject
+                    : SerializeUtility.GetObjectToWhichPropertyBelong(property);
+                _targetByPath[path] = target;
+            }
+            if (target == null) return;
+
+            var targetType = target.GetType();
+            if (!_methodByType.TryGetValue(targetType, out var methodInfo))
+            {
+                var t = targetType;
                 while (t != null)
                 {
-                    _methodInfo = t.GetMethod(_att.MethodName, SerializeUtility.Flag);
-                    if (_methodInfo == null)
-                    {
-                        t = t.BaseType;
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    methodInfo = t.GetMethod(_att.MethodName, SerializeUtility.Flag);
+                    if (methodInfo != null) break;
+                    t = t.BaseType;
                 }
+                _methodByType[targetType] = methodInfo;
             }
-            _methodInfo?.Invoke(_target, null);
+            methodInfo?.Invoke(target, null);
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)

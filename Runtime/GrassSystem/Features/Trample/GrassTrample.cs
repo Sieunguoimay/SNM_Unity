@@ -38,6 +38,14 @@ namespace Snm.GrassSystem
 
         public void Setup(GrassSystemConfig grassConfig, SurfaceCanvas canvas)
         {
+            // Defensive: if Setup is called twice (re-bind), release the prior
+            // renderer/material/ping-pong instead of orphaning them.
+            if (_renderer != null)
+            {
+                _renderer.Dispose();
+                _renderer = null;
+            }
+
             var config = grassConfig.trample;
             _fadeSpeed = config.trampleFadeSpeed;
             _holdTime = Mathf.Max(config.trampleHoldTime, 0.001f);

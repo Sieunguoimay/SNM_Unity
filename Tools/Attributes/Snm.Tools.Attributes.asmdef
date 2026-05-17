@@ -1,10 +1,10 @@
 {
-    "name": "Snm.Tools",
+    "name": "Snm.Tools.Attributes",
     "rootNamespace": "",
-    "references": [],
-    "includePlatforms": [
-        "Editor"
+    "references": [
+        "GUID:00db088c75278074db53ad124dba7331"
     ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

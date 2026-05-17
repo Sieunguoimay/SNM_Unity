@@ -26,7 +26,12 @@ namespace Snm.CameraRig
             return new Bounds(center, size);
         }
 
-        public static Bounds BoundsWorldToNDC(Bounds worldBounds, Matrix4x4 camMatrix_VP)
+        /// <summary>
+        /// Project a world AABB into NDC space, computing the NDC bounds of its 8 corners.
+        /// Returns false when every corner is behind the camera (w &lt;= 0) — callers must skip
+        /// the result rather than treating an empty Bounds as origin-centered.
+        /// </summary>
+        public static bool TryBoundsWorldToNDC(Bounds worldBounds, Matrix4x4 camMatrix_VP, out Bounds ndcBounds)
         {
             // View-projection matrix: world -> clip
             var vp = camMatrix_VP;
@@ -46,7 +51,7 @@ namespace Snm.CameraRig
                 new(max.x, max.y, max.z),
             };
             var first = true;
-            var ndcBounds = new Bounds();
+            ndcBounds = new Bounds();
 
             for (int i = 0; i < 8; i++)
             {
@@ -71,7 +76,18 @@ namespace Snm.CameraRig
                 }
             }
 
-            return ndcBounds;
+            return !first;
+        }
+
+        /// <summary>
+        /// Legacy overload kept for back-compat; returns an empty Bounds when every corner is
+        /// behind the camera, which callers will accidentally treat as origin-centered.
+        /// Prefer <see cref="TryBoundsWorldToNDC"/>.
+        /// </summary>
+        public static Bounds BoundsWorldToNDC(Bounds worldBounds, Matrix4x4 camMatrix_VP)
+        {
+            TryBoundsWorldToNDC(worldBounds, camMatrix_VP, out var ndc);
+            return ndc;
         }
 
         public static Rect BoundsNDCToScreenRect(Bounds ndcBounds, Vector2Int screenPixelSize)
