@@ -10,8 +10,15 @@ namespace Snm.Tools.InspectorExtensions
         public static IEnumerable<UnityEngine.Object> GetSubAssets(UnityEngine.Object mainAsset)
         {
             var path = AssetDatabase.GetAssetPath(mainAsset);
-            var allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
-            return allAssets.Where(a => a != mainAsset && a is not UnityEngine.GameObject && a is not UnityEngine.Component);
+            try
+            {
+                var allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
+                return allAssets.Where(a => a != mainAsset && a is not UnityEngine.GameObject && a is not UnityEngine.Component);
+            }
+            catch
+            {
+                return Enumerable.Empty<UnityEngine.Object>();
+            }
         }
 
         public void RemoveSubAsset(UnityEngine.Object target)
