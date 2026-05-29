@@ -15,10 +15,8 @@ namespace Snm.Runtime.App.Hosting
                 module.Configure(builder);
             }
 
-            IScope rootScope = null;
-            builder.Bind<IScope>().ToFactory(_ => rootScope).AsScoped();
-
-            rootScope = builder.Build();
+            // IScope/IResolver are resolved implicitly by RuntimeContainer.Resolve — no explicit binding needed.
+            var rootScope = builder.Build();
 
             var lifecycle = rootScope.Resolver.Resolve<LifecycleService>();
 

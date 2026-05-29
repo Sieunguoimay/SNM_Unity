@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
+#pragma warning disable 618
+
 namespace Snm.GrassSystem
 {
     [RequireComponent(typeof(GrassSystem))]

@@ -16,6 +16,9 @@ namespace Snm.Tools
         static Dictionary<string, YamlAssetIndex.Entry>
             guidToEntry = new();
 
+        static Dictionary<string, List<YamlAssetIndex.Entry>>
+            reverseMap;
+
         public static IReadOnlyCollection<
             YamlAssetIndex.Entry> Entries
             => guidToEntry.Values;
@@ -34,6 +37,7 @@ namespace Snm.Tools
         public static void Load()
         {
             guidToEntry.Clear();
+            reverseMap = null;
 
             if (!File.Exists(IndexPath))
                 return;
@@ -100,11 +104,28 @@ namespace Snm.Tools
                 };
 
             guidToEntry[guid] = entry;
+            reverseMap = null;
         }
 
         public static void Remove(string guid)
         {
-            guidToEntry.Remove(guid);
+            if (guidToEntry.Remove(guid))
+                reverseMap = null;
+        }
+
+        public static IReadOnlyList<YamlAssetIndex.Entry>
+            GetIncomingReferences(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return System.Array.Empty<YamlAssetIndex.Entry>();
+
+            reverseMap ??=
+                YamlIndexQuery.BuildReverseReferenceMap();
+
+            return reverseMap.TryGetValue(guid, out var list)
+                ? list
+                : (IReadOnlyList<YamlAssetIndex.Entry>)
+                    System.Array.Empty<YamlAssetIndex.Entry>();
         }
 
         static bool IsYaml(string path)

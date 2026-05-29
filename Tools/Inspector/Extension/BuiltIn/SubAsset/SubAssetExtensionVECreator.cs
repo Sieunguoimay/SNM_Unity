@@ -97,11 +97,17 @@ namespace Snm.Tools.InspectorExtensions
 
             VisualElement top = new(), bottom = new(), left = new(), right = new();
             var zonesLifecycles = new List<AttachmentZonesLifecycle> { new(inspector, top, bottom, left, right) };
-            var editorLayouts = new[] { new EditorLayout(new(top, bottom, left, right), new[] { target }, new SerializedObject(target), inspector) };
+            var subAssetSO = new SerializedObject(target);
+            var editorLayouts = new[] { new EditorLayout(new(top, bottom, left, right), new[] { target }, subAssetSO, inspector) };
 
             var extensions = InspectorExtensionSystemInstaller.GetDefaultExtensionsToInstall().ToArray();
             var extensionRenderer = new InspectorExtensionRenderer(editorLayouts, new TypeBasedExtensionFilter());
             extensionRenderer.ApplyExtensions(extensions);
+
+            // Dispose the SerializedObject when the row is removed from the panel.
+            // The inspector framework rebuilds on every selection change; without this the SOs
+            // accumulate on the managed heap and pin their target Objects.
+            root.RegisterCallback<DetachFromPanelEvent>(_ => subAssetSO.Dispose());
 
             return root;
 

@@ -16,6 +16,8 @@ namespace Snm.Reactivity
         private readonly List<Action<T>> _listenerBuffer = new();
 
         private T _value;
+        private bool _isNotifying;
+        private bool _hasPendingNotify;
 
         public T Value
         {
@@ -55,18 +57,40 @@ namespace Snm.Reactivity
 
         private void NotifySubscribers()
         {
-            _notifyBuffer.Clear();
-            _notifyBuffer.AddRange(_subscribers);
-            foreach (var subscriber in _notifyBuffer)
+            // Re-entrant writes (a subscriber/listener sets this signal during its own notification)
+            // would otherwise clear the shared _notifyBuffer mid-iteration and corrupt the outer loop.
+            // Queue the re-entrant write and let the outer loop pick it up on the next pass.
+            if (_isNotifying)
             {
-                subscriber.Execute();
+                _hasPendingNotify = true;
+                return;
             }
 
-            _listenerBuffer.Clear();
-            _listenerBuffer.AddRange(_listeners);
-            foreach (var listener in _listenerBuffer)
+            _isNotifying = true;
+            try
             {
-                listener(_value);
+                do
+                {
+                    _hasPendingNotify = false;
+
+                    _notifyBuffer.Clear();
+                    _notifyBuffer.AddRange(_subscribers);
+                    foreach (var subscriber in _notifyBuffer)
+                    {
+                        subscriber.Execute();
+                    }
+
+                    _listenerBuffer.Clear();
+                    _listenerBuffer.AddRange(_listeners);
+                    foreach (var listener in _listenerBuffer)
+                    {
+                        listener(_value);
+                    }
+                } while (_hasPendingNotify);
+            }
+            finally
+            {
+                _isNotifying = false;
             }
         }
 

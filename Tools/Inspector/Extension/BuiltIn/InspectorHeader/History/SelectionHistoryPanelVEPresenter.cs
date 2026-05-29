@@ -167,52 +167,6 @@ namespace Snm.Tools.InspectorExtensions
                 });
             }
 
-            // Spacer
-            container.Add(new VisualElement { style = { flexGrow = 1 } });
-
-            // History menu button
-            var menuBtn = new Button(ShowMenu)
-            {
-                text = "\u2630",
-                tooltip = "History",
-                style =
-                {
-                    width = 24,
-                    marginLeft = 0, marginRight = 0,
-                    paddingLeft = 0, paddingRight = 0,
-                    fontSize = 12,
-                    unityTextAlign = TextAnchor.MiddleCenter,
-                }
-            };
-            container.Add(menuBtn);
-        }
-
-        private void ShowMenu()
-        {
-            var menu = new GenericMenu();
-            menu.AddItem(new GUIContent("View All History"), false, OpenSearchWindow);
-            menu.AddItem(new GUIContent("Clear History"), false, tracker.ClearHistory);
-            menu.ShowAsContext();
-        }
-
-        private void OpenSearchWindow()
-        {
-            var history = tracker.History;
-            var dic = new System.Collections.Generic.Dictionary<string, int>();
-
-            for (int i = history.Count - 1; i >= 0; i--)
-            {
-                var obj = history[i];
-                if (obj == null) continue;
-                var key = $"{obj.name} ({obj.GetType().Name})";
-                if (!dic.ContainsKey(key))
-                    dic[key] = i;
-            }
-
-            SearchWindow.Show(dic.Keys, str =>
-            {
-                tracker.NavigateTo(dic[str]);
-            });
         }
     }
 }

@@ -1,5 +1,4 @@
 using System;
-using Snm.Runtime.Unity;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -74,6 +73,7 @@ namespace Snm.Runtime.DebugDraw
             _tmp.color = color;
             _tmp.fontSize = fontSize;
             _barBg.gameObject.SetActive(showBar);
+            if (rootGo) rootGo.SetActive(true);
             Canvas.enabled = true;
 
             Refresh();
@@ -133,7 +133,7 @@ namespace Snm.Runtime.DebugDraw
         {
             IsActive = false;
             if (Canvas) Canvas.enabled = false;
-            _tmp.text = string.Empty;
+            if (_tmp) _tmp.text = string.Empty;
             _target = null;
             _textGetter = null;
             _barCurrent = null;
@@ -141,7 +141,10 @@ namespace Snm.Runtime.DebugDraw
             var ret = _onReturn;
             _onReturn = null;
 
-            if (rootGo) UnityEngineUtility.DestroyObject(rootGo);
+            // Deactivate (don't destroy) — handle is recycled by LabelDrawer pool.
+            // The pooled GameObjects live under LabelDrawer._root and are destroyed wholesale
+            // when LabelDrawer itself is disposed.
+            if (rootGo) rootGo.SetActive(false);
 
             ret?.Invoke();
         }

@@ -2,6 +2,8 @@
 using UnityEditor;
 using UnityEngine;
 
+#pragma warning disable 618
+
 namespace Snm.GrassSystem.Editor
 {
     public class GrassSystemWindow : EditorWindow

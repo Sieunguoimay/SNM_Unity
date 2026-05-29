@@ -6,22 +6,33 @@ namespace Snm.GrassSystem
     {
         readonly GrassFeatureContext _ctx;
 
+        bool _applied;
+        float _lastStrength;
+        float _lastPower;
+
         public AmbientOcclusionFeature(GrassFeatureContext ctx)
         {
             _ctx = ctx;
-            BindConfig();
+            BindIfDirty();
         }
 
         public void OnUpdate(float deltaTime)
         {
-            BindConfig();
+            BindIfDirty();
         }
 
         public void Dispose() { }
 
-        void BindConfig()
+        void BindIfDirty()
         {
             var config = _ctx.Config.ambientOcclusion;
+            if (_applied && _lastStrength == config.strength && _lastPower == config.power)
+                return;
+
+            _lastStrength = config.strength;
+            _lastPower = config.power;
+            _applied = true;
+
             foreach (var mat in _ctx.AllMaterials)
             {
                 mat.SetFloat(ShaderIDs.AOStrength, config.strength);

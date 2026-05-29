@@ -25,20 +25,13 @@ namespace Snm.Tools.InspectorExtensions
 
         public static void OpenFindReferencesInScene(Object target)
         {
-            var window = EditorWindow.GetWindow<SceneReferenceFinderWindow>();
-            window.target = target;
-            window.Show();
-            window.FindReferences();
+            ReferenceFinderWindow.OpenForScene(target);
         }
 
         public static void FindRefrencesInProject(Object target)
         {
-            var window = EditorWindow.GetWindow<AssetReferenceFinderWindow>("Reference Finder");
-            window.targetRoots.Add(target);
-            window.searchRoots.Add(AssetDatabase.LoadAssetAtPath<Object>("Assets"));
-            window.Show();
+            ReferenceFinderWindow.OpenForProject(target);
         }
     }
-
 }
 #endif

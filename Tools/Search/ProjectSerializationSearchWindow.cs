@@ -19,18 +19,27 @@ namespace Snm.Tools.Finders
             EmptyString
         }
 
+        const int MaxResults = 1000;
+        const int ProgressUpdateEvery = 50;
+
+        // Built-in resources and the null reference both have GUIDs whose first
+        // 16 hex chars are zero. Real project assets are 128-bit random and
+        // effectively never collide with this prefix.
+        const string BuiltInOrNullGuidPrefix = "0000000000000000";
 
         [SerializeField] string searchText;
         [SerializeField] bool regex;
         [SerializeField] bool caseSensitive;
         [SerializeField] UnityEngine.Object[] targets;
+        [SerializeField] Mode _mode;
 
-        Mode _mode;
         Vector2 _scroll;
+        bool truncated;
 
         struct Result
         {
             public string path;
+            public int lineNumber;
             public string preview;
         }
 
@@ -41,8 +50,20 @@ namespace Snm.Tools.Finders
         {
             var window = GetWindow<ProjectSerializationSearchWindow>();
             window.titleContent = new GUIContent("Serialization Search");
-            window.targets = new[] { AssetDatabase.LoadAssetAtPath<UnityEngine.Object>("Assets") };
             window.Show();
+        }
+
+        void OnEnable()
+        {
+            // Seed scope only when nothing is persisted, so reopening the window
+            // doesn't trample whatever the user last selected.
+            if (targets == null || targets.Length == 0)
+            {
+                targets = new[]
+                {
+                    AssetDatabase.LoadAssetAtPath<UnityEngine.Object>("Assets")
+                };
+            }
         }
 
         void OnGUI()
@@ -57,7 +78,6 @@ namespace Snm.Tools.Finders
 
             if (ModeNeedsSearchText())
             {
-
                 regex =
                     EditorGUILayout.Toggle("Regex", regex);
 
@@ -66,10 +86,29 @@ namespace Snm.Tools.Finders
 
                 searchText =
                     EditorGUILayout.TextField("Search", searchText);
-
             }
-            if (GUILayout.Button("Search"))
-                ExecuteSearch();
+
+            bool needsText = ModeNeedsSearchText();
+            bool canSearch = !needsText || !string.IsNullOrEmpty(searchText);
+
+            EditorGUILayout.BeginHorizontal();
+            using (new EditorGUI.DisabledScope(!canSearch))
+            {
+                if (GUILayout.Button("Search"))
+                    ExecuteSearch();
+            }
+            if (GUILayout.Button("Rebuild Index", GUILayout.Width(120)))
+            {
+                YamlIndexerBuilder.Rebuild();
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (needsText && string.IsNullOrEmpty(searchText))
+            {
+                EditorGUILayout.HelpBox(
+                    "Enter search text to run.",
+                    MessageType.Info);
+            }
 
             DrawResults();
         }
@@ -91,66 +130,74 @@ namespace Snm.Tools.Finders
         void ExecuteSearch()
         {
             results.Clear();
+            truncated = false;
 
             YamlIndexDatabase.EnsureIndexReady();
 
-            foreach (var entry in YamlIndexDatabase.Entries)
+            var matcher = BuildLineMatcher();
+            if (matcher == null)
+                return;
+
+            BuildScope(out var fileScope, out var folderScope);
+            bool hasScope = fileScope.Count > 0 || folderScope.Count > 0;
+
+            // Snapshot so the count is stable for the progress bar even if the
+            // index mutates underneath us mid-scan.
+            var entries = new List<YamlAssetIndex.Entry>(YamlIndexDatabase.Entries);
+            int total = entries.Count;
+            bool cancelled = false;
+
+            try
             {
-                foreach (var line in entry.lines)
+                for (int i = 0; i < total; i++)
                 {
-                    if (MatchLine(line))
+                    if (i % ProgressUpdateEvery == 0)
                     {
+                        if (EditorUtility.DisplayCancelableProgressBar(
+                            "Serialization Search",
+                            $"Scanning {i}/{total}",
+                            i / (float)total))
+                        {
+                            cancelled = true;
+                            break;
+                        }
+                    }
+
+                    var entry = entries[i];
+                    if (hasScope && !InScope(entry.path, fileScope, folderScope))
+                        continue;
+
+                    for (int lineIdx = 0; lineIdx < entry.lines.Length; lineIdx++)
+                    {
+                        var line = entry.lines[lineIdx];
+                        if (!matcher(line)) continue;
+
                         results.Add(new Result
                         {
                             path = entry.path,
+                            lineNumber = lineIdx + 1,
                             preview = line.Trim()
                         });
+
+                        if (results.Count >= MaxResults)
+                        {
+                            truncated = true;
+                            break;
+                        }
                     }
+
+                    if (truncated) break;
                 }
             }
-            // foreach (var path in GetScopePaths())
-            // {
-            //     var full =
-            //         Path.Combine(Application.dataPath,
-            //         path["Assets/".Length..]);
-
-            //     if (!File.Exists(full))
-            //         continue;
-
-            //     var lines = File.ReadAllLines(full);
-
-            //     for (int i = 0; i < lines.Length; i++)
-            //     {
-            //         if (MatchLine(lines[i]))
-            //         {
-            //             results.Add(new Result
-            //             {
-            //                 path = path,
-            //                 preview = lines[i].Trim()
-            //             });
-            //         }
-            //     }
-            // }
-        }
-
-        bool MatchLine(string line)
-        {
-            switch (_mode)
+            finally
             {
-                case Mode.String:
-                    return Match(line, searchText);
-
-                case Mode.FieldName:
-                    return Match(line, searchText + ":");
-
-                case Mode.EmptyString:
-                    return Regex.IsMatch(line, @":\s*""""");
-
-                case Mode.MissingReferences:
-                    return IsMissingReference(line);
+                EditorUtility.ClearProgressBar();
             }
 
-            return false;
+            if (cancelled)
+            {
+                Debug.Log($"Serialization Search cancelled after scanning entries; partial results: {results.Count}");
+            }
         }
 
         bool ModeNeedsSearchText()
@@ -163,76 +210,112 @@ namespace Snm.Tools.Finders
             };
         }
 
-        bool Match(string source, string value)
+        Func<string, bool> BuildLineMatcher()
         {
+            switch (_mode)
+            {
+                case Mode.String:
+                    return BuildTextMatcher(searchText);
+
+                case Mode.FieldName:
+                    return BuildTextMatcher(searchText + ":");
+
+                case Mode.EmptyString:
+                    var emptyRegex = new Regex(@":\s*""""", RegexOptions.Compiled);
+                    return emptyRegex.IsMatch;
+
+                case Mode.MissingReferences:
+                    var guidRegex = new Regex(@"guid:\s*([a-fA-F0-9]{32})", RegexOptions.Compiled);
+                    return line =>
+                    {
+                        var m = guidRegex.Match(line);
+                        if (!m.Success) return false;
+
+                        var guid = m.Groups[1].Value;
+
+                        // Skip Unity's null sentinel and built-in resource GUIDs —
+                        // they legitimately resolve to empty paths and would otherwise
+                        // flood results with false positives.
+                        if (guid.StartsWith(BuiltInOrNullGuidPrefix, StringComparison.Ordinal))
+                            return false;
+
+                        return string.IsNullOrEmpty(
+                            AssetDatabase.GUIDToAssetPath(guid));
+                    };
+            }
+
+            return null;
+        }
+
+        Func<string, bool> BuildTextMatcher(string needle)
+        {
+            if (string.IsNullOrEmpty(needle))
+                return _ => false;
+
             if (regex)
             {
                 var r = new Regex(
-                    value,
-                    caseSensitive
-                        ? RegexOptions.None
-                        : RegexOptions.IgnoreCase);
+                    needle,
+                    RegexOptions.Compiled |
+                    (caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase));
 
-                return r.IsMatch(source);
+                return r.IsMatch;
             }
 
-            return caseSensitive
-                ? source.Contains(value)
-                : source.IndexOf(
-                    value,
-                    StringComparison.OrdinalIgnoreCase) >= 0;
+            if (caseSensitive)
+                return line => line.Contains(needle);
+
+            return line => line.IndexOf(
+                needle,
+                StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        bool IsMissingReference(string line)
+        void BuildScope(out HashSet<string> files, out List<string> folders)
         {
-            var match =
-                Regex.Match(line,
-                @"guid:\s*([a-fA-F0-9]{32})");
+            files = new HashSet<string>();
+            folders = new List<string>();
 
-            if (!match.Success)
-                return false;
-
-            var guid = match.Groups[1].Value;
-
-            return string.IsNullOrEmpty(
-                AssetDatabase.GUIDToAssetPath(guid));
-        }
-
-        IEnumerable<string> GetScopePaths()
-        {
-            if (targets == null ||
-                targets.Length == 0)
-            {
-                foreach (var guid in AssetDatabase.FindAssets(""))
-                {
-                    yield return AssetDatabase.GUIDToAssetPath(guid);
-                }
-            }
+            if (targets == null)
+                return;
 
             foreach (var obj in targets)
             {
-                var path =
-                    AssetDatabase.GetAssetPath(obj);
+                if (obj == null) continue;
+
+                var path = AssetDatabase.GetAssetPath(obj);
+                if (string.IsNullOrEmpty(path)) continue;
 
                 if (Directory.Exists(path))
-                {
-                    foreach (var g in
-                        AssetDatabase.FindAssets("", new[] { path }))
-                    {
-                        yield return
-                            AssetDatabase.GUIDToAssetPath(g);
-                    }
-                }
+                    folders.Add(path);
                 else
-                    yield return path;
+                    files.Add(path);
             }
+        }
+
+        static bool InScope(string entryPath, HashSet<string> files, List<string> folders)
+        {
+            if (files.Contains(entryPath))
+                return true;
+
+            foreach (var folder in folders)
+            {
+                if (entryPath == folder)
+                    return true;
+
+                if (entryPath.StartsWith(folder + "/", StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
         }
 
         void DrawResults()
         {
-            GUILayout.Label(
-                $"Results ({results.Count})",
-                EditorStyles.boldLabel);
+            var header = truncated
+                ? $"Results ({results.Count}, truncated — narrow your search)"
+                : $"Results ({results.Count})";
+
+            GUILayout.Label(header, EditorStyles.boldLabel);
 
             _scroll =
                 EditorGUILayout.BeginScrollView(_scroll);
@@ -240,7 +323,7 @@ namespace Snm.Tools.Finders
             foreach (var r in results)
             {
                 if (GUILayout.Button(
-                    $"{r.path}   ▶   {r.preview}",
+                    $"{r.path}:{r.lineNumber}   ▶   {r.preview}",
                     EditorStyles.linkLabel))
                 {
                     var obj =

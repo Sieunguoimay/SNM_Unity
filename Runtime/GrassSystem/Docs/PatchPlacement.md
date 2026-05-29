@@ -4,7 +4,7 @@
 
 The patch system provides a scene-based workflow for placing grass with full control over where blades go, what mesh they use, their size, and rotation. Instead of a single uniform grid, you place **GrassPatch** components as children of a GrassSystem — each patch defines a rectangular area of grass with its own mesh, material, density, and scale settings.
 
-Patches are the recommended way to build grass layouts for levels. The older grid-based approach (placement map on the GrassSystem itself) still works as a fallback when no patches are present.
+Patches are the only supported way to build grass layouts for levels. The older grid-based approach (placement map on the `GrassSystemConfig` itself) is **deprecated** as of 2026-04-18 and will be removed in a future release. To convert an existing grid-configured `GrassSystem` to patches, use **Tools → Grass → Migrate GrassSystem to Patches** (see the Migration section below).
 
 ---
 
@@ -22,7 +22,24 @@ Scene Hierarchy:
 
 At runtime (`OnEnable`), GrassSystem finds all child GrassPatch components, asks each to build its `Matrix4x4[]` instance data, groups them by mesh+material, and creates one draw call per group. All existing features (trample, wind, AO, color variation, frustum culling, recovery spring) work automatically across all patches.
 
-If no GrassPatch children exist, GrassSystem falls back to the legacy grid-based path. No breaking changes.
+If no GrassPatch children exist, GrassSystem falls back to the legacy grid-based path and logs a deprecation warning.
+
+---
+
+## Migration from the Grid Path
+
+Existing scenes configured via `GrassSystemConfig.gridSize` / `grassMesh` / `grassMaterial` / `layers` can be converted to patches:
+
+1. Select the `GrassSystem` GameObject in the scene.
+2. Menu: **Tools → Grass → Migrate GrassSystem to Patches**.
+3. Confirm the dry-run preview (list of patches, mesh, material, area, spacing).
+4. One `GrassPatch` child is created per single-mesh config, or one per `GrassLayerConfig` for multi-layer configs. Migrated patches use `snapToTerrain = false` and `jitter = 0` to preserve the original flat-grid behavior.
+5. The `GrassSystemConfig` asset is **not** modified. After verifying the migrated patches look correct, manually clear the deprecated grid fields on the SO.
+
+**Expected differences after migration:**
+- **Blade positions** are identical to the grid layout.
+- **Per-blade yaw** differs — patch path uses `System.Random(seed)`, the grid path used a deterministic spatial hash. Overall look is statistically equivalent; individual blade rotations will not match.
+- Any scene using the grid path will log `[GrassSystem] ... is using the deprecated grid path` in the console at scene load until migrated.
 
 ---
 

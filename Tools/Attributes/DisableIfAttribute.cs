@@ -1,12 +1,11 @@
-﻿using Sieunguoimay.Reflection;
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
-using Snm.Tools;
 using System;
 using System.Collections;
 
-
 #if UNITY_EDITOR
+using Sieunguoimay.Reflection;
+using Snm.Tools;
 using UnityEditor;
 #endif
 
@@ -28,7 +27,9 @@ namespace Snm.PropertyAttributes
     [CustomPropertyDrawer(typeof(DisableIfAttribute))]
     public class DisableIfAttributeDrawer : PropertyDrawer
     {
-        private bool _shouldDisable;
+        // Unity reuses one PropertyDrawer instance across sibling SerializedProperties (e.g. array
+        // elements), so per-instance state must be keyed by propertyPath or siblings will stomp it.
+        private readonly Dictionary<string, bool> _shouldDisableByPath = new();
         private DisableIfAttribute _att;
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -36,15 +37,20 @@ namespace Snm.PropertyAttributes
             _att ??= attribute as DisableIfAttribute;
 
             var obj = SerializeUtility.GetObjectToWhichPropertyBelong(property);
+            var path = property.propertyPath;
+            var shouldDisable = _shouldDisableByPath.TryGetValue(path, out var prev) && prev;
 
             if (obj is not Array and not IList and not IEnumerable)
             {
-                _shouldDisable = obj != null && ReflectionUtility.GetDataFromMember(obj, _att.PropertyName, false).Equals(_att.Value);
+                var current = obj != null ? ReflectionUtility.GetDataFromMember(obj, _att.PropertyName, false) : null;
+                // Equals (static) handles nulls on either side without NRE.
+                shouldDisable = Equals(current, _att.Value);
+                _shouldDisableByPath[path] = shouldDisable;
             }
 
             EditorGUI.BeginProperty(position, label, property);
             var ge = GUI.enabled;
-            GUI.enabled = !_shouldDisable;
+            GUI.enabled = !shouldDisable;
             EditorGUI.PropertyField(position, property, label, true);
             GUI.enabled = ge;
             EditorGUI.EndProperty();

@@ -10,6 +10,15 @@ namespace Snm.Framework.NodeHierarchy
         private static SpawningPool _instance;
         private readonly HashSet<ObjectPool<Object>> prefabPools = new();
 
+        // Static state survives "Disable Domain Reload" play mode; without an explicit reset,
+        // _isDestroyed would stay true from the previous session and Instance would return null forever.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _isDestroyed = false;
+            _instance = null;
+        }
+
         public static SpawningPool Instance
         {
             get

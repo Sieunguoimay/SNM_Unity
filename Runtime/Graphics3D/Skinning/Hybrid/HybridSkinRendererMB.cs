@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Snm.Runtime.Foundation;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -12,6 +13,20 @@ namespace Snm.Graphics3D.GPUSkinning
     [ExecuteInEditMode]
     public class HybridSkinRendererMB : MonoBehaviour
     {
+        IMainCameraProvider _cameraProvider;
+
+        /// <summary>
+        /// Inject a camera provider to avoid calling <see cref="Camera.main"/> directly
+        /// every frame. If not set, falls back to <see cref="MainCameraProvider.Default"/>.
+        /// Pragmatic compromise: MonoBehaviours have no constructor DI seam.
+        /// </summary>
+        public void SetMainCameraProvider(IMainCameraProvider provider)
+        {
+            _cameraProvider = provider;
+        }
+
+        IMainCameraProvider CameraProvider => _cameraProvider ??= MainCameraProvider.Default;
+
         [Header("Mesh & Material")]
         [SerializeField] private Mesh mesh;
         [SerializeField] private Material material;
@@ -189,7 +204,7 @@ namespace Snm.Graphics3D.GPUSkinning
             if (_bakedPlayer == null)
                 return SkinningMode.LiveBones;
 
-            var cam = Camera.main;
+            var cam = CameraProvider.Current;
             if (cam == null)
                 return SkinningMode.LiveBones;
 
@@ -214,8 +229,14 @@ namespace Snm.Graphics3D.GPUSkinning
             _bakedPropertyBlock = null;
             _currentMode = SkinningMode.None;
 
-            if (_liveMaterial != null) { DestroyImmediate(_liveMaterial); _liveMaterial = null; }
-            if (_bakedMaterial != null) { DestroyImmediate(_bakedMaterial); _bakedMaterial = null; }
+            if (_liveMaterial != null) { SafeDestroy(_liveMaterial); _liveMaterial = null; }
+            if (_bakedMaterial != null) { SafeDestroy(_bakedMaterial); _bakedMaterial = null; }
+        }
+
+        private static void SafeDestroy(UnityEngine.Object obj)
+        {
+            if (Application.isPlaying) Destroy(obj);
+            else DestroyImmediate(obj);
         }
     }
 }

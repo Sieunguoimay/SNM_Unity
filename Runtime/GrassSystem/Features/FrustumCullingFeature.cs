@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Snm.Runtime.Foundation;
 using UnityEngine;
 
 namespace Snm.GrassSystem
@@ -9,22 +10,24 @@ namespace Snm.GrassSystem
         readonly float _margin;
         readonly Plane[] _frustumPlanes = new Plane[6];
         readonly Dictionary<GrassRenderer, Matrix4x4[]> _tempBuffers = new();
+        readonly IMainCameraProvider _cameraProvider;
 
-        public FrustumCullingFeature(List<GrassRenderer> renderers, float margin)
+        public FrustumCullingFeature(List<GrassRenderer> renderers, float margin, IMainCameraProvider cameraProvider)
         {
             _renderers = renderers;
             _margin = margin;
+            _cameraProvider = cameraProvider ?? MainCameraProvider.Default;
 
             foreach (var r in renderers)
-                _tempBuffers[r] = new Matrix4x4[r.AllMatrices.Length];
+                _tempBuffers[r] = new Matrix4x4[r.AllMatrices.Count];
         }
 
         public void OnUpdate(float deltaTime)
         {
-            var cam = Camera.main;
-            if (cam == null) return;
+            var camera = _cameraProvider.Current;
+            if (camera == null) return;
 
-            GeometryUtility.CalculateFrustumPlanes(cam, _frustumPlanes);
+            GeometryUtility.CalculateFrustumPlanes(camera, _frustumPlanes);
 
             foreach (var renderer in _renderers)
             {
@@ -32,11 +35,12 @@ namespace Snm.GrassSystem
                 var temp = _tempBuffers[renderer];
                 int visibleCount = 0;
 
-                for (int i = 0; i < allMatrices.Length; i++)
+                for (int i = 0; i < allMatrices.Count; i++)
                 {
-                    var pos = new Vector3(allMatrices[i].m03, allMatrices[i].m13, allMatrices[i].m23);
+                    var m = allMatrices[i];
+                    var pos = new Vector3(m.m03, m.m13, m.m23);
                     if (IsPointInFrustum(pos, _margin))
-                        temp[visibleCount++] = allMatrices[i];
+                        temp[visibleCount++] = m;
                 }
 
                 renderer.UpdateVisibleInstances(temp, visibleCount);

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 #if UNITY_EDITOR
@@ -18,7 +19,19 @@ namespace Snm.PropertyAttributes
     [CustomPropertyDrawer(typeof(UniqueFieldAttribute))]
     public class UniqueFieldPropertyDrawer : PropertyDrawer
     {
-        private SerializedProperty[] _serializedProperties;
+        // Unity reuses one drawer instance across sibling properties — key state by propertyPath.
+        // We also hold the SerializedObjects to dispose them in the finalizer (PropertyDrawer has
+        // no Dispose hook); leaking these accumulates editor memory across selections.
+        private readonly Dictionary<string, SerializedProperty[]> _propsByPath = new();
+        private readonly Dictionary<string, SerializedObject[]> _ownedSerializedObjectsByPath = new();
+
+        ~UniqueFieldPropertyDrawer()
+        {
+            foreach (var arr in _ownedSerializedObjectsByPath.Values)
+                foreach (var so in arr)
+                    so?.Dispose();
+        }
+
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             var globalEnabled = GUI.color;
@@ -28,11 +41,17 @@ namespace Snm.PropertyAttributes
         }
         private bool IsUniqueFieldAcrossAssets(SerializedProperty property)
         {
-            _serializedProperties ??= GetCorrespondingPropertyOfOtherAssets(property);
+            var path = property.propertyPath;
+            if (!_propsByPath.TryGetValue(path, out var props))
+            {
+                props = GetCorrespondingPropertyOfOtherAssets(property, out var owners);
+                _propsByPath[path] = props;
+                _ownedSerializedObjectsByPath[path] = owners;
+            }
 
-            return CompareAgainstOthers(property, _serializedProperties);
+            return CompareAgainstOthers(property, props);
         }
-        private static bool CompareAgainstOthers(SerializedProperty property, IEnumerable<SerializedProperty> _otherProperties)
+        private bool CompareAgainstOthers(SerializedProperty property, IEnumerable<SerializedProperty> _otherProperties)
         {
             var value = GetValue(property);
             foreach (var sp in _otherProperties)
@@ -45,7 +64,7 @@ namespace Snm.PropertyAttributes
             }
             return true;
         }
-        private static object GetValue(SerializedProperty property)
+        private object GetValue(SerializedProperty property)
         {
             return property.propertyType switch
             {
@@ -54,7 +73,8 @@ namespace Snm.PropertyAttributes
                 SerializedPropertyType.Float => property.floatValue,
                 SerializedPropertyType.String => property.stringValue,
                 SerializedPropertyType.ObjectReference => property.objectReferenceValue,
-                SerializedPropertyType.Enum => property.enumValueFlag,
+                // Use enumValueFlag for [Flags] enums (bitfield), enumValueIndex otherwise.
+                SerializedPropertyType.Enum => IsFlagsEnum() ? property.enumValueFlag : property.enumValueIndex,
                 SerializedPropertyType.Vector2 => property.vector2Value,
                 SerializedPropertyType.Vector3 => property.vector3Value,
                 SerializedPropertyType.Vector2Int => property.vector2IntValue,
@@ -63,17 +83,30 @@ namespace Snm.PropertyAttributes
             };
         }
 
-        private static SerializedProperty[] GetCorrespondingPropertyOfOtherAssets(SerializedProperty property)
+        private bool IsFlagsEnum()
         {
-            var objectType = property.serializedObject.targetObject.GetType();
-            return GetAllObjectsOfType(objectType)
-                .Where(o => o != property.serializedObject.targetObject)
-                .Select(o => new SerializedObject(o).FindProperty(property.propertyPath)).ToArray();
+            var t = fieldInfo?.FieldType;
+            if (t == null) return false;
+            if (t.IsArray) t = t.GetElementType();
+            else if (t.IsGenericType && typeof(IEnumerable<>).IsAssignableFrom(t.GetGenericTypeDefinition()))
+                t = t.GetGenericArguments()[0];
+            return t != null && t.IsEnum && t.IsDefined(typeof(FlagsAttribute), false);
         }
 
-        private static IEnumerable<Object> GetAllObjectsOfType(System.Type type)
+        private static SerializedProperty[] GetCorrespondingPropertyOfOtherAssets(SerializedProperty property, out SerializedObject[] owners)
         {
-            return AssetDatabase.FindAssets($"t: {type.Name}").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<Object>);
+            var objectType = property.serializedObject.targetObject.GetType();
+            var ownerList = GetAllObjectsOfType(objectType)
+                .Where(o => o != property.serializedObject.targetObject)
+                .Select(o => new SerializedObject(o))
+                .ToArray();
+            owners = ownerList;
+            return ownerList.Select(so => so.FindProperty(property.propertyPath)).ToArray();
+        }
+
+        private static IEnumerable<UnityEngine.Object> GetAllObjectsOfType(System.Type type)
+        {
+            return AssetDatabase.FindAssets($"t:{type.Name}").Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<UnityEngine.Object>);
         }
     }
 #endif

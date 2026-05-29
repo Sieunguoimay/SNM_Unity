@@ -167,7 +167,8 @@ namespace Snm.Tools.ObjectBrowser
 
             // Search field fills remaining space
             memberSearchFilter = EditorGUILayout.TextField(memberSearchFilter);
-            GUILayout.Label(EditorGUIUtility.IconContent("Search Icon"), GUILayout.Width(18), GUILayout.Height(16));
+            var searchIcon = EditorGUIUtility.IconContent("Search Icon");
+            GUILayout.Label(new GUIContent(searchIcon.image, "Search members by name or value"), GUILayout.Width(18), GUILayout.Height(16));
             if (!string.IsNullOrEmpty(memberSearchFilter) && GUILayout.Button("X", EditorStyles.miniButton, GUILayout.Width(18)))
                 memberSearchFilter = "";
 
@@ -248,8 +249,10 @@ namespace Snm.Tools.ObjectBrowser
             var items = string.IsNullOrEmpty(memberSearchFilter)
                 ? _displayItems
                 : _displayItems.Where(i =>
-                    i.DisplayMemberName != null &&
-                    i.DisplayMemberName.IndexOf(memberSearchFilter, StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
+                    (i.DisplayMemberName != null &&
+                        i.DisplayMemberName.IndexOf(memberSearchFilter, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (i.DisplayValue != null &&
+                        i.DisplayValue.IndexOf(memberSearchFilter, StringComparison.OrdinalIgnoreCase) >= 0)).ToArray();
 
             ObjectExposedItemsDrawer.DrawExposedItems(
                 items, OnItemClicked, allowExpose, hasObject, displayTypeHash, _currentObject);

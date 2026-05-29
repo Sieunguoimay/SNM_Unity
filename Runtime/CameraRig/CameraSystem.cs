@@ -413,7 +413,10 @@ namespace Snm.CameraRig
                 sumVelocity += t.EffectiveVelocity;
                 sumWorldPos += t.VisibleBounds.center;
 
-                var b = BoundsUtility.BoundsWorldToNDC(t.VisibleBounds, vp);
+                // Skip targets entirely behind the camera — their NDC bounds would otherwise
+                // be an empty Bounds at origin, pulling the combined min/max toward (0,0,0).
+                if (!BoundsUtility.TryBoundsWorldToNDC(t.VisibleBounds, vp, out var b))
+                    continue;
                 if (b.min.x < min.x) min.x = b.min.x;
                 if (b.min.y < min.y) min.y = b.min.y;
                 if (b.min.z < min.z) min.z = b.min.z;

@@ -6,27 +6,42 @@ namespace Snm.GrassSystem
     {
         readonly GrassFeatureContext _ctx;
 
+        bool _applied;
+        float _lastFrequency;
+        float _lastDamping;
+        float _lastAmplitude;
+
         public RecoverySpringFeature(GrassFeatureContext ctx)
         {
             _ctx = ctx;
-            BindConfig();
+            BindIfDirty();
         }
 
         public void OnUpdate(float deltaTime)
         {
-            BindConfig();
+            BindIfDirty();
         }
 
         public void Dispose() { }
 
-        void BindConfig()
+        void BindIfDirty()
         {
             var config = _ctx.Config.trample;
+            float amplitude = config.springEnabled ? config.springAmplitude : 0f;
+
+            if (_applied && _lastFrequency == config.springFrequency && _lastDamping == config.springDamping && _lastAmplitude == amplitude)
+                return;
+
+            _lastFrequency = config.springFrequency;
+            _lastDamping = config.springDamping;
+            _lastAmplitude = amplitude;
+            _applied = true;
+
             foreach (var mat in _ctx.AllMaterials)
             {
                 mat.SetFloat(ShaderIDs.SpringFrequency, config.springFrequency);
                 mat.SetFloat(ShaderIDs.SpringDamping, config.springDamping);
-                mat.SetFloat(ShaderIDs.SpringAmplitude, config.springEnabled ? config.springAmplitude : 0f);
+                mat.SetFloat(ShaderIDs.SpringAmplitude, amplitude);
             }
         }
 

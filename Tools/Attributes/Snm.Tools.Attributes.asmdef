@@ -1,0 +1,16 @@
+{
+    "name": "Snm.Tools.Attributes",
+    "rootNamespace": "",
+    "references": [
+        "GUID:00db088c75278074db53ad124dba7331"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

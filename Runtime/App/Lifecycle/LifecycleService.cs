@@ -29,9 +29,22 @@ namespace Snm.Runtime.App.Lifecycle
             if (_initialized)
                 return;
 
-            _initializables = TopologicalSort(_resolver.ResolveAllLocal<IInitializable>());
-            _startables = TopologicalSort(_resolver.ResolveAllLocal<IStartable>());
-            _stoppables = TopologicalSort(_resolver.ResolveAllLocal<IStoppable>());
+            // Resolve all lifecycle slices, then build a union for cross-list dependency lookup.
+            // One object may implement multiple lifecycle interfaces and may have dependencies on
+            // objects in a different slice (e.g. an IStartable that depends on an IInitializable).
+            // Cross-slice deps don't impose ordering within the current slice, but must exist somewhere.
+            var initializables = _resolver.ResolveAllLocal<IInitializable>();
+            var startables = _resolver.ResolveAllLocal<IStartable>();
+            var stoppables = _resolver.ResolveAllLocal<IStoppable>();
+
+            var union = new HashSet<object>();
+            foreach (var x in initializables) union.Add(x);
+            foreach (var x in startables) union.Add(x);
+            foreach (var x in stoppables) union.Add(x);
+
+            _initializables = TopologicalSort(initializables, union);
+            _startables = TopologicalSort(startables, union);
+            _stoppables = TopologicalSort(stoppables, union);
 
             foreach (var i in _initializables)
                 i.Initialize();
@@ -52,7 +65,10 @@ namespace Snm.Runtime.App.Lifecycle
 
         public void Stop()
         {
-            if (!_started)
+            // Run teardown if Initialize succeeded, regardless of whether Start completed.
+            // If Start threw mid-way, IStoppables still need to release resources they acquired
+            // during Initialize — skipping Stop would leak them.
+            if (!_initialized)
                 return;
 
             // Reverse order for safe teardown
@@ -60,9 +76,10 @@ namespace Snm.Runtime.App.Lifecycle
                 _stoppables[i].Stop();
 
             _started = false;
+            _initialized = false;
         }
 
-        private static List<T> TopologicalSort<T>(IEnumerable<T> items)
+        private static List<T> TopologicalSort<T>(IEnumerable<T> items, HashSet<object> lifecycleUnion)
         {
             var itemList = items.ToList();
             var result = new List<T>();
@@ -82,15 +99,23 @@ namespace Snm.Runtime.App.Lifecycle
                 {
                     foreach (var depType in dependent.Dependencies)
                     {
+                        // Resolve the dependency against this slice first; only it can impose ordering here.
                         var dependency = itemList
                             .FirstOrDefault(x => depType.IsAssignableFrom(x.GetType()));
 
-                        if (dependency == null)
+                        if (dependency != null)
+                        {
+                            dependencyMap[item].Add(dependency);
+                            reverseMap[dependency].Add(item);
+                            continue;
+                        }
+
+                        // Cross-slice dependency: must exist in the lifecycle union (any phase),
+                        // otherwise the dependency is genuinely missing.
+                        var existsInUnion = lifecycleUnion.Any(x => depType.IsAssignableFrom(x.GetType()));
+                        if (!existsInUnion)
                             throw new InvalidOperationException(
                                 $"Missing lifecycle dependency: {depType.Name}");
-
-                        dependencyMap[item].Add(dependency);
-                        reverseMap[dependency].Add(item);
                     }
                 }
             }

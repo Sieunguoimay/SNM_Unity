@@ -27,45 +27,68 @@ namespace Snm.Tools
     {
         private static readonly BindingFlags flag = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
 
+        // Unity reuses one drawer instance across sibling properties; key state by propertyPath.
+        private sealed class State
+        {
+            public MethodInfo DisplayTextGetMethod;
+            public IEnumerable<string> Values;
+            public object Target;
+        }
+        private readonly Dictionary<string, State> _stateByPath = new();
         private DropDownPropertyAttribute _att;
-        private MethodInfo _displayTextGetMethod;
-        private IEnumerable<string> _values;
-        private object _target;
+
+        private State GetState(SerializedProperty property)
+        {
+            var path = property.propertyPath;
+            if (!_stateByPath.TryGetValue(path, out var s))
+            {
+                _att ??= attribute as DropDownPropertyAttribute;
+                s = new State
+                {
+                    Target = _att.IsPropertyInRootObject
+                        ? property.serializedObject.targetObject
+                        : StringSelectorDrawer.GetDirectTargetObject(property),
+                };
+                if (s.Target != null)
+                {
+                    var t = s.Target.GetType();
+                    s.DisplayTextGetMethod = t.GetMethod(_att.DisplayTextGetMethod, flag);
+                    s.Values = t.GetProperty(_att.ValuesProperty, flag)?.GetValue(s.Target) as IEnumerable<string>;
+                }
+                _stateByPath[path] = s;
+            }
+            return s;
+        }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            if (_att == null)
-            {
-                _att = attribute as DropDownPropertyAttribute;
-
-                _target = _att.IsPropertyInRootObject ? property.serializedObject.targetObject : StringSelectorDrawer.GetDirectTargetObject(property);
-                _displayTextGetMethod = _target.GetType().GetMethod(_att.DisplayTextGetMethod, flag);
-                _values = _target.GetType().GetProperty(_att.ValuesProperty, flag).GetValue(_target) as IEnumerable<string>;
-            }
-
+            var s = GetState(property);
 
             EditorGUI.BeginProperty(position, label, property);
             if (EditorGUI.DropdownButton(position,
-                new GUIContent(GetDisplaytext(property.stringValue)),
+                new GUIContent(GetDisplaytext(s, property.stringValue)),
                 FocusType.Passive))
             {
                 var gm = new GenericMenu();
-                foreach (var v in _values)
+                if (s.Values != null)
                 {
-                    gm.AddItem(new GUIContent(GetDisplaytext(v)), property.stringValue == v, () =>
+                    foreach (var v in s.Values)
                     {
+                        gm.AddItem(new GUIContent(GetDisplaytext(s, v)), property.stringValue == v, () =>
+                        {
 
-                    });
+                        });
+                    }
                 }
                 gm.ShowAsContext();
             }
             EditorGUI.EndProperty();
         }
 
-        private string GetDisplaytext(string value)
+        private string GetDisplaytext(State s, string value)
         {
-            return _displayTextGetMethod != null
-                ? _displayTextGetMethod.Invoke(_target, new object[] { value }) as string
+            return s.DisplayTextGetMethod != null
+                ? s.DisplayTextGetMethod.Invoke(s.Target, new object[] { value }) as string
                 : value;
         }
     }
