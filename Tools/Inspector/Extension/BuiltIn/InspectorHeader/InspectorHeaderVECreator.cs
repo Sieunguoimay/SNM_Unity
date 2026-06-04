@@ -14,10 +14,8 @@ namespace Snm.Tools.InspectorExtensions
 
             var button_Debug = CreateDebugButton(new InspectorModeViewer_Window(inspectorWindow), refreshAction);
             var container = new VisualElement() { style = { flexGrow = 1, flexDirection = FlexDirection.Row } };
-            var playControls = new PlayControlsVEPresenter();
 
             root.Add(container);
-            root.Add(playControls.Root);
             root.Add(button_Debug);
 
             var historyPanel = new SelectionHistoryPanelVEPresenter(historyTracker, container);
@@ -25,7 +23,6 @@ namespace Snm.Tools.InspectorExtensions
             root.RegisterCallback<DetachFromPanelEvent>(_ =>
             {
                 historyPanel.Dispose();
-                playControls.Dispose();
             });
 
             return root;
