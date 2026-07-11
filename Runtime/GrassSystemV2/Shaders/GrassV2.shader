@@ -51,6 +51,7 @@ Shader "Snm/GrassV2"
             // --- Globals (world-level, set once per frame by GrassWorld) ---
             float4 _GrassCanvasRect;    // xy = world min, zw = world size of interaction canvas
             float4 _GrassWindGlobal;    // xy = direction, z = speed, w = noise scale
+            float4 _GrassWindGlobal2;   // x = lean, y = coherence
             half4 _GrassTintColor;
 
             // --- Per-material (type-level, SRP-batcher friendly) ---
@@ -64,6 +65,7 @@ Shader "Snm/GrassV2"
                 float _GrassAoPower;
                 float _GrassSwayAmount;
                 float _GrassSwayFrequency;
+                float _GrassWindStiffness;
                 float _GrassBladeHeight;
                 float4 _GrassSpringParams; // x = frequency, y = damping, z = amplitude
                 float _Cutoff;
@@ -103,7 +105,8 @@ Shader "Snm/GrassV2"
 
                 float3 root = instance.position;
                 float height01 = saturate(input.positionOS.y / max(_GrassBladeHeight, 0.0001));
-                float bendFactor = GrassEaseInCubic(height01);
+                float bendFactor = GrassEaseInCubic(height01);              // trample bend distribution (unchanged)
+                float windBendFactor = pow(height01, _GrassWindStiffness);  // wind bend: stiffer = bend concentrated near the tip
 
                 // Yaw + uniform scale, applied by hand (no matrix needed).
                 float sinYaw, cosYaw;
@@ -119,8 +122,10 @@ Shader "Snm/GrassV2"
                 float inCanvas = all(canvasUV == saturate(canvasUV)) ? 1.0 : 0.0;
 
                 // Bend map: xy = push direction, z = hold, w = fading energy.
+                // Used linearly so the canvas-side soft falloff (_StampSoftness)
+                // survives — an ease-out here would re-inflate the soft rim.
                 float4 bend = SAMPLE_TEXTURE2D_LOD(_GrassBendMap, sampler_GrassBendMap, canvasUV, 0) * inCanvas;
-                float trampleStrength = GrassEaseOutCubic(saturate(bend.w));
+                float trampleStrength = saturate(bend.w);
 
                 // Recovery spring: hold gone but energy still fading -> damped overshoot.
                 float isRecovering = step(bend.z, 0.001) * step(0.01, bend.w);
@@ -135,15 +140,21 @@ Shader "Snm/GrassV2"
 
                 // --- Procedural wind ---
                 float2 windDirection = normalize(_GrassWindGlobal.xy + 1e-5);
-                float windTime = _Time.y * _GrassWindGlobal.z * _GrassSwayFrequency
-                               + seed01 * 6.2831853; // per-blade phase so blades never sync up
+                // Coherence fades out the per-blade phase offset: 1 = blades sway
+                // in phase (gusts read as travelling waves), 0 = each blade has its
+                // own random phase (busier, no clear wave).
+                float phaseOffset = seed01 * 6.2831853 * (1.0 - _GrassWindGlobal2.y);
+                float windTime = _Time.y * _GrassWindGlobal.z * _GrassSwayFrequency + phaseOffset;
                 float2 windVec = GrassWindVector(root.xz, windTime, windDirection, _GrassWindGlobal.w);
+                // Lean: a steady push along the wind so blades lean over and sway
+                // around that pose instead of just rocking about upright.
+                windVec += windDirection * _GrassWindGlobal2.x;
                 float amplitude = lerp(0.8, 1.2, GrassHash21(root.xz * 7.31)); // per-blade amplitude variation
                 windVec *= _GrassSwayAmount * amplitude * (1.0 - effects.g); // frozen grass stops swaying
 
                 float3 windMaxBend = float3(windVec.x, 0, windVec.y);
                 float3 up = float3(0, 1, 0);
-                float3 windBendDir = normalize(lerp(up, windMaxBend, saturate(bendFactor * length(windVec))));
+                float3 windBendDir = normalize(lerp(up, windMaxBend, saturate(windBendFactor * length(windVec))));
 
                 // --- Trample bend: heavy trample flattens the whole blade ---
                 float3 trampleDir = up;

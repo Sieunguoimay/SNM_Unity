@@ -30,10 +30,13 @@ Shader "Hidden/Snm/GrassV2Canvas"
         float _FadeSpeed;       // bend energy fade (1/s)
         float _HoldDecay;       // bend hold decay (1/s)
         float4 _FreezeTintDecay; // x = freeze decay (1/s), y = tint decay (1/s)
+        float _DirectionLock;    // bend amount at which fall direction locks in
+        float _StampSoftness;    // rim falloff exponent: higher = softer edge
 
         int _StampCount;
         float4 _Stamps[MAX_STAMPS];      // xy = world pos, z = radius, w = strength
-        float4 _StampParams[MAX_STAMPS]; // bend: xy = direction | effects: x = channel (0/1/2)
+        float4 _StampParams[MAX_STAMPS]; // z = flat-core fraction (per stamp);
+                                         // bend: xy = direction | effects: x = channel (0/1/2)
 
         struct Attributes
         {
@@ -64,11 +67,15 @@ Shader "Hidden/Snm/GrassV2Canvas"
             return SAMPLE_TEXTURE2D(_PrevTex, sampler_PrevTex, prevUV) * inside;
         }
 
-        float StampInfluence(float2 worldXZ, float4 stamp)
+        float StampInfluence(float2 worldXZ, float4 stamp, float core)
         {
             float dist = distance(worldXZ, stamp.xy);
-            float falloff = 1.0 - saturate(dist / max(stamp.z, 0.0001));
-            return falloff * falloff * stamp.w; // smooth quadratic edge
+            // Flat core: everything inside `core` fraction of the radius is
+            // pressed at full strength; the falloff only spans the outer rim.
+            // Without it only the exact center texel ever reaches 100%.
+            float normalized = dist / max(stamp.z, 0.0001);
+            float rim = saturate((normalized - core) / max(1.0 - core, 0.0001));
+            return pow(1.0 - rim, _StampSoftness) * stamp.w; // tunable soft edge
         }
         ENDHLSL
 
@@ -90,7 +97,7 @@ Shader "Hidden/Snm/GrassV2Canvas"
                 float2 stampDir = 0.0;
                 for (int i = 0; i < _StampCount; i++)
                 {
-                    float influence = StampInfluence(worldXZ, _Stamps[i]);
+                    float influence = StampInfluence(worldXZ, _Stamps[i], _StampParams[i].z);
                     stampStrength = max(stampStrength, influence);
                     stampDir += _StampParams[i].xy * influence;
                 }
@@ -103,8 +110,13 @@ Shader "Hidden/Snm/GrassV2Canvas"
                 float fading = step(hold, 0.001);
                 float energy = max(prev.a - _DeltaTime * _FadeSpeed * fading, stampStrength);
 
-                // Direction: latch toward the newest push, keep the old one while recovering.
-                float2 direction = lerp(prev.xy, stampDir, saturate(stampStrength * 2.0));
+                // Direction: standing grass takes the push direction, but grass
+                // bent past _DirectionLock keeps the way it fell — without this
+                // gate a resting or jittering disturber re-combs flat blades every
+                // frame, which reads as fake.
+                float take = saturate(stampStrength * 2.0)
+                           * saturate(1.0 - prev.a / max(_DirectionLock, 0.0001));
+                float2 direction = lerp(prev.xy, stampDir, take);
 
                 return float4(direction, hold, energy);
             }
@@ -131,7 +143,7 @@ Shader "Hidden/Snm/GrassV2Canvas"
 
                 for (int i = 0; i < _StampCount; i++)
                 {
-                    float influence = StampInfluence(worldXZ, _Stamps[i]);
+                    float influence = StampInfluence(worldXZ, _Stamps[i], _StampParams[i].z);
                     int channel = (int)_StampParams[i].x;
                     if (channel == 0) value.r = max(value.r, influence);
                     else if (channel == 1) value.g = max(value.g, influence);

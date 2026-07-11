@@ -19,6 +19,7 @@ namespace Snm.GrassSystemV2
             public static readonly int AoPower = Shader.PropertyToID("_GrassAoPower");
             public static readonly int SwayAmount = Shader.PropertyToID("_GrassSwayAmount");
             public static readonly int SwayFrequency = Shader.PropertyToID("_GrassSwayFrequency");
+            public static readonly int WindStiffness = Shader.PropertyToID("_GrassWindStiffness");
             public static readonly int BladeHeight = Shader.PropertyToID("_GrassBladeHeight");
             public static readonly int SpringParams = Shader.PropertyToID("_GrassSpringParams");
             public static readonly int Instances = Shader.PropertyToID("_GrassInstances");
@@ -44,6 +45,7 @@ namespace Snm.GrassSystemV2
                 material.SetFloat(ShaderIds.AoPower, type.aoPower);
                 material.SetFloat(ShaderIds.SwayAmount, type.swayAmount);
                 material.SetFloat(ShaderIds.SwayFrequency, type.swayFrequency);
+                material.SetFloat(ShaderIds.WindStiffness, type.windStiffness);
                 material.SetFloat(ShaderIds.BladeHeight, type.BladeHeight);
                 material.SetVector(ShaderIds.SpringParams,
                     new Vector4(config.springFrequency, config.springDamping, config.springAmplitude, 0f));

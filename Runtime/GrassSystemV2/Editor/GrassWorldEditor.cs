@@ -35,12 +35,32 @@ namespace Snm.GrassSystemV2.Editor
                 ToolManager.SetActiveTool<GrassPainterTool>();
             }
 
+            DrawWindPresets(world);
+
             EditorGUILayout.Space();
             DrawDefaultInspector();
             EditorGUILayout.Space();
 
             DrawStats(world);
             DrawMaintenance(world);
+        }
+
+        static void DrawWindPresets(GrassWorld world)
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Wind preset", EditorStyles.miniBoldLabel);
+            EditorGUILayout.BeginHorizontal();
+            foreach (var preset in GrassWindPresets.All)
+            {
+                if (GUILayout.Button(preset.Name))
+                {
+                    Undo.RecordObject(world, $"Apply wind preset '{preset.Name}'");
+                    GrassWindPresets.Apply(world.Config, preset);
+                    EditorUtility.SetDirty(world);
+                    SceneView.RepaintAll();
+                }
+            }
+            EditorGUILayout.EndHorizontal();
         }
 
         static void DrawHealthChecks(GrassWorld world)

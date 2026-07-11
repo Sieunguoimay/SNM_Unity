@@ -9,6 +9,7 @@ namespace Snm.GrassSystemV2
     /// wiring, no interfaces to implement. <see cref="GrassWorld"/> reads all
     /// active disturbers each frame and stamps the bend canvas.
     /// </summary>
+    [ExecuteAlways] // registers in edit mode too — dragging objects in the Scene view tramples grass
     [AddComponentMenu("Snm/Grass System V2/Grass Disturber")]
     public class GrassDisturber : MonoBehaviour
     {
@@ -17,15 +18,15 @@ namespace Snm.GrassSystemV2
         /// <summary>All enabled disturbers. Read by GrassWorld once per frame.</summary>
         public static IReadOnlyList<GrassDisturber> ActiveDisturbers => Active;
 
-        [Tooltip("Radius (meters) of flattened grass around this object.")]
-        public float radius = 0.5f;
+        [Tooltip("Sphere radius in meters. Horizontally: grass past this is untouched (bend fades to zero, GREEN debug ring). Vertically: the disturber is treated as a sphere of this radius, so it stops flattening grass once its bottom lifts above the blade tops (jumping clears the grass automatically — no manual height field).")]
+        public float outerRadius = 0.5f;
+
+        [Tooltip("Inner core radius in meters, independent of Outer Radius. Grass within this is pressed fully flat; between here and the outer radius the bend fades out. Shown as the ORANGE debug ring. Clamped to Outer Radius.")]
+        public float fullFlattenRadius = 0.25f;
 
         [Range(0f, 1f)]
         [Tooltip("How hard the grass is pushed down. 1 = flat on the ground.")]
         public float strength = 1f;
-
-        [Tooltip("Max height above the grass root plane at which this still disturbs. Lets jumping objects clear the grass.")]
-        public float maxHeightAboveGrass = 1.5f;
 
         Vector3 _previousPosition;
         Vector3 _lastMoveDirection = Vector3.forward;
@@ -44,13 +45,18 @@ namespace Snm.GrassSystemV2
             Active.Remove(this);
         }
 
+        // Direction only updates after real displacement — normalizing centimeter
+        // jitter (physics, idle sway) would swing the push direction wildly for
+        // blades right under the disturber.
+        const float MinMoveForDirection = 0.05f;
+
         /// <summary>Called by GrassWorld each frame. Updates the tracked move direction.</summary>
         public void TrackMovement()
         {
             var position = transform.position;
             var movement = position - _previousPosition;
             movement.y = 0f;
-            if (movement.sqrMagnitude > 0.0001f)
+            if (movement.sqrMagnitude > MinMoveForDirection * MinMoveForDirection)
             {
                 _lastMoveDirection = movement.normalized;
                 _previousPosition = position;
@@ -59,18 +65,9 @@ namespace Snm.GrassSystemV2
 
         void OnDrawGizmosSelected()
         {
-            Gizmos.color = new Color(0.3f, 0.9f, 0.3f, 0.6f);
-            var position = transform.position;
-            // Flattened circle on the XZ plane at the object's feet.
-            const int segments = 24;
-            var prev = position + new Vector3(radius, 0f, 0f);
-            for (int i = 1; i <= segments; i++)
-            {
-                float angle = i / (float)segments * Mathf.PI * 2f;
-                var next = position + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
-                Gizmos.DrawLine(prev, next);
-                prev = next;
-            }
+            // Radius + flat-core circles + travel direction, shared with the
+            // debug overlay so selection and overlay always look the same.
+            GrassDebugOverlay.DrawDisturberGizmo(this);
         }
     }
 }

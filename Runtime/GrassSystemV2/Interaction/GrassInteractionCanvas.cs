@@ -31,6 +31,8 @@ namespace Snm.GrassSystemV2
             public static readonly int FadeSpeed = Shader.PropertyToID("_FadeSpeed");
             public static readonly int HoldDecay = Shader.PropertyToID("_HoldDecay");
             public static readonly int FreezeTintDecay = Shader.PropertyToID("_FreezeTintDecay");
+            public static readonly int DirectionLock = Shader.PropertyToID("_DirectionLock");
+            public static readonly int StampSoftness = Shader.PropertyToID("_StampSoftness");
             public static readonly int StampCount = Shader.PropertyToID("_StampCount");
             public static readonly int Stamps = Shader.PropertyToID("_Stamps");
             public static readonly int StampParams = Shader.PropertyToID("_StampParams");
@@ -45,6 +47,7 @@ namespace Snm.GrassSystemV2
             public float Radius;
             public float Strength;
             public Vector2 DirectionOrChannel;
+            public float Core; // flat-core fraction, resolved (never negative here)
         }
 
         readonly GrassWorldConfig _config;
@@ -103,8 +106,11 @@ namespace Snm.GrassSystemV2
             return texture;
         }
 
-        /// <summary>Queues a bend stamp (trample). Flushed on the next canvas update.</summary>
-        public void QueueBend(Vector3 worldPosition, Vector2 direction, float radius, float strength)
+        /// <summary>
+        /// Queues a bend stamp (trample). <paramref name="coreFraction"/> is the
+        /// 0..1 portion of the radius pressed fully flat (0.5 = inner half).
+        /// </summary>
+        public void QueueBend(Vector3 worldPosition, Vector2 direction, float radius, float strength, float coreFraction = 0.5f)
         {
             if (_bendStamps.Count >= MaxStamps) return; // overflow: oldest wins, extras dropped this frame
             _bendStamps.Add(new Stamp
@@ -113,11 +119,12 @@ namespace Snm.GrassSystemV2
                 Radius = radius,
                 Strength = Mathf.Clamp01(strength),
                 DirectionOrChannel = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right,
+                Core = Mathf.Clamp(coreFraction, 0f, 0.95f),
             });
         }
 
         /// <summary>Queues an area effect stamp. Flushed on the next canvas update.</summary>
-        public void QueueEffect(GrassEffect effect, Vector3 worldPosition, float radius, float strength)
+        public void QueueEffect(GrassEffect effect, Vector3 worldPosition, float radius, float strength, float coreFraction = 0.5f)
         {
             if (_effectStamps.Count >= MaxStamps) return;
             _effectStamps.Add(new Stamp
@@ -126,6 +133,7 @@ namespace Snm.GrassSystemV2
                 Radius = radius,
                 Strength = Mathf.Clamp01(strength),
                 DirectionOrChannel = new Vector2((int)effect, 0f),
+                Core = Mathf.Clamp(coreFraction, 0f, 0.95f),
             });
         }
 
@@ -156,6 +164,8 @@ namespace Snm.GrassSystemV2
             _material.SetVector(Ids.FreezeTintDecay, new Vector4(
                 _config.freezeThawTime > 0f ? 1f / _config.freezeThawTime : 0f,
                 0.1f, 0f, 0f));
+            _material.SetFloat(Ids.DirectionLock, Mathf.Max(_config.directionLockAmount, 0.1f));
+            _material.SetFloat(Ids.StampSoftness, Mathf.Max(_config.bendEdgeSoftness, 0.1f));
 
             var bendSource = _swapped ? _bendB : _bendA;
             var bendTarget = _swapped ? _bendA : _bendB;
@@ -185,7 +195,7 @@ namespace Snm.GrassSystemV2
             {
                 var stamp = stamps[i];
                 _stampVectors[i] = new Vector4(stamp.Position.x, stamp.Position.y, stamp.Radius, stamp.Strength);
-                _stampParamVectors[i] = new Vector4(stamp.DirectionOrChannel.x, stamp.DirectionOrChannel.y, 0f, 0f);
+                _stampParamVectors[i] = new Vector4(stamp.DirectionOrChannel.x, stamp.DirectionOrChannel.y, stamp.Core, 0f);
             }
             _material.SetInt(Ids.StampCount, stamps.Count);
             if (stamps.Count > 0)

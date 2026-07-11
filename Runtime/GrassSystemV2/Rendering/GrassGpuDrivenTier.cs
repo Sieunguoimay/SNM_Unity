@@ -50,6 +50,8 @@ namespace Snm.GrassSystemV2
             public GraphicsBuffer VisibleLod1;   // minimal dummy when the type has no LOD1 mesh
             public GraphicsBuffer ArgsLod0;
             public GraphicsBuffer ArgsLod1;
+            public GraphicsBuffer ArgsStagingLod0;
+            public GraphicsBuffer ArgsStagingLod1;
 
             public void Dispose()
             {
@@ -57,6 +59,8 @@ namespace Snm.GrassSystemV2
                 VisibleLod1?.Dispose();
                 ArgsLod0?.Dispose();
                 ArgsLod1?.Dispose();
+                ArgsStagingLod0?.Dispose();
+                ArgsStagingLod1?.Dispose();
             }
         }
 
@@ -100,8 +104,14 @@ namespace Snm.GrassSystemV2
                     Type = type,
                     VisibleLod0 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, budget, GrassInstance.Stride),
                     VisibleLod1 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, lod1Budget, GrassInstance.Stride),
-                    ArgsLod0 = CreateArgsBuffer(type.meshLod0),
-                    ArgsLod1 = CreateArgsBuffer(type.HasLod1 ? type.meshLod1 : type.meshLod0),
+                    ArgsLod0 = CreateArgsBuffer(type.meshLod0,
+                        GraphicsBuffer.Target.IndirectArguments | GraphicsBuffer.Target.CopyDestination),
+                    ArgsLod1 = CreateArgsBuffer(type.HasLod1 ? type.meshLod1 : type.meshLod0,
+                        GraphicsBuffer.Target.IndirectArguments | GraphicsBuffer.Target.CopyDestination),
+                    ArgsStagingLod0 = CreateArgsBuffer(type.meshLod0,
+                        GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopySource),
+                    ArgsStagingLod1 = CreateArgsBuffer(type.HasLod1 ? type.meshLod1 : type.meshLod0,
+                        GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopySource),
                 };
             }
 
@@ -109,24 +119,22 @@ namespace Snm.GrassSystemV2
             _counterZeros = new uint[data.types.Length * 2];
         }
 
-        static GraphicsBuffer CreateArgsBuffer(Mesh mesh)
+        // D3D11 refuses compute UAVs on IndirectArguments buffers ("Failed to
+        // create Compute Buffer UAV"), so WriteArgs patches instanceCount in a
+        // plain Structured staging copy and Graphics.CopyBuffer moves the 20
+        // bytes into the real args buffer. Both buffers hold the same 5 uints.
+        static GraphicsBuffer CreateArgsBuffer(Mesh mesh, GraphicsBuffer.Target target)
         {
-            // Raw flag: the WriteArgs kernel patches instanceCount through an
-            // RWByteAddressBuffer view, which requires byte-address access.
-            var buffer = new GraphicsBuffer(
-                GraphicsBuffer.Target.IndirectArguments | GraphicsBuffer.Target.Raw,
-                1,
-                GraphicsBuffer.IndirectDrawIndexedArgs.size);
+            var buffer = (target & GraphicsBuffer.Target.Structured) != 0
+                ? new GraphicsBuffer(target, 5, sizeof(uint))
+                : new GraphicsBuffer(target, 1, GraphicsBuffer.IndirectDrawIndexedArgs.size);
             buffer.SetData(new[]
             {
-                new GraphicsBuffer.IndirectDrawIndexedArgs
-                {
-                    indexCountPerInstance = mesh.GetIndexCount(0),
-                    instanceCount = 0, // written by the WriteArgs kernel each frame
-                    startIndex = mesh.GetIndexStart(0),
-                    baseVertexIndex = mesh.GetBaseVertex(0),
-                    startInstance = 0,
-                },
+                mesh.GetIndexCount(0),
+                0u, // instanceCount, written by the WriteArgs kernel each frame
+                mesh.GetIndexStart(0),
+                mesh.GetBaseVertex(0),
+                0u, // startInstance
             });
             return buffer;
         }
@@ -191,12 +199,12 @@ namespace Snm.GrassSystemV2
                 var material = _materials.Get(typeIndex);
                 if (set == null || material == null) continue;
 
-                DispatchWriteArgs(typeIndex * 2, set.ArgsLod0, set.VisibleLod0.count);
+                DispatchWriteArgs(typeIndex * 2, set.ArgsStagingLod0, set.ArgsLod0, set.VisibleLod0.count);
                 DrawIndirect(set.Type.meshLod0, material, set.VisibleLod0, set.ArgsLod0, drawBounds, ref stats);
 
                 if (set.Type.HasLod1)
                 {
-                    DispatchWriteArgs(typeIndex * 2 + 1, set.ArgsLod1, set.VisibleLod1.count);
+                    DispatchWriteArgs(typeIndex * 2 + 1, set.ArgsStagingLod1, set.ArgsLod1, set.VisibleLod1.count);
                     DrawIndirect(set.Type.meshLod1, material, set.VisibleLod1, set.ArgsLod1, drawBounds, ref stats);
                 }
             }
@@ -204,13 +212,14 @@ namespace Snm.GrassSystemV2
             UpdateVisibleStats(ref stats);
         }
 
-        void DispatchWriteArgs(int counterIndex, GraphicsBuffer args, int maxVisible)
+        void DispatchWriteArgs(int counterIndex, GraphicsBuffer staging, GraphicsBuffer args, int maxVisible)
         {
             _cullShader.SetBuffer(_writeArgsKernel, Ids.Counters, _counters);
-            _cullShader.SetBuffer(_writeArgsKernel, Ids.Args, args);
+            _cullShader.SetBuffer(_writeArgsKernel, Ids.Args, staging);
             _cullShader.SetInt(Ids.CounterIndex, counterIndex);
             _cullShader.SetInt(Ids.MaxVisible, maxVisible);
             _cullShader.Dispatch(_writeArgsKernel, 1, 1, 1);
+            Graphics.CopyBuffer(staging, args);
         }
 
         void DrawIndirect(

@@ -33,6 +33,10 @@ namespace Snm.GrassSystemV2
         [Tooltip("Sway oscillation speed multiplier.")]
         public float swayFrequency = 1f;
 
+        [Range(0.3f, 8f)]
+        [Tooltip("Stem stiffness under wind: how far up the blade the bend starts. Low (~1) = soft, the blade curves from low down; high (~6) = stiff, only the tip sways while the base stays upright. 3 = the previous default look.")]
+        public float windStiffness = 3f;
+
         [Header("Color")]
         [Tooltip("Per-blade tint is a random blend between Color A and Color B (seeded, stable).")]
         public Color colorA = Color.white;

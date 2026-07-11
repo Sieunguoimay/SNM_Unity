@@ -16,7 +16,9 @@ StructuredBuffer<GrassInstanceData> _Instances;
 RWStructuredBuffer<GrassInstanceData> _VisibleLod0;
 RWStructuredBuffer<GrassInstanceData> _VisibleLod1;
 RWStructuredBuffer<uint> _Counters;
-RWByteAddressBuffer _Args;
+// Staging buffer (plain structured uints), NOT the indirect-args buffer itself:
+// D3D11 refuses UAVs on IndirectArguments buffers, so C# copies staging → args.
+RWStructuredBuffer<uint> _Args;
 
 uint _CounterBase;    // counter index of this type's LOD0 (LOD1 = +1)
 uint _CounterIndex;   // WriteArgs: which counter to copy
@@ -72,5 +74,5 @@ void WriteArgs(uint3 id : SV_DispatchThreadID)
 {
     uint count = min(_Counters[_CounterIndex], _MaxVisible);
     // IndirectDrawIndexedArgs layout: [0]=indexCount, [1]=instanceCount, ...
-    _Args.Store(4, count);
+    _Args[1] = count;
 }

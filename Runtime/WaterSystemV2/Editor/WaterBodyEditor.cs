@@ -18,24 +18,51 @@ namespace Snm.WaterSystemV2.Editor
 
         private bool _showPreviews = true;
 
-        public override bool RequiresConstantRepaint() => Application.isPlaying;
+        private void OnEnable()
+        {
+            Debug.Log($"[WBE-DIAG] Editor.OnEnable  playing={Application.isPlaying}  target={(target ? target.name : "NULL")}");
+        }
+
+        private void OnDisable()
+        {
+            Debug.Log($"[WBE-DIAG] Editor.OnDisable playing={Application.isPlaying}  target={(target ? target.name : "NULL")}");
+        }
+
+        // NOTE(diag): Application.isPlaying here made the IMGUI body render
+        // blank in play mode (Unity 6 IMGUIContainer-in-UIToolkit repaint bug).
+        // Forcing false to confirm the cause; live stats then update on hover.
+        public override bool RequiresConstantRepaint() => false;
 
         public override void OnInspectorGUI()
         {
             var water = (WaterBody)target;
 
-            DrawStatusPanel(water);
-            EditorGUILayout.Space();
+            EditorGUILayout.LabelField($"WaterBodyEditor ✓ (playing={Application.isPlaying})", EditorStyles.miniBoldLabel);
 
-            DrawDefaultInspector();
-
-            EditorGUILayout.Space();
-            DrawShoreBakeSection(water);
-
-            if (Application.isPlaying)
+            try
             {
+                DrawStatusPanel(water);
                 EditorGUILayout.Space();
-                DrawRuntimeSection(water);
+
+                DrawDefaultInspector();
+
+                EditorGUILayout.Space();
+                DrawShoreBakeSection(water);
+
+                if (Application.isPlaying)
+                {
+                    EditorGUILayout.Space();
+                    DrawRuntimeSection(water);
+                }
+            }
+            catch (System.Exception e) when (!(e is ExitGUIException))
+            {
+                // A diagnostics inspector must never blank out. Surface the
+                // cause instead of leaving an empty component body, and log it
+                // once per repaint so the real exception is finally visible.
+                EditorGUILayout.HelpBox("Inspector draw error: " + e.Message, MessageType.Error);
+                if (Event.current.type == EventType.Repaint)
+                    Debug.LogException(e, water);
             }
         }
 

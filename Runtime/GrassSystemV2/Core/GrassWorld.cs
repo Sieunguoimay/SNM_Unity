@@ -42,6 +42,9 @@ namespace Snm.GrassSystemV2
         [Tooltip("Show the runtime stats panel (play mode).")]
         public bool showStatsPanel;
 
+        [Tooltip("Draw a live arrow field showing procedural wind direction/strength over the ground.")]
+        public bool drawWindField;
+
         public static GrassWorld Instance { get; private set; }
 
         public GrassWorldData Data => data;
@@ -53,6 +56,7 @@ namespace Snm.GrassSystemV2
         static class Ids
         {
             public static readonly int WindGlobal = Shader.PropertyToID("_GrassWindGlobal");
+            public static readonly int WindGlobal2 = Shader.PropertyToID("_GrassWindGlobal2");
             public static readonly int TintColor = Shader.PropertyToID("_GrassTintColor");
         }
 
@@ -66,6 +70,7 @@ namespace Snm.GrassSystemV2
         GrassStats _stats;
         Camera _cachedCamera;
         double _lastEditorTime;
+        float _maxBladeHeight; // grass top = chunk root Y + this; drives the disturber height test
 
         void OnEnable()
         {
@@ -99,6 +104,7 @@ namespace Snm.GrassSystemV2
             {
                 if (type != null) maxBladeHeight = Mathf.Max(maxBladeHeight, type.BladeHeight * type.scaleRange.y);
             }
+            _maxBladeHeight = maxBladeHeight;
             foreach (var record in data.Chunks)
             {
                 _chunks.Add(new GrassChunk(record, data.chunkSize, maxBladeHeight + 0.5f));
@@ -168,10 +174,21 @@ namespace Snm.GrassSystemV2
             {
                 disturber.TrackMovement();
                 var position = disturber.transform.position;
-                if (position.y > disturber.maxHeightAboveGrass + SampleGroundY(position)) continue;
+
+                // Sphere disturber: it reaches the grass when its bottom (center
+                // minus radius) dips to or below the grass tops. Fully automatic —
+                // grass height comes from the blades, vertical size from the radius.
+                float grassTopY = SampleGroundY(position) + _maxBladeHeight;
+                if (position.y - disturber.outerRadius > grassTopY) continue;
 
                 var direction = disturber.MoveDirection;
-                _canvas.QueueBend(position, new Vector2(direction.x, direction.z), disturber.radius, disturber.strength);
+                // The canvas works in a normalized 0..1 core fraction; convert
+                // the disturber's two absolute radii here.
+                float coreFraction = disturber.outerRadius > 0.0001f
+                    ? Mathf.Clamp01(disturber.fullFlattenRadius / disturber.outerRadius)
+                    : 0f;
+                _canvas.QueueBend(position, new Vector2(direction.x, direction.z),
+                    disturber.outerRadius, disturber.strength, coreFraction);
             }
             _canvas.Update(deltaTime, GetCameraFocus(camera));
 
@@ -179,6 +196,8 @@ namespace Snm.GrassSystemV2
             float windRadians = config.windDirectionDegrees * Mathf.Deg2Rad;
             Shader.SetGlobalVector(Ids.WindGlobal, new Vector4(
                 Mathf.Cos(windRadians), Mathf.Sin(windRadians), config.windSpeed, config.windNoiseScale));
+            Shader.SetGlobalVector(Ids.WindGlobal2, new Vector4(
+                config.windLean, config.windCoherence, 0f, 0f));
             Shader.SetGlobalColor(Ids.TintColor, config.tintColor);
 
             _stats = new GrassStats { TierName = _tier.Name };
@@ -190,6 +209,9 @@ namespace Snm.GrassSystemV2
                 Config = config,
             };
             _tier.Render(_visibleChunks, context, ref _stats);
+
+            if (drawDebugOverlay) GrassDebugOverlay.DrawBendField(this);
+            if (drawWindField) GrassDebugOverlay.DrawWindField(this);
 
             CollectStats();
         }
@@ -249,6 +271,7 @@ namespace Snm.GrassSystemV2
             {
                 if (type != null) maxBladeHeight = Mathf.Max(maxBladeHeight, type.BladeHeight * type.scaleRange.y);
             }
+            _maxBladeHeight = maxBladeHeight;
             foreach (var record in data.Chunks)
             {
                 _chunks.Add(new GrassChunk(record, data.chunkSize, maxBladeHeight + 0.5f));
@@ -356,7 +379,9 @@ namespace Snm.GrassSystemV2
 
         void OnDrawGizmos()
         {
-            if (drawDebugOverlay) GrassDebugOverlay.DrawChunkGizmos(this);
+            if (!drawDebugOverlay) return;
+            GrassDebugOverlay.DrawChunkGizmos(this);
+            GrassDebugOverlay.DrawDisturberGizmos(this);
         }
     }
 }

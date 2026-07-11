@@ -5,8 +5,12 @@ zero references to any other module: drag this folder into any URP project and i
 
 ## Setup — 3 steps
 
-1. **Add a `GrassWorld`** component to an empty GameObject (one per scene).
-   Click **Create data asset** in the inspector (the health check offers it).
+1. **Add a `GrassWorld`** — either add the component to an empty GameObject, or
+   use **GameObject > Snm > Grass World V2** to create one already wired up (one
+   per scene). Click **Create data asset** in the inspector (the health check
+   offers it). The inspector has **Wind preset** buttons (Still/Calm/Meadow/
+   Windy/Storm) that re-flavour the wind in one click without touching painted
+   data. Prefab the GameObject to reuse a tuned setup across prototypes.
 2. **Create a `GrassType`** (`Assets > Create > Snm > Grass System V2 > Grass Type`),
    assign a blade mesh + a material using the **`Snm/GrassV2`** shader
    (the inspector fixes wrong shaders with one click). Add it to the data's `Types`.
@@ -51,10 +55,16 @@ GrassV2.shader                 one shader for both tiers: procedural wind, bend,
 
 ## Debugging
 
+- **Tools > Snm > Grass System V2** — dockable dashboard window: health check,
+  live stats, per-type blade counts, chunk list, and live previews of the
+  interaction canvas textures (bend / burn / freeze / tint) with test-stamp buttons.
 - **GrassWorld inspector** runs health checks with one-click fixes
   (missing data/mesh/material, wrong shader, chunk-size mismatch, budget too small…).
 - **Draw Debug Overlay** toggle: chunk grid in the Scene view — green = drawn,
-  yellow = resident, gray = unloaded — plus the interaction canvas square.
+  yellow = resident, gray = unloaded — plus the interaction canvas square, a
+  bend arrow field (fall direction/energy) and disturber gizmos.
+- **Wind Field** toggle: a live arrow field over the ground showing procedural
+  wind direction and strength; gusts animate so the Wind config is visible.
 - **Show Stats Panel** toggle: live blade/chunk/draw/VRAM counters in play mode.
 
 ## Known limits
