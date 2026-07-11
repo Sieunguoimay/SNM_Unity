@@ -1,0 +1,76 @@
+// GrassSystemV2 GPU culling.
+//
+// CullInstances: one thread per instance of a (chunk, type range). Rejects
+// cut/out-of-frustum/too-far blades, applies seeded density thinning, selects
+// LOD by distance and compacts survivors into per-(type, LOD) visible buffers.
+//
+// WriteArgs: copies a counter into an indirect-args instanceCount slot,
+// clamped to the visible buffer capacity.
+
+#pragma kernel CullInstances
+#pragma kernel WriteArgs
+
+#include "GrassV2Common.hlsl"
+
+StructuredBuffer<GrassInstanceData> _Instances;
+RWStructuredBuffer<GrassInstanceData> _VisibleLod0;
+RWStructuredBuffer<GrassInstanceData> _VisibleLod1;
+RWStructuredBuffer<uint> _Counters;
+RWByteAddressBuffer _Args;
+
+uint _CounterBase;    // counter index of this type's LOD0 (LOD1 = +1)
+uint _CounterIndex;   // WriteArgs: which counter to copy
+uint _RangeStart;
+uint _RangeCount;
+uint _MaxVisible;     // capacity of the visible buffers / clamp for WriteArgs
+float4 _FrustumPlanes[6];
+float3 _CameraPos;
+float4 _Distances;    // x = lod switch, y = falloff start, z = max draw distance
+float _CullRadius;    // conservative blade radius for plane tests
+
+[numthreads(64, 1, 1)]
+void CullInstances(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _RangeCount) return;
+
+    GrassInstanceData instance = _Instances[_RangeStart + id.x];
+
+    if (GrassUnpackFlags(instance) & GRASS_FLAG_CUT) return;
+
+    float3 position = instance.position;
+
+    [unroll]
+    for (int i = 0; i < 6; i++)
+    {
+        if (dot(_FrustumPlanes[i].xyz, position) + _FrustumPlanes[i].w < -_CullRadius) return;
+    }
+
+    float dist = distance(position, _CameraPos);
+    if (dist > _Distances.z) return;
+
+    // Seeded density thinning: far blades drop out one by one in a stable
+    // order (the seed is per-blade and never changes), so thinning never pops.
+    float density = 1.0 - saturate((dist - _Distances.y) / max(_Distances.z - _Distances.y, 0.001));
+    if (GrassUnpackSeed01(instance) > density) return;
+
+    if (dist > _Distances.x)
+    {
+        uint slot;
+        InterlockedAdd(_Counters[_CounterBase + 1], 1, slot);
+        if (slot < _MaxVisible) _VisibleLod1[slot] = instance;
+    }
+    else
+    {
+        uint slot;
+        InterlockedAdd(_Counters[_CounterBase], 1, slot);
+        if (slot < _MaxVisible) _VisibleLod0[slot] = instance;
+    }
+}
+
+[numthreads(1, 1, 1)]
+void WriteArgs(uint3 id : SV_DispatchThreadID)
+{
+    uint count = min(_Counters[_CounterIndex], _MaxVisible);
+    // IndirectDrawIndexedArgs layout: [0]=indexCount, [1]=instanceCount, ...
+    _Args.Store(4, count);
+}
