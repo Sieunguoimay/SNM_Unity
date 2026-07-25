@@ -224,7 +224,7 @@ namespace Snm.Graphics3D.Modeling
         public static List<CombineInput> CollectFromGameObjects(GameObject[] gameObjects, bool includeChildren)
         {
             var inputs = new List<CombineInput>();
-            var processed = new HashSet<int>();
+            var processed = new HashSet<EntityId>();
 
             foreach (var go in gameObjects)
             {
@@ -234,7 +234,7 @@ namespace Snm.Graphics3D.Modeling
 
                 foreach (var renderer in renderers)
                 {
-                    int id = renderer.GetInstanceID();
+                    var id = renderer.GetEntityId();
                     if (!processed.Add(id)) continue;
 
                     Mesh mesh = null;

@@ -128,11 +128,11 @@ namespace Snm.Graphics3D.Inspection
         static List<(Mesh mesh, GameObject go, Material[] mats)> CollectMeshes(GameObject[] gameObjects)
         {
             var result = new List<(Mesh, GameObject, Material[])>();
-            var seen = new HashSet<int>();
+            var seen = new HashSet<EntityId>();
 
             foreach (var go in gameObjects)
             {
-                if (!seen.Add(go.GetInstanceID())) continue;
+                if (!seen.Add(go.GetEntityId())) continue;
 
                 var mf = go.GetComponent<MeshFilter>();
                 var mr = go.GetComponent<MeshRenderer>();

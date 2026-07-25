@@ -328,13 +328,13 @@ namespace Snm.Tools.ObjectBrowser
                 string label;
 
                 if (o is EditorWindow ew)
-                    label = $"[EditorWindow] {ew.titleContent.text} ({typeName}@{o.GetInstanceID()})";
+                    label = $"[EditorWindow] {ew.titleContent.text} ({typeName}@{o.GetEntityId()})";
                 else if (o is GameObject go)
-                    label = $"[GameObject] {go.name} ({typeName}@{o.GetInstanceID()})";
+                    label = $"[GameObject] {go.name} ({typeName}@{o.GetEntityId()})";
                 else if (o is Component comp)
-                    label = $"[Component] {comp.gameObject.name}/{typeName} (@{o.GetInstanceID()})";
+                    label = $"[Component] {comp.gameObject.name}/{typeName} (@{o.GetEntityId()})";
                 else
-                    label = $"[{typeName}] {o.name} (@{o.GetInstanceID()})";
+                    label = $"[{typeName}] {o.name} (@{o.GetEntityId()})";
 
                 dic.TryAdd(label, o);
             }

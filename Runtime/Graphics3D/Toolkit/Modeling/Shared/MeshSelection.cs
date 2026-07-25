@@ -14,11 +14,11 @@ namespace Snm.Graphics3D.Modeling
         public readonly HashSet<int> Faces = new();
 
         // Static cache keyed by mesh instance ID
-        static readonly Dictionary<int, MeshSelection> _cache = new();
+        static readonly Dictionary<EntityId, MeshSelection> _cache = new();
 
         public static MeshSelection GetOrCreate(Mesh mesh)
         {
-            int id = mesh.GetInstanceID();
+            var id = mesh.GetEntityId();
             if (!_cache.TryGetValue(id, out var sel))
             {
                 sel = new MeshSelection();

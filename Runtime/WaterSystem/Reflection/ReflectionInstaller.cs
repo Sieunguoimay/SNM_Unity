@@ -24,7 +24,7 @@ namespace Snm.WaterSystem.Reflection
             var state = new ReflectionState();
             var tracker = new CameraTracker(ctx.SourceCamera);
             var shaderBinder = new ReflectionShaderBinder(ctx.SurfaceMaterial, reflectionCamera);
-            var scheduler = new ReflectionRenderScheduler(frameInterval: 4);
+            var scheduler = new ReflectionRenderScheduler(frameInterval: 1);
 
             // Set reflection texture once — it does not change.
             ctx.SurfaceMaterial.SetTexture(ReflectionTexID, renderTexture);

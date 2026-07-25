@@ -419,7 +419,7 @@ namespace Snm.Graphics3D.GPUSkinning
         {
             unchecked
             {
-                return ((long)baseMaterial.GetInstanceID() << 32) | (uint)data.GetInstanceID();
+                return ((long)baseMaterial.GetEntityId().GetHashCode() << 32) | (uint)data.GetEntityId().GetHashCode();
             }
         }
 

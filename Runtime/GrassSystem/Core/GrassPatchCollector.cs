@@ -23,9 +23,9 @@ namespace Snm.GrassSystem
         public static List<RenderGroup> Collect(GrassPatch[] patches)
         {
             // Key: (mesh instance ID, material instance ID) → list of matrices
-            var groups = new Dictionary<(int, int), List<Matrix4x4>>();
-            var meshLookup = new Dictionary<(int, int), Mesh>();
-            var materialLookup = new Dictionary<(int, int), Material>();
+            var groups = new Dictionary<(EntityId, EntityId), List<Matrix4x4>>();
+            var meshLookup = new Dictionary<(EntityId, EntityId), Mesh>();
+            var materialLookup = new Dictionary<(EntityId, EntityId), Material>();
 
             foreach (var patch in patches)
             {
@@ -35,7 +35,7 @@ namespace Snm.GrassSystem
                 var matrices = patch.BuildMatrices();
                 if (matrices.Length == 0) continue;
 
-                var key = (patch.mesh.GetInstanceID(), patch.material.GetInstanceID());
+                var key = (patch.mesh.GetEntityId(), patch.material.GetEntityId());
 
                 if (!groups.TryGetValue(key, out var list))
                 {
