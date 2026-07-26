@@ -40,7 +40,7 @@ Shader "Snm/InteractiveGrass"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-            #include "Assets/Scripts/Rendering/Shaders/Includes/GATLighting.hlsl"
+            #include "Assets/SNM_Unity/Runtime/GrassSystem/Features/Render/GATLighting.hlsl"
 
             TEXTURE2D(_MainTex);    SAMPLER(sampler_MainTex);
             TEXTURE2D(_TrampleMap); SAMPLER(sampler_TrampleMap); // RT written by EnvironmentInteractionSystem
